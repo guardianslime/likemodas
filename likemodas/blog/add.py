@@ -212,27 +212,27 @@ def blog_post_add_form() -> rx.Component:
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     # --- Campo de Precio ---
-                rx.vstack(rx.text("Precio (COP)"), rx.input(
-                    name="price", 
-                    value=AppState.price_str, 
-                    on_change=AppState.set_price_str,
-                    type="number",            # <--- VUELVE A SER NUMBER
-                    # input_mode="numeric",   # Ya no es necesario
-                    # pattern="[0-9]*",     # Ya no es necesario
-                    required=True, 
-                    placeholder="Ej: 55000"
-                )),
-                # --- Campo de Ganancia ---
-                rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                    name="profit", 
-                    value=AppState.profit_str, 
-                    on_change=AppState.set_profit_str,
-                    type="number",            # <--- VUELVE A SER NUMBER
-                    # input_mode="numeric",   # Ya no es necesario
-                    # pattern="[0-9]*",     # Ya no es necesario
-                    placeholder="Ej: 15000"
-                    # max_length=... # Elimina esta línea, no funciona con type="number"
-                )),
+                    rx.vstack(rx.text("Precio (COP)"), rx.input(
+                        name="price", 
+                        value=AppState.price_str, 
+                        on_change=AppState.set_price_str,
+                        type="number",            # <--- VUELVE A SER NUMBER
+                        # input_mode="numeric",   # Ya no es necesario
+                        # pattern="[0-9]*",     # Ya no es necesario
+                        required=True, 
+                        placeholder="Ej: 55000"
+                    )),
+                    # --- Campo de Ganancia ---
+                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(
+                        name="profit", 
+                        value=AppState.profit_str, 
+                        on_change=AppState.set_profit_str,
+                        type="number",            # <--- VUELVE A SER NUMBER
+                        # input_mode="numeric",   # Ya no es necesario
+                        # pattern="[0-9]*",     # Ya no es necesario
+                        placeholder="Ej: 15000"
+                        # max_length=... # Elimina esta línea, no funciona con type="number"
+                    )),
                     columns="2", spacing="4"
                 ),
                 rx.grid(
