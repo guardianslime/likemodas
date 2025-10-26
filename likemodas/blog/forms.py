@@ -147,25 +147,31 @@ def blog_post_add_form() -> rx.Component:
                     align_items="stretch"
                 ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
+                # --- Campo de Precio ---
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price", 
-                        value=AppState.edit_price_str, 
+                        name="price",
+                        value=AppState.edit_price_str,
                         on_change=AppState.set_edit_price_str,
-                        type="number",            # <--- VUELVE A SER NUMBER
-                        # input_mode="numeric",   # Ya no es necesario
-                        # pattern="[0-9]*",     # Ya no es necesario
+                        type="text",            # <--- VUELVE A SER TEXT
+                        input_mode="numeric",   # <--- RESTAURADO
+                        pattern="[0-9]*",     # <--- RESTAURADO
                         required=True
                     )),
                     # --- Campo de Ganancia ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit", 
-                        value=AppState.edit_profit_str, 
+                        name="profit",
+                        value=AppState.edit_profit_str,
                         on_change=AppState.set_edit_profit_str,
-                        type="number",            # <--- VUELVE A SER NUMBER
-                        # input_mode="numeric",   # Ya no es necesario
-                        # pattern="[0-9]*",     # Ya no es necesario
-                        # max_length=... # Elimina esta línea
+                        type="text",            # <--- VUELVE A SER TEXT
+                        input_mode="numeric",   # <--- RESTAURADO
+                        pattern="[0-9]*",     # <--- RESTAURADO
+                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
+                        max_length=rx.cond(
+                            AppState.edit_price_str.length() > 0,
+                            AppState.edit_price_str.length(),
+                            20 # Límite alto por defecto
+                        )
                     )),
                     columns="2", spacing="4"
                 ),

@@ -3682,91 +3682,96 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def set_profit_str(self, new_profit: str):
         """
-        [VALIDACIÓN ESTRICTA] Actualiza la ganancia, impidiendo que supere
-        el precio o tenga más dígitos que el precio.
+        [VALIDACIÓN ESTRICTA v2] Actualiza la ganancia, limpiando la entrada,
+        limitando longitud y valor respecto al precio.
         """
-        # 1. Permite borrar el campo
-        if new_profit == "":
+        # 1. Limpiar entrada: Solo permitir dígitos
+        cleaned_profit = "".join(filter(str.isdigit, new_profit))
+
+        # 2. Manejar borrado completo
+        if not cleaned_profit:
             self.profit_str = ""
             return
 
-        # 2. Obtener el precio actual (como string)
-        current_price_str = self.price_str if self.price_str else ""
+        # 3. Obtener el precio actual (limpio también, por si acaso)
+        current_price_str = "".join(filter(str.isdigit, self.price_str if self.price_str else ""))
 
         # --- VALIDACIÓN 1: Límite de Dígitos ---
-        # Solo permite escribir si el precio tiene dígitos y la nueva ganancia no los excede
-        if current_price_str and len(new_profit) > len(current_price_str):
-            # Si intenta escribir más dígitos, simplemente no actualiza el estado.
-            # El input volverá al valor anterior (self.profit_str)
-            return # Detiene la ejecución aquí
-
-        # 3. Validar que sea un número y compararlo con el precio
-        try:
-            profit_float = float(new_profit)
-            price_float = float(current_price_str) if current_price_str else 0.0
-        except (ValueError, TypeError):
-            # Si escribe algo inválido (ej. '-'), no actualiza el estado.
-            return # Detiene la ejecución aquí
+        # Si hay un precio y la ganancia limpia excede su longitud, revertir al estado anterior.
+        if current_price_str and len(cleaned_profit) > len(current_price_str):
+            # No hacemos nada, el input volverá a self.profit_str
+            # (Podríamos opcionalmente mostrar un toast aquí si prefieres)
+             yield rx.toast.warn("La ganancia no puede tener más dígitos que el precio.", duration=1500)
+             return # Detiene la ejecución aquí
 
         # --- VALIDACIÓN 2: Límite de Valor ---
-        if profit_float > price_float:
-            # Si el valor es mayor, fuerza la ganancia a ser igual al precio
+        try:
+            # Convertir valores limpios a números
+            profit_float = float(cleaned_profit)
+            price_float = float(current_price_str) if current_price_str else 0.0
+        except ValueError:
+             # Esto no debería ocurrir gracias a la limpieza, pero es una salvaguarda
+             return # Ignorar si algo raro pasa
+
+        # Comprobar si el valor es mayor que el precio
+        if price_float > 0 and profit_float > price_float: # Solo validar si precio > 0
+            # Si es mayor, forzar la ganancia a ser igual al precio
             self.profit_str = current_price_str
+            # Podríamos añadir un toast aquí también
+            yield rx.toast.warn("La ganancia no puede ser mayor que el precio.", duration=1500)
         else:
-            # Si ambas validaciones pasan, actualiza el estado
-            self.profit_str = new_profit
+            # Si ambas validaciones pasan, actualizar el estado con el valor LIMPIO
+            self.profit_str = cleaned_profit
 
     # --- PARA EL FORMULARIO DE EDITAR ---
 
     @rx.event
     def set_edit_price_str(self, new_price: str):
-        """
-        [VALIDACIÓN CRUZADA] Actualiza el precio de EDICIÓN y, si es necesario,
-        corrige la ganancia de EDICIÓN.
-        """
-        if new_price == "":
+        cleaned_price = "".join(filter(str.isdigit, new_price))
+        if cleaned_price == "":
             self.edit_price_str = ""
             self.edit_profit_str = ""
             return
+        self.edit_price_str = cleaned_price
         try:
-            price_float = float(new_price)
-        except (ValueError, TypeError):
-            return 
-        self.edit_price_str = new_price
-        try:
+            price_float = float(cleaned_price)
             profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
             if profit_float > price_float:
-                self.edit_profit_str = new_price
+                self.edit_profit_str = cleaned_price
         except (ValueError, TypeError):
             self.edit_profit_str = ""
 
     @rx.event
     def set_edit_profit_str(self, new_profit: str):
         """
-        [VALIDACIÓN ESTRICTA] Actualiza la ganancia de EDICIÓN, impidiendo que supere
-        el precio o tenga más dígitos que el precio.
+        [VALIDACIÓN ESTRICTA v2] Actualiza la ganancia de EDICIÓN, limpiando,
+        limitando longitud y valor.
         """
-        if new_profit == "":
+        cleaned_profit = "".join(filter(str.isdigit, new_profit))
+
+        if not cleaned_profit:
             self.edit_profit_str = ""
             return
 
-        current_price_str = self.edit_price_str if self.edit_price_str else ""
+        current_price_str = "".join(filter(str.isdigit, self.edit_price_str if self.edit_price_str else ""))
 
         # --- VALIDACIÓN 1: Límite de Dígitos ---
-        if current_price_str and len(new_profit) > len(current_price_str):
-            return 
-
-        try:
-            profit_float = float(new_profit)
-            price_float = float(current_price_str) if current_price_str else 0.0
-        except (ValueError, TypeError):
-            return 
+        if current_price_str and len(cleaned_profit) > len(current_price_str):
+            yield rx.toast.warn("La ganancia no puede tener más dígitos que el precio.", duration=1500)
+            return
 
         # --- VALIDACIÓN 2: Límite de Valor ---
-        if profit_float > price_float:
+        try:
+            profit_float = float(cleaned_profit)
+            price_float = float(current_price_str) if current_price_str else 0.0
+        except ValueError:
+            return
+
+        if price_float > 0 and profit_float > price_float:
             self.edit_profit_str = current_price_str
+            yield rx.toast.warn("La ganancia no puede ser mayor que el precio.", duration=1500)
         else:
-            self.edit_profit_str = new_profit
+            self.edit_profit_str = cleaned_profit
 
     # --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
     @rx.var
@@ -5218,34 +5223,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- Reemplaza tus setters de precio y ganancia por estos ---
     @rx.event
     def set_price_str(self, new_price: str):
-        """
-        [VALIDACIÓN CRUZADA] Actualiza el precio y, si es necesario,
-        corrige la ganancia para que nunca sea mayor.
-        """
-        # 1. Manejar el caso de borrado
-        if new_price == "":
+        cleaned_price = "".join(filter(str.isdigit, new_price))
+        if cleaned_price == "":
             self.price_str = ""
-            self.profit_str = "" # Si el precio es 0, la ganancia es 0
+            self.profit_str = ""
             return
-
-        # 2. Validar que la entrada sea un número
+        self.price_str = cleaned_price # Guardar precio limpio
+        # Revalidar ganancia con el nuevo precio limpio
         try:
-            price_float = float(new_price)
-        except (ValueError, TypeError):
-            # Si se escribe "abc", simplemente no actualiza el estado.
-            return # Importante: `return` aquí para no continuar.
-
-        # 3. La entrada es un número válido, la aceptamos.
-        self.price_str = new_price
-
-        # 4. Validar cruzadamente la ganancia existente
-        try:
+            price_float = float(cleaned_price)
             profit_float = float(self.profit_str) if self.profit_str else 0.0
             if profit_float > price_float:
-                # Corregir la ganancia si el nuevo precio es más bajo
-                self.profit_str = new_price
+                self.profit_str = cleaned_price
         except (ValueError, TypeError):
-            self.profit_str = ""
+            self.profit_str = "" # Limpiar ganancia si era inválida
 
     # --- Variables para el Dashboard de Finanzas ---
     finance_stats: Optional[FinanceStatsDTO] = None

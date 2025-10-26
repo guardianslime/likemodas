@@ -213,25 +213,30 @@ def blog_post_add_form() -> rx.Component:
                 rx.grid(
                     # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price", 
-                        value=AppState.price_str, 
+                        name="price",
+                        value=AppState.price_str,
                         on_change=AppState.set_price_str,
-                        type="number",            # <--- VUELVE A SER NUMBER
-                        # input_mode="numeric",   # Ya no es necesario
-                        # pattern="[0-9]*",     # Ya no es necesario
-                        required=True, 
+                        type="text",            # <--- VUELVE A SER TEXT
+                        input_mode="numeric",   # <--- RESTAURADO
+                        pattern="[0-9]*",     # <--- RESTAURADO
+                        required=True,
                         placeholder="Ej: 55000"
                     )),
                     # --- Campo de Ganancia ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit", 
-                        value=AppState.profit_str, 
+                        name="profit",
+                        value=AppState.profit_str,
                         on_change=AppState.set_profit_str,
-                        type="number",            # <--- VUELVE A SER NUMBER
-                        # input_mode="numeric",   # Ya no es necesario
-                        # pattern="[0-9]*",     # Ya no es necesario
-                        placeholder="Ej: 15000"
-                        # max_length=... # Elimina esta línea, no funciona con type="number"
+                        type="text",            # <--- VUELVE A SER TEXT
+                        input_mode="numeric",   # <--- RESTAURADO
+                        pattern="[0-9]*",     # <--- RESTAURADO
+                        placeholder="Ej: 15000",
+                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
+                        max_length=rx.cond(
+                            AppState.price_str.length() > 0,
+                            AppState.price_str.length(),
+                            20 # Un límite alto por defecto si el precio está vacío
+                        )
                     )),
                     columns="2", spacing="4"
                 ),
