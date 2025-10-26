@@ -293,15 +293,17 @@ class AdminPostRowData(rx.Base):
     id: int
     title: str
     price_cop: str
+    price: float  # <--- AÑADIR
     publish_active: bool
     main_image_url: str = ""
     variants: list[AdminVariantData] = []
     creator_name: Optional[str] = None
     owner_name: str
+    last_modified_by_name: Optional[str] = None
     
-    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
-    last_modified_by_name: Optional[str] = None # Quien lo modificó por última vez
-    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    # --- AÑADIR ESTOS CAMPOS FILTRABLES ---
+    shipping_cost: Optional[float] = None
+    is_moda_completa_eligible: bool = False
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -5871,15 +5873,93 @@ class AppState(reflex_local_auth.LocalAuthState):
     mis_publicaciones_list: list[AdminPostRowData] = []
     # --- ✨ FIN: AÑADE ESTA NUEVA VARIABLE ✨ ---
 
+    # Almacén de datos crudos para "Mis Publicaciones"
+    _raw_mis_publicaciones_list: list[AdminPostRowData] = []
+
+    # Variables para los filtros de "Mis Publicaciones"
+    admin_search_query: str = ""
+    admin_filter_min_price: str = ""
+    admin_filter_max_price: str = ""
+    admin_filter_free_shipping: bool = False
+    admin_filter_complete_fashion: bool = False
+
+    # --- Setters para los filtros de admin ---
+
+    def set_admin_search_query(self, query: str):
+        self.admin_search_query = query
+        self.apply_admin_filters() # Llama al filtro automáticamente
+
+    def set_admin_filter_min_price(self, price: str):
+        self.admin_filter_min_price = price
+        self.apply_admin_filters()
+
+    def set_admin_filter_max_price(self, price: str):
+        self.admin_filter_max_price = price
+        self.apply_admin_filters()
+
+    def set_admin_filter_free_shipping(self, value: bool):
+        self.admin_filter_free_shipping = value
+        self.apply_admin_filters()
+
+    def set_admin_filter_complete_fashion(self, value: bool):
+        self.admin_filter_complete_fashion = value
+        self.apply_admin_filters()
+
+    def clear_admin_filters(self):
+        """Limpia todos los filtros y restaura la lista original."""
+        self.admin_search_query = ""
+        self.admin_filter_min_price = ""
+        self.admin_filter_max_price = ""
+        self.admin_filter_free_shipping = False
+        self.admin_filter_complete_fashion = False
+        self.mis_publicaciones_list = self._raw_mis_publicaciones_list # Restaura desde la copia
+
+    def apply_admin_filters(self):
+        """Filtra la lista de _raw_mis_publicaciones_list y la guarda en mis_publicaciones_list."""
+        filtered_list = self._raw_mis_publicaciones_list
+        
+        # 1. Filtro por Búsqueda de texto
+        if self.admin_search_query.strip():
+            query = self.admin_search_query.lower()
+            filtered_list = [p for p in filtered_list if query in p.title.lower()]
+        
+        # 2. Filtro por Precio Mínimo
+        if self.admin_filter_min_price:
+            try:
+                min_p = float(self.admin_filter_min_price)
+                filtered_list = [p for p in filtered_list if p.price >= min_p]
+            except ValueError:
+                pass # Ignora si el valor no es un número
+        
+        # 3. Filtro por Precio Máximo
+        if self.admin_filter_max_price:
+            try:
+                max_p = float(self.admin_filter_max_price)
+                filtered_list = [p for p in filtered_list if p.price <= max_p]
+            except ValueError:
+                pass # Ignora si el valor no es un número
+        
+        # 4. Filtro Envío Gratis
+        if self.admin_filter_free_shipping:
+            filtered_list = [p for p in filtered_list if p.shipping_cost == 0.0]
+        
+        # 5. Filtro Moda Completa
+        if self.admin_filter_complete_fashion:
+            filtered_list = [p for p in filtered_list if p.is_moda_completa_eligible]
+        
+        # Actualiza la lista que la UI está mostrando
+        self.mis_publicaciones_list = filtered_list
+
     @rx.event
     def load_mis_publicaciones(self):
         """
-        [VERSIÓN FINAL CORREGIDA] Carga las publicaciones para la página 'Mis Publicaciones'
-        obteniendo correctamente la imagen principal del primer grupo de variantes.
+        [VERSIÓN MODIFICADA] Carga las publicaciones para la página 'Mis Publicaciones',
+        rellenando los datos necesarios para el filtrado y guardando una copia raw.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             self.mis_publicaciones_list = []
+            self._raw_mis_publicaciones_list = [] # Limpia también la copia
             return
 
         base_url = get_config().deploy_url
@@ -5898,11 +5978,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             admin_posts = []
             for p in posts_from_db:
-                # --- ✅ LÓGICA DE IMAGEN CORREGIDA AQUÍ ---
                 main_image = ""
                 if p.variants and p.variants[0].get("image_urls"):
                     main_image = p.variants[0]["image_urls"][0]
-                # --- FIN DE LA CORRECCIÓN ---
 
                 creator_username = p.creator.user.username if p.creator and p.creator.user else None
                 owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
@@ -5931,15 +6009,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price_cop=p.price_cop,
+                        price=p.price, # <--- DATO AÑADIDO
                         publish_active=p.publish_active,
-                        main_image_url=main_image, # Se pasa la imagen correcta
+                        main_image_url=main_image,
                         variants=variants_dto_list,
                         creator_name=creator_username,
                         owner_name=owner_username,
-                        last_modified_by_name=modifier_username
+                        last_modified_by_name=modifier_username,
+                        # --- DATOS AÑADIDOS PARA FILTRAR ---
+                        shipping_cost=p.shipping_cost,
+                        is_moda_completa_eligible=p.is_moda_completa_eligible
+                        # (Si añades attributes al DTO, popúlalo aquí también)
                     )
                 )
+            
+            # Guarda la lista en ambas variables
             self.mis_publicaciones_list = admin_posts
+            self._raw_mis_publicaciones_list = admin_posts
+
 
     @rx.event
     def delete_post(self, post_id: int):

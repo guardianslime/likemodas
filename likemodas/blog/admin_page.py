@@ -9,6 +9,94 @@ from .forms import blog_post_edit_form
 from .add import post_preview  # Importamos la previsualización
 from rx_color_picker.color_picker import color_picker
 
+def admin_filter_bar() -> rx.Component:
+    """Una barra de filtros integrada para la página 'Mis Publicaciones'."""
+    return rx.box(
+        rx.vstack(
+            # Fila 1: Búsqueda
+            rx.input(
+                placeholder="Buscar por nombre de publicación...",
+                value=AppState.admin_search_query,
+                on_change=AppState.set_admin_search_query,
+                width="100%",
+                size="3", # Tamaño un poco más grande
+                variant="surface",
+            ),
+            # Fila 2: Filtros
+            rx.flex(
+                # Precio
+                rx.box(
+                    rx.text("Precio:", size="2", weight="medium"),
+                    rx.hstack(
+                        rx.input(
+                            placeholder="Mínimo",
+                            value=AppState.admin_filter_min_price,
+                            on_change=AppState.set_admin_filter_min_price,
+                            type="number",
+                            size="2",
+                        ),
+                        rx.input(
+                            placeholder="Máximo",
+                            value=AppState.admin_filter_max_price,
+                            on_change=AppState.set_admin_filter_max_price,
+                            type="number",
+                            size="2",
+                        ),
+                        spacing="2",
+                    ),
+                    flex_grow=2, # Ocupa más espacio
+                ),
+                # Toggles
+                rx.box(
+                    rx.text("Opciones:", size="2", weight="medium"),
+                    rx.hstack(
+                        rx.checkbox(
+                            "Envío Gratis",
+                            size="2",
+                            is_checked=AppState.admin_filter_free_shipping,
+                            on_change=AppState.set_admin_filter_free_shipping,
+                        ),
+                        rx.checkbox(
+                            "Moda Completa",
+                            size="2",
+                            is_checked=AppState.admin_filter_complete_fashion,
+                            on_change=AppState.set_admin_filter_complete_fashion,
+                        ),
+                        spacing="4",
+                        align="end",
+                        height="100%",
+                        padding_bottom="0.2em",
+                    ),
+                    flex_grow=1,
+                ),
+                # Botón Limpiar
+                rx.box(
+                    rx.button(
+                        "Limpiar",
+                        on_click=AppState.clear_admin_filters,
+                        variant="soft",
+                        color_scheme="gray",
+                        size="2",
+                        margin_top="1.5em" # Alinea con los inputs
+                    ),
+                    flex_grow=1,
+                    align="end",
+                ),
+                spacing="4",
+                direction={"initial": "column", "md": "row"}, # Se apila en móvil
+                width="100%",
+                align="end", # Alinea verticalmente los items
+            ),
+            spacing="4",
+        ),
+        padding="1.5em",
+        border="1px solid",
+        border_color=rx.color("gray", 5), # Borde más sutil
+        border_radius="var(--radius-3)",
+        width="100%",
+        margin_bottom="1.5em", # Espacio antes de la tabla
+    )
+
 
 def edit_post_dialog() -> rx.Component:
     """
@@ -308,6 +396,7 @@ def blog_admin_page() -> rx.Component:
     return rx.center(
         rx.container(
             rx.vstack(
+                # Fila del Título y Botón (sin cambios)
                 rx.flex(
                     rx.heading("Mis Publicaciones", size={"initial": "8", "md": "7"}),
                     rx.spacer(),
@@ -323,13 +412,35 @@ def blog_admin_page() -> rx.Component:
                     width="100%",
                 ),
                 rx.divider(margin_y="1.5em"),
+                
+                # --- 👇 INCLUIR LA NUEVA BARRA DE FILTROS AQUÍ 👇 ---
+                admin_filter_bar(),
+                # --- 👆 FIN DE LA INCLUSIÓN 👆 ---
+                
+                # Mensaje de carga o tabla de resultados
                 rx.cond(
-                    AppState.mis_publicaciones_list,
-                    rx.fragment(desktop_view, mobile_view),
-                    rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
+                    AppState.is_loading, # (Si tienes una variable de carga para esto, úsala)
+                    rx.center(rx.spinner(), height="30vh"),
+                    # Muestra la tabla si hay publicaciones, o un mensaje si no
+                    rx.cond(
+                        AppState.mis_publicaciones_list,
+                        rx.fragment(desktop_view, mobile_view),
+                        # Mensaje si los filtros no devuelven nada
+                        rx.center(
+                            rx.vstack(
+                                rx.icon("search-slash", size=48, color_scheme="gray"),
+                                rx.text("No se encontraron publicaciones que coincidan con tus filtros.", color_scheme="gray"),
+                                spacing="3",
+                            ),
+                            height="30vh"
+                        )
+                    )
                 ),
+                
+                # Modales (sin cambios)
                 edit_post_dialog(),
                 qr_display_modal(),
+                
                 spacing="5", 
                 width="100%",
             ),
