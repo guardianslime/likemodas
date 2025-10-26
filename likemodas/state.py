@@ -3676,7 +3676,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ AÑADE ESTAS DOS LÍNEAS QUE FALTAN AQUÍ ✨ ---
     edit_profit_str: str = ""
 
-    # --- Setters Simples (Solo actualizan el valor) ---
+    # --- Setters Simples (Solo actualizan el valor mientras escribes) ---
     def set_price_str(self, value: str): self.price_str = value
     def set_profit_str(self, value: str): self.profit_str = value
     def set_edit_price_str(self, value: str): self.edit_price_str = value
@@ -3687,109 +3687,111 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Para el formulario de CREAR
     @rx.event
     def validate_profit_on_blur_add(self):
-        """Valida la ganancia (Crear) cuando el usuario sale del campo."""
+        """Valida la ganancia (Crear) al salir del campo, asegurando profit <= price."""
+        profit_corrected = False
         try:
-            # Lee los valores actuales del estado
-            price_float = float(self.price_str) if self.price_str else 0.0
-            profit_float = float(self.profit_str) if self.profit_str else 0.0
+            # Lee los valores FINALES del estado
+            price_val_str = self.price_str if self.price_str else "0"
+            profit_val_str = self.profit_str if self.profit_str else "0"
 
-            # Asegura que la ganancia no sea negativa
-            if profit_float < 0:
-                self.profit_str = "0" # Corrige el estado
-                profit_float = 0.0    # Actualiza la variable local para la siguiente validación
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+            # Intenta convertir a números enteros para comparación precisa
+            price_int = int(float(price_val_str))
+            profit_int = int(float(profit_val_str))
+
+            # Valida negatividad
+            if profit_int < 0:
+                self.profit_str = "0"
+                profit_corrected = True
                 yield rx.toast.warning("La ganancia no puede ser negativa.", duration=2000)
-
-            # Corrige si la ganancia es mayor que el precio (solo si el precio es positivo)
-            if price_float > 0 and profit_float > price_float:
-                self.profit_str = self.price_str # Corrige el estado
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+            # Valida profit <= price (solo si precio es positivo)
+            elif price_int > 0 and profit_int > price_int:
+                self.profit_str = str(price_int) # Ajusta al valor entero del precio
+                profit_corrected = True
                 yield rx.toast.warning("La ganancia no puede ser mayor que el precio. Se ha ajustado.", duration=3000)
             
-            # Limpia decimales si el valor es válido y no vacío (ej. 15000.0 -> 15000)
-            elif self.profit_str and profit_float >= 0: 
-                 self.profit_str = str(int(profit_float))
+            # Si no hubo corrección y el valor no está vacío, formatea a entero
+            elif not profit_corrected and self.profit_str:
+                 self.profit_str = str(profit_int) # Asegura que no queden decimales
 
         except (ValueError, TypeError):
-            # Si se dejó texto inválido (aunque type="number" lo evita), limpia el campo
+            # Si al salir, el campo tiene algo inválido, límpialo.
             self.profit_str = ""
-            # Opcional: notificar al usuario
-            # yield rx.toast.error("Valor de ganancia inválido. Se ha limpiado.", duration=2000)
 
     @rx.event
     def validate_price_on_blur_add(self):
-        """Valida el precio (Crear) y re-valida la ganancia."""
+        """Valida el precio (Crear) al salir y re-valida la ganancia."""
+        price_corrected = False
         try:
-            price_float = float(self.price_str) if self.price_str else 0.0
-            profit_float = float(self.profit_str) if self.profit_str else 0.0
+            price_val_str = self.price_str if self.price_str else "0"
+            profit_val_str = self.profit_str if self.profit_str else "0"
+            
+            price_int = int(float(price_val_str))
+            profit_int = int(float(profit_val_str))
 
-            # Asegura precio positivo
-            if price_float < 0:
+            # Valida negatividad del precio
+            if price_int < 0:
                 self.price_str = "0"
-                price_float = 0.0
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                price_int = 0 # Actualiza para la siguiente validación
+                price_corrected = True
                 yield rx.toast.warning("El precio no puede ser negativo.", duration=2000)
-            # Limpia decimales si es válido y no vacío
-            elif self.price_str and price_float >= 0: 
-                 self.price_str = str(int(price_float))
+            # Formatea a entero si no hubo corrección y no está vacío
+            elif not price_corrected and self.price_str:
+                 self.price_str = str(price_int)
 
-            # Re-valida la ganancia con el precio (posiblemente corregido)
-            if profit_float > price_float:
-                self.profit_str = self.price_str # Ajusta la ganancia si es necesario
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+            # Re-valida la ganancia contra el precio (posiblemente corregido)
+            if profit_int > price_int:
+                self.profit_str = str(price_int) # Ajusta la ganancia al precio entero
                 yield rx.toast.warning("La ganancia se ajustó al nuevo precio.", duration=3000)
 
         except (ValueError, TypeError):
-            # Limpia ambos si el precio se dejó inválido
+            # Limpia ambos si el precio quedó inválido
             self.price_str = ""
             self.profit_str = ""
-            # Opcional: notificar
-            # yield rx.toast.error("Valor de precio inválido. Se ha limpiado.", duration=2000)
 
     @rx.event
     def validate_profit_on_blur_edit(self):
-        """Valida la ganancia (Editar) cuando el usuario sale del campo."""
+        """Valida la ganancia (Editar) al salir, asegurando profit <= price."""
+        profit_corrected = False
         try:
-            price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
-            profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
+            price_val_str = self.edit_price_str if self.edit_price_str else "0"
+            profit_val_str = self.edit_profit_str if self.edit_profit_str else "0"
+            price_int = int(float(price_val_str))
+            profit_int = int(float(profit_val_str))
 
-            if profit_float < 0:
+            if profit_int < 0:
                 self.edit_profit_str = "0"
-                profit_float = 0.0
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                profit_corrected = True
                 yield rx.toast.warning("La ganancia no puede ser negativa.", duration=2000)
-
-            if price_float > 0 and profit_float > price_float:
-                self.edit_profit_str = self.edit_price_str
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+            elif price_int > 0 and profit_int > price_int:
+                self.edit_profit_str = str(price_int)
+                profit_corrected = True
                 yield rx.toast.warning("La ganancia no puede ser mayor que el precio. Se ha ajustado.", duration=3000)
-            elif self.edit_profit_str and profit_float >= 0:
-                 # Quita decimales
-                 self.edit_profit_str = str(int(profit_float))
+            elif not profit_corrected and self.edit_profit_str:
+                 self.edit_profit_str = str(profit_int)
 
         except (ValueError, TypeError):
             self.edit_profit_str = ""
 
     @rx.event
     def validate_price_on_blur_edit(self):
-        """Valida el precio (Editar) y re-valida la ganancia."""
+        """Valida el precio (Editar) al salir y re-valida la ganancia."""
+        price_corrected = False
         try:
-            price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
-            profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
+            price_val_str = self.edit_price_str if self.edit_price_str else "0"
+            profit_val_str = self.edit_profit_str if self.edit_profit_str else "0"
+            price_int = int(float(price_val_str))
+            profit_int = int(float(profit_val_str))
 
-            if price_float < 0:
+            if price_int < 0:
                 self.edit_price_str = "0"
-                price_float = 0.0
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                price_int = 0
+                price_corrected = True
                 yield rx.toast.warning("El precio no puede ser negativo.", duration=2000)
-            elif self.edit_price_str and price_float >= 0:
-                 # Quita decimales
-                 self.edit_price_str = str(int(price_float))
+            elif not price_corrected and self.edit_price_str:
+                 self.edit_price_str = str(price_int)
 
-            # Re-valida la ganancia
-            if profit_float > price_float:
-                self.edit_profit_str = self.edit_price_str
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+            if profit_int > price_int:
+                self.edit_profit_str = str(price_int)
                 yield rx.toast.warning("La ganancia se ajustó al nuevo precio.", duration=3000)
 
         except (ValueError, TypeError):
