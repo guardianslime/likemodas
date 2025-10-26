@@ -89,38 +89,38 @@ def blog_post_add_form() -> rx.Component:
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
             rx.text("2. Selecciona y ordena las imágenes para el grupo:"),
+            # --- 👇 ASEGÚRATE DE QUE ESTE rx.flex ESTÉ ASÍ 👇 ---
             rx.flex(
                  rx.foreach(
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            # img_name in AppState.image_selection_for_grouping, # <--- LÍNEA ANTERIOR (INCORRECTA)
-                            AppState.image_selection_for_grouping.contains(img_name), # <--- CORRECCIÓN: Volver a usar .contains()
+                            # AppState.image_selection_for_grouping.contains(img_name), # <--- ¡ASÍ DEBE SER!
+                            AppState.image_selection_for_grouping.contains(img_name), # <-- Usa .contains()
                             rx.box(
                                 rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"),
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
                             )
                         ),
-                        rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), # Usar lambda
-                            style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}
-                        ),
+                        rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                         position="relative", border="2px solid",
-                        # border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- LÍNEA ANTIGUA
-                        border_color=rx.cond(img_name in AppState.image_selection_for_grouping, "var(--violet-9)", "transparent"), # <--- NUEVA LÍNEA (USA 'in')
+                        # border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- ¡ASÍ DEBE SER!
+                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <-- Usa .contains()
                         border_radius="lg", cursor="pointer",
                         on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
                 wrap="wrap", spacing="3", padding_top="0.5em",
              ),
+             # --- 👆 FIN DE LA VERIFICACIÓN DEL rx.flex 👆 ---
             rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"),
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos (Selecciona uno para editar abajo):"),
             rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),
             spacing="3", width="100%", align_items="stretch",
-        )
+        ) # Fin vstack image_and_group_section
 
     def attributes_and_stock_section() -> rx.Component:
         return rx.cond(
