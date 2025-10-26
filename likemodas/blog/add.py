@@ -213,31 +213,54 @@ def blog_post_add_form() -> rx.Component:
                 rx.grid(
                     # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price", 
-                        value=AppState.price_str, 
-                        on_change=AppState.set_price_str,
-                        type="text",            # <--- CAMBIADO
-                        input_mode="numeric",   # <--- AÑADIDO
-                        pattern="[0-9]*",     # <--- AÑADIDO
-                        required=True, 
-                        placeholder="Ej: 55000"
-                    )),
-                    # --- Campo de Ganancia ---
-                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit", 
-                        value=AppState.profit_str, 
-                        on_change=AppState.set_profit_str,
-                        type="text",            # <--- CAMBIADO
-                        input_mode="numeric",   # <--- AÑADIDO
-                        pattern="[0-9]*",     # <--- AÑADIDO
-                        placeholder="Ej: 15000",
-                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
-                        max_length=rx.cond(
-                            AppState.price_str.length() > 0,
-                            AppState.price_str.length(),
-                            20 # Un límite alto por defecto si el precio está vacío
-                        )
-                    )),
+                    name="price", 
+                    value=AppState.price_str, 
+                    # Script simple para precio: solo permite números
+                    on_change=lambda val: rx.call_script(
+                        f"'{val}'.replace(/[^0-9]/g, '')", # Elimina no-números
+                        callback=AppState.set_price_str # Envía el número limpio al backend
+                    ),
+                    type="text", # Necesario para que el script funcione bien
+                    input_mode="numeric", 
+                    pattern="[0-9]*",
+                    required=True, 
+                    placeholder="Ej: 55000"
+                )),
+                # --- Campo de Ganancia ---
+                rx.vstack(rx.text("Ganancia (COP)"), rx.input(
+                    name="profit", 
+                    value=AppState.profit_str, 
+                    # --- ✨ SCRIPT DE VALIDACIÓN INSTANTÁNEA ✨ ---
+                    on_change=lambda val: rx.call_script(
+                        f"""
+                        let value = '{val}';
+                        const priceStr = '{AppState.price_str}'; // Lee el precio ACTUAL del estado
+
+                        // 1. Limpia: solo números
+                        const numericValue = value.replace(/[^0-9]/g, '');
+
+                        // 2. Compara con el precio
+                        const priceFloat = parseFloat(priceStr || '0');
+                        let profitFloat = parseFloat(numericValue || '0');
+
+                        // 3. Corrige si es necesario
+                        let finalValueStr = numericValue;
+                        if (priceStr && profitFloat > priceFloat) {{ // Solo corrige si hay precio
+                            finalValueStr = priceStr; 
+                        }}
+
+                        // 4. Devuelve el valor limpio Y corregido
+                        return finalValueStr; 
+                        """,
+                        callback=AppState.set_profit_str # El backend recibe el valor ya validado
+                    ),
+                    # --- ✨ FIN DEL SCRIPT ✨ ---
+                    type="text", # Necesario para el script
+                    input_mode="numeric", 
+                    pattern="[0-9]*",
+                    placeholder="Ej: 15000"
+                    # Ya no necesitamos max_length aquí, el script lo maneja mejor
+                )),
                     columns="2", spacing="4"
                 ),
                 rx.grid(

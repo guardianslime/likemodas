@@ -149,29 +149,40 @@ def blog_post_add_form() -> rx.Component:
                                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price", 
-                        value=AppState.edit_price_str, 
-                        on_change=AppState.set_edit_price_str,
-                        type="text",            # <--- CAMBIADO
-                        input_mode="numeric",   # <--- AÑADIDO
-                        pattern="[0-9]*",     # <--- AÑADIDO
-                        required=True
-                    )),
-                    # --- Campo de Ganancia ---
-                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit", 
-                        value=AppState.edit_profit_str, 
-                        on_change=AppState.set_edit_profit_str,
-                        type="text",            # <--- CAMBIADO
-                        input_mode="numeric",   # <--- AÑADIDO
-                        pattern="[0-9]*",     # <--- AÑADIDO
-                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
-                        max_length=rx.cond(
-                            AppState.edit_price_str.length() > 0,
-                            AppState.edit_price_str.length(),
-                            20 # Límite alto por defecto
-                        )
-                    )),
+                    name="price", 
+                    value=AppState.edit_price_str, 
+                    on_change=lambda val: rx.call_script(
+                        f"'{val}'.replace(/[^0-9]/g, '')",
+                        callback=AppState.set_edit_price_str # Usa el setter de edición
+                    ),
+                    type="text", input_mode="numeric", pattern="[0-9]*", required=True
+                )),
+                # --- Campo de Ganancia ---
+                rx.vstack(rx.text("Ganancia (COP)"), rx.input(
+                    name="profit", 
+                    value=AppState.edit_profit_str, 
+                    # --- ✨ SCRIPT DE VALIDACIÓN INSTANTÁNEA (VERSIÓN EDITAR) ✨ ---
+                    on_change=lambda val: rx.call_script(
+                        f"""
+                        let value = '{val}';
+                        const priceStr = '{AppState.edit_price_str}'; // Lee el precio de EDICIÓN
+
+                        const numericValue = value.replace(/[^0-9]/g, '');
+                        const priceFloat = parseFloat(priceStr || '0');
+                        let profitFloat = parseFloat(numericValue || '0');
+
+                        let finalValueStr = numericValue;
+                        if (priceStr && profitFloat > priceFloat) {{
+                            finalValueStr = priceStr; 
+                        }}
+
+                        return finalValueStr; 
+                        """,
+                        callback=AppState.set_edit_profit_str # Usa el setter de edición
+                    ),
+                    # --- ✨ FIN DEL SCRIPT ✨ ---
+                    type="text", input_mode="numeric", pattern="[0-9]*"
+                )),
                     columns="2", spacing="4"
                 ),
                 rx.grid(
