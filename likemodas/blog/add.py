@@ -106,9 +106,10 @@ def blog_post_add_form() -> rx.Component:
                             style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}
                         ),
                         position="relative", border="2px solid",
-                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
+                        # border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- LÍNEA ANTIGUA
+                        border_color=rx.cond(img_name in AppState.image_selection_for_grouping, "var(--violet-9)", "transparent"), # <--- NUEVA LÍNEA (USA 'in')
                         border_radius="lg", cursor="pointer",
-                        on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name), # Usar lambda
+                        on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
                 wrap="wrap", spacing="3", padding_top="0.5em",

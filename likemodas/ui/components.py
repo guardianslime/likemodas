@@ -43,8 +43,8 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
     )
 
 def searchable_select(
-    placeholder: str, 
-    options: rx.Var[list], 
+    placeholder: str,
+    options: rx.Var[list],
     on_change_select: EventSpec,
     value_select: rx.Var[str],
     search_value: rx.Var[str],
@@ -53,21 +53,22 @@ def searchable_select(
     is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
-    
+
     def render_option(option: rx.Var):
         label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
         value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
-        # --- ✨ INICIO: CORRECCIÓN CLAVE ✨ ---
+        # --- 👇 ASEGÚRATE DE QUE ESTA PARTE ESTÉ EXACTAMENTE ASÍ 👇 ---
         return rx.button(
             label,
+            # El on_click llama al handler que le pasaste Y cierra el dropdown
             on_click=[on_change_select(value), AppState.toggle_filter_dropdown(filter_name)],
-            width="100%", 
-            variant="soft", 
-            color_scheme="gray", 
+            width="100%",
+            variant="soft",
+            color_scheme="gray",
             justify_content="start",
-            type="button",  # <-- SE AÑADE ESTA LÍNEA
+            type="button",  # <--- ¡LA CLAVE! Asegura que NO envíe el formulario
         )
-        # --- ✨ FIN: CORRECCIÓN CLAVE ✨ ---
+        # --- 👆 FIN DE LA VERIFICACIÓN 👆 ---
 
     return rx.box(
         rx.button(

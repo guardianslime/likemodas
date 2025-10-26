@@ -290,7 +290,8 @@ def blog_post_edit_form() -> rx.Component:
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            AppState.edit_image_selection_for_grouping.contains(img_name),
+                            # AppState.edit_image_selection_for_grouping.contains(img_name), # <--- LÍNEA ANTIGUA
+                            img_name in AppState.edit_image_selection_for_grouping, # <--- NUEVA LÍNEA (USA 'in')
                             rx.box(
                                 rx.text(
                                     AppState.edit_selection_order_map[img_name],
@@ -302,7 +303,8 @@ def blog_post_edit_form() -> rx.Component:
                         ),
                         rx.icon("x", on_click=lambda: AppState.remove_edit_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                         position="relative", border="2px solid",
-                        border_color=rx.cond(AppState.edit_image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
+                        # border_color=rx.cond(AppState.edit_image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- LÍNEA ANTIGUA
+                        border_color=rx.cond(img_name in AppState.edit_image_selection_for_grouping, "var(--violet-9)", "transparent"), # <--- NUEVA LÍNEA (USA 'in')
                         border_radius="lg", cursor="pointer",
                         on_click=lambda: AppState.toggle_edit_image_selection_for_grouping(img_name),
                     )

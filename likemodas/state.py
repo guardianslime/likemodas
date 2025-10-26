@@ -1703,7 +1703,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     uploaded_images: list[str] = []
     
     # Almacena los NOMBRES DE ARCHIVO de las imágenes seleccionadas para crear un nuevo grupo
-    image_selection_for_grouping: list[str] = []
+    image_selection_for_grouping: list[str] = []   # <--- NUEVA LÍNEA (CAMBIO A LISTA)
 
     # La estructura principal: una lista de grupos de variantes.
     # Cada grupo tiene sus imágenes y sus atributos base (ej: Color).
@@ -4345,37 +4345,59 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.edit_image_selection_for_grouping.insert(new_index, self.edit_image_selection_for_grouping.pop(current_index))
 
     # 4. Métodos de 'toggle' y 'create' actualizados para usar listas.
+    # Asegúrate que estas funciones usen append/remove/clear con listas
     @rx.event
     def toggle_image_selection_for_grouping(self, filename: str):
         """Añade o quita una imagen de la lista de selección."""
         if filename in self.image_selection_for_grouping:
-            self.image_selection_for_grouping.remove(filename)
+            self.image_selection_for_grouping.remove(filename) # Correcto para lista
         else:
-            self.image_selection_for_grouping.append(filename)
+            self.image_selection_for_grouping.append(filename) # Correcto para lista
 
     @rx.event
     def create_variant_group(self):
         """Crea un nuevo grupo de variantes con las imágenes ordenadas."""
         if not self.image_selection_for_grouping:
             return rx.toast.error("Debes seleccionar al menos una imagen.")
-        
-        new_group = VariantGroupDTO(image_urls=self.image_selection_for_grouping)
+
+        new_group = VariantGroupDTO(image_urls=list(self.image_selection_for_grouping)) # Crea copia
         self.variant_groups.append(new_group)
-        
+
+        # Elimina las imágenes usadas de uploaded_images
+        current_uploaded = list(self.uploaded_images)
         for filename in self.image_selection_for_grouping:
-            if filename in self.uploaded_images:
-                self.uploaded_images.remove(filename)
-        
+            if filename in current_uploaded:
+                current_uploaded.remove(filename)
+        self.uploaded_images = current_uploaded # Reasigna la lista modificada
+
         self.image_selection_for_grouping = [] # Resetea a una lista vacía
         self.select_group_for_editing(len(self.variant_groups) - 1)
 
-    # --- Aplica lo mismo a las versiones de 'edit' ---
+
     @rx.event
     def toggle_edit_image_selection_for_grouping(self, filename: str):
         if filename in self.edit_image_selection_for_grouping:
-            self.edit_image_selection_for_grouping.remove(filename)
+            self.edit_image_selection_for_grouping.remove(filename) # Correcto para lista
         else:
-            self.edit_image_selection_for_grouping.append(filename)
+            self.edit_image_selection_for_grouping.append(filename) # Correcto para lista
+
+    @rx.event
+    def create_edit_variant_group(self):
+        if not self.edit_image_selection_for_grouping:
+            return rx.toast.error("Debes seleccionar al menos una imagen.")
+        new_group = VariantGroupDTO(image_urls=list(self.edit_image_selection_for_grouping)) # Crea copia
+        self.edit_variant_groups.append(new_group)
+
+        # Elimina las imágenes usadas de edit_uploaded_images
+        current_edit_uploaded = list(self.edit_uploaded_images)
+        for filename in self.edit_image_selection_for_grouping:
+            if filename in current_edit_uploaded:
+                current_edit_uploaded.remove(filename)
+        self.edit_uploaded_images = current_edit_uploaded # Reasigna
+
+        self.edit_image_selection_for_grouping = [] # Resetea a lista vacía
+        yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
+        self._update_edit_preview_image()
             
     @rx.event
     def create_edit_variant_group(self):
