@@ -144,15 +144,25 @@ def edit_post_dialog() -> rx.Component:
         ),
 
         rx.divider(margin_top="1em"),
-
-        # Selector de Modo de Previsualización
-        rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
+        rx.text("Apariencia en Modo Claro:", size="3"),
         rx.segmented_control.root(
-            rx.segmented_control.item("Modo Claro", value="light"),
-            rx.segmented_control.item("Modo Oscuro", value="dark"),
-            on_change=AppState.toggle_preview_mode,
-            value=AppState.card_theme_mode,
+            rx.segmented_control.item("Claro", value="light"),
+            rx.segmented_control.item("Oscuro", value="dark"),
+            value=AppState.edit_light_mode_appearance,
+            on_change=AppState.set_edit_light_mode_appearance, # Usa el nuevo setter
             width="100%",
+            color_scheme="violet", # Opcional: para estilo
+        ),
+
+        rx.divider(margin_top="1em"),
+        rx.text("Apariencia en Modo Oscuro:", size="3"),
+        rx.segmented_control.root(
+            rx.segmented_control.item("Claro", value="light"),
+            rx.segmented_control.item("Oscuro", value="dark"),
+            value=AppState.edit_dark_mode_appearance,
+            on_change=AppState.set_edit_dark_mode_appearance, # Usa el nuevo setter
+            width="100%",
+            color_scheme="violet", # Opcional: para estilo
         ),
 
         # --- 🚫 ELIMINADOS los popover de color pickers y el botón "Guardar" 🚫 ---

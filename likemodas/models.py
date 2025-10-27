@@ -358,6 +358,10 @@ class BlogPostModel(rx.Model, table=True):
     dark_title_color: Optional[str] = Field(default=None)
     dark_price_color: Optional[str] = Field(default=None)
 
+    # Dentro de BlogPostModel
+    light_mode_appearance: str = Field(default="light", nullable=False) # Opciones: "light", "dark"
+    dark_mode_appearance: str = Field(default="dark", nullable=False)  # Opciones: "light", "dark"
+
     # El estilo de imagen se mantiene
     image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
 

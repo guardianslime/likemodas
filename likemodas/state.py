@@ -562,11 +562,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     # Controla la visibilidad del nuevo modal
     show_artist_modal: bool = False
-    
-    # Nuevo estado para el switch "Invertir Tema"
-    card_theme_invert: bool = False
 
-    # --- FIN: Nuevas variables ---
+    # Dentro de AppState
+    edit_light_mode_appearance: str = "light"
+    edit_dark_mode_appearance: str = "dark"
 
 
     # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---

@@ -338,34 +338,33 @@ def post_preview(
     
     # --- 👇 INICIO: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👇 ---
 
-    # 1. Determina el tema que el PREVIEW debe mostrar (light o dark)
-    effective_preview_theme = AppState.card_theme_mode
+    # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
+    preview_site_theme = AppState.card_theme_mode
 
-    # 2. Determina el tema que la TARJETA debe aplicar (normal o invertido)
-    theme_to_apply = rx.cond(
-        AppState.card_theme_invert, # Si el switch "Invertir" está ON
-        rx.cond(effective_preview_theme == "light", "dark", "light"), # Invertido
-        effective_preview_theme # Normal
+    # 2. Determina cómo DEBERÍA verse la tarjeta según las nuevas configuraciones
+    card_should_appear_as = rx.cond(
+        preview_site_theme == "light",
+        AppState.edit_light_mode_appearance, # Cómo se ve en modo claro
+        AppState.edit_dark_mode_appearance  # Cómo se ve en modo oscuro
     )
-    
-    # 3. Asigna colores basados en el tema a aplicar
+
+    # 3. Asigna colores basados en cómo debería verse
     card_bg_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si no es default, usa el color vivo (para el modal artístico)
-        AppState.live_card_bg_color 
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        AppState.live_card_bg_color # Mantenemos esto para el modo artístico
     )
     title_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        AppState.live_title_color # Fallback
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        AppState.live_title_color
     )
     price_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        AppState.live_price_color # Fallback
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        AppState.live_price_color
     )
-    # --- 👆 FIN: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👆 ---
+    # --- FIN DE LA LÓGICA MODIFICADA ---
 
     return rx.box(
         rx.vstack(

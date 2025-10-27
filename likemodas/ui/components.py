@@ -166,46 +166,44 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
 
         # --- 👇 INICIO: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👇 ---
 
-        # 1. Determina el tema 'base' (light o dark) del navegador del usuario
-        base_theme = rx.color_mode_cond("light", "dark")
-            
-        # 2. Determina el tema que la TARJETA debe aplicar (normal o invertido)
-        theme_to_apply = rx.cond(
-            post.card_theme_invert, # Si el switch "Invertir" está guardado
-            rx.cond(base_theme == "light", "dark", "light"), # Invertido
-            base_theme # Normal
+        # 1. Determina el tema REAL del sitio
+        site_theme = rx.color_mode_cond("light", "dark")
+
+        # 2. Determina cómo DEBERÍA verse la tarjeta según los valores guardados en el DTO
+        card_should_appear_as = rx.cond(
+            site_theme == "light",
+            post.light_mode_appearance, # El valor guardado para modo claro
+            post.dark_mode_appearance   # El valor guardado para modo oscuro
         )
-        
-        # 3. Asigna colores basados en el tema a aplicar
+
+        # 3. Asigna colores basados en cómo debería verse, usando defaults o los colores guardados
         card_bg_color = rx.cond(
             post.use_default_style,
-            rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-            # Si no es default, usa los colores guardados
+            rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
             rx.cond(
-                theme_to_apply == "light",
+                card_should_appear_as == "light",
                 post.light_card_bg_color | DEFAULT_LIGHT_BG,
                 post.dark_card_bg_color | DEFAULT_DARK_BG
             )
         )
         title_color = rx.cond(
             post.use_default_style,
-            rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+            rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
             rx.cond(
-                theme_to_apply == "light",
+                card_should_appear_as == "light",
                 post.light_title_color | DEFAULT_LIGHT_TITLE,
                 post.dark_title_color | DEFAULT_DARK_TITLE
             )
         )
         price_color = rx.cond(
             post.use_default_style,
-            rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+            rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
             rx.cond(
-                theme_to_apply == "light",
+                card_should_appear_as == "light",
                 post.light_price_color | DEFAULT_LIGHT_PRICE,
                 post.dark_price_color | DEFAULT_DARK_PRICE
             )
         )
-        # --- 👆 FIN: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👆 ---
 
         return rx.box(
             rx.vstack(
