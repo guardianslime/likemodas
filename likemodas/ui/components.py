@@ -150,14 +150,13 @@ def multi_select_component(
 # --- ✨ 2. REEMPLAZA LA FUNCIÓN product_gallery_component CON ESTA ✨ ---
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL UNIFICADA]
-    Galería de productos que renderiza las tarjetas con el mismo estilo
-    visual que la previsualización, aplicando colores y transformaciones de imagen guardadas.
+    [VERSIÓN FINAL SIMPLIFICADA]
+    Galería de productos que renderiza tarjetas con el nuevo sistema de inversión de tema.
     """
     def _render_single_card(post: ProductCardData) -> rx.Component:
         """Función interna para renderizar una sola tarjeta de producto."""
         
-        # 1. Obtiene los estilos de imagen guardados, con valores por defecto
+        # 1. Obtiene los estilos de imagen (Zoom/Rotación)
         image_styles = post.image_styles
         zoom = image_styles.get("zoom", 1.0)
         rotation = image_styles.get("rotation", 0)
@@ -165,34 +164,35 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # 2. Lógica de colores unificada (idéntica a la del state y la previsualización)
+        # --- 👇 INICIO: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👇 ---
+
+        # 1. Determina el tema 'base' (light o dark) del navegador del usuario
+        base_theme = rx.color_mode_cond("light", "dark")
+            
+        # 2. Determina el tema que la TARJETA debe aplicar (normal o invertido)
+        theme_to_apply = rx.cond(
+            post.card_theme_invert, # Si el switch "Invertir" está guardado
+            rx.cond(base_theme == "light", "dark", "light"), # Invertido
+            base_theme # Normal
+        )
+        
+        # 3. Asigna colores basados en el tema a aplicar
         card_bg_color = rx.cond(
             post.use_default_style,
-            rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-            rx.cond(
-                post.light_card_bg_color & post.dark_card_bg_color,
-                rx.color_mode_cond(post.light_card_bg_color, post.dark_card_bg_color),
-                post.light_card_bg_color | post.dark_card_bg_color | rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
-            )
+            rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+            DEFAULT_LIGHT_BG # Fallback (ya no hay custom colors)
         )
         title_color = rx.cond(
             post.use_default_style,
-            rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-            rx.cond(
-                post.light_title_color & post.dark_title_color,
-                rx.color_mode_cond(post.light_title_color, post.dark_title_color),
-                post.light_title_color | post.dark_title_color | rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
-            )
+            rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+            DEFAULT_LIGHT_TITLE # Fallback
         )
         price_color = rx.cond(
             post.use_default_style,
-            rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-            rx.cond(
-                post.light_price_color & post.dark_price_color,
-                rx.color_mode_cond(post.light_price_color, post.dark_price_color),
-                post.light_price_color | post.dark_price_color | rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
-            )
+            rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+            DEFAULT_LIGHT_PRICE # Fallback
         )
+        # --- 👆 FIN: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👆 ---
 
         return rx.box(
             rx.vstack(
@@ -203,11 +203,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             rx.image(
                                 src=rx.get_upload_url(post.main_image_url), 
                                 width="100%", height="260px", 
-                                object_fit="contain", # Coincide con la previsualización
-                                transform=transform_style, # Aplica los estilos guardados
+                                object_fit="contain",
+                                transform=transform_style,
                                 transition="transform 0.2s ease-out",
                             ),
-                            # Fallback si no hay imagen
                             rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                         ),
                         rx.badge(
@@ -222,17 +221,16 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         bg=rx.color_mode_cond("white", rx.color("gray", 3)),
                     ),
                     rx.vstack(
-                        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                         rx.text(
                             post.title, 
                             weight="bold", 
                             size="6", 
                             width="100%", 
-                            color=title_color,
-                            style=TITLE_CLAMP_STYLE  # <--- REEMPLAZA no_of_lines CON ESTO
+                            color=title_color, # <--- APLICADO
+                            style=TITLE_CLAMP_STYLE
                         ),
                         star_rating_display_safe(post.average_rating, post.rating_count, size=24),
-                        rx.text(post.price_cop, size="5", weight="medium", color=price_color),
+                        rx.text(post.price_cop, size="5", weight="medium", color=price_color), # <--- APLICADO
                         rx.spacer(),
                         rx.vstack(
                             rx.hstack(
@@ -253,14 +251,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                     spacing="0", align_items="stretch", width="100%",
                 ),
-                # El on_click abre el modal de detalle del producto
                 on_click=AppState.open_product_detail_modal(post.id),
                 cursor="pointer",
                 height="100%"
             ),
             width="290px", 
-            height="480px", # Altura fija para consistencia
-            bg=card_bg_color,
+            height="480px",
+            bg=card_bg_color, # <--- APLICADO
             border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
             border_radius="8px", 
             box_shadow="md",

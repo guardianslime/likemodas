@@ -211,49 +211,67 @@ def artist_edit_dialog() -> rx.Component:
     Personalizar Tarjeta y Ajustar Imagen.
     """
     
-    # Copiamos los paneles de personalización y ajuste
+    # --- 👇 PANEL DE PERSONALIZACIÓN MODIFICADO 👇 ---
     personalizar_tarjeta_panel = rx.vstack( 
         rx.divider(margin_y="1em"),
         rx.text("Personalizar Tarjeta", weight="bold", size="4"),
-        rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"),
+        
+        # Switch 1: Usar predeterminado
         rx.hstack(
             rx.text("Usar estilo predeterminado del tema", size="3"),
             rx.spacer(),
             rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
             width="100%", align="center",
         ),
+        
+        # Opciones visibles solo si "Usar predeterminado" está APAGADO
         rx.cond(
             ~AppState.use_default_style,
             rx.vstack(
-                rx.segmented_control.root(
-                    rx.segmented_control.item("Modo Claro", value="light"),
-                    rx.segmented_control.item("Modo Oscuro", value="dark"),
-                    on_change=AppState.toggle_preview_mode,
-                    value=AppState.card_theme_mode,
-                    width="100%",
+                rx.divider(),
+                # Switch 2: Invertir tema
+                rx.hstack(
+                    rx.text("Invertir Tema de Tarjeta", size="3", color_scheme="violet"),
+                    rx.spacer(),
+                    rx.switch(
+                        is_checked=AppState.card_theme_invert, 
+                        on_change=AppState.set_card_theme_invert, 
+                        size="2",
+                        color_scheme="violet"
+                    ),
+                    width="100%", align="center",
                 ),
-                rx.popover.root(
-                    rx.popover.trigger(rx.button(rx.hstack(rx.text("Fondo"), rx.spacer(), rx.box(bg=AppState.live_card_bg_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")),
-                    rx.popover.content(color_picker(value=AppState.live_card_bg_color, on_change=AppState.set_live_card_bg_color, variant="classic", size="sm"), padding="0.5em"),
+                rx.text(
+                    "Activa esto si tu producto (ej: ropa blanca) se pierde con el fondo claro del tema.",
+                    size="1", color_scheme="gray"
                 ),
-                rx.popover.root(
-                    rx.popover.trigger(rx.button(rx.hstack(rx.text("Título"), rx.spacer(), rx.box(bg=AppState.live_title_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")),
-                    rx.popover.content(color_picker(value=AppState.live_title_color, on_change=AppState.set_live_title_color, variant="classic", size="sm"), padding="0.5em"),
-                ),
-                rx.popover.root(
-                    rx.popover.trigger(rx.button(rx.hstack(rx.text("Precio"), rx.spacer(), rx.box(bg=AppState.live_price_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")),
-                    rx.popover.content(color_picker(value=AppState.live_price_color, on_change=AppState.set_live_price_color, variant="classic", size="sm"), padding="0.5em"),
-                ),
-                rx.button("Guardar Personalización", on_click=AppState.save_current_theme_customization, width="100%", margin_top="0.5em"),
                 spacing="3", width="100%", margin_top="1em"
             ),
         ),
+        
+        rx.divider(margin_top="1em"),
+        
+        # Selector de Modo de Previsualización (no afecta los datos guardados)
+        rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
+        rx.segmented_control.root(
+            rx.segmented_control.item("Modo Claro", value="light"),
+            rx.segmented_control.item("Modo Oscuro", value="dark"),
+            on_change=AppState.toggle_preview_mode,
+            value=AppState.card_theme_mode,
+            width="100%",
+        ),
+        
+        # --- 🚫 ELIMINADOS los popover de color pickers 🚫 ---
+        
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
+    # --- 👆 FIN DEL PANEL MODIFICADO 👆 ---
+
     
     ajustar_imagen_panel = rx.vstack(
+        # ... (Esta función no cambia, se mantiene igual que en el paso anterior) ...
         rx.divider(margin_y="1em"),
         rx.hstack(
             rx.text("Ajustar Imagen", weight="bold", size="4"),
@@ -282,7 +300,6 @@ def artist_edit_dialog() -> rx.Component:
             
             rx.center(
                 rx.vstack(
-                    # Usamos los campos 'edit_' que se cargan al abrir el modal
                     post_preview(
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
@@ -294,7 +311,7 @@ def artist_edit_dialog() -> rx.Component:
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
                     ),
-                    personalizar_tarjeta_panel,
+                    personalizar_tarjeta_panel, # <--- Panel actualizado
                     ajustar_imagen_panel,
                     rx.button(
                         "Guardar Cambios Artísticos", 
@@ -302,10 +319,10 @@ def artist_edit_dialog() -> rx.Component:
                         width="100%", 
                         margin_top="1.5em",
                         size="3",
-                        color_scheme="violet" # Botón principal
+                        color_scheme="violet"
                     ),
                     spacing="4",
-                    width="350px", # Ancho fijo para el contenido centrado
+                    width="350px", 
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
                 width="100%",
@@ -313,8 +330,8 @@ def artist_edit_dialog() -> rx.Component:
             ),
             style={"max_width": "700px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
         ),
-        open=AppState.show_artist_modal, # Controlado por la nueva variable de estado
-        on_open_change=AppState.set_show_artist_modal, # Controlado por el nuevo setter
+        open=AppState.show_artist_modal, 
+        on_open_change=AppState.set_show_artist_modal, 
     )
 
 def qr_display_modal() -> rx.Component:
@@ -576,8 +593,9 @@ def blog_admin_page() -> rx.Component:
                 ),
                 
                 # Modales (sin cambios)
-                edit_post_dialog(),
+                edit_post_dialog(), # El modal de datos
                 qr_display_modal(),
+                artist_edit_dialog(), # <--- ASEGÚRATE QUE ESTÉ AQUÍ
                 
                 spacing="5", 
                 width="100%",

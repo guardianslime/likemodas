@@ -7,7 +7,7 @@ import reflex as rx
 from rx_color_picker.color_picker import color_picker
 
 from likemodas.data.product_options import LISTA_TALLAS_ROPA
-from ..state import AppState, VariantGroupDTO
+from ..state import DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE, DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE, AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from .forms import blog_post_add_form
 from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_display_safe
@@ -320,11 +320,13 @@ def post_preview(
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
+    
+    # ... (la función interna _preview_badge no cambia) ...
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # ... (código idéntico)
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
-        
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"], 
@@ -335,6 +337,36 @@ def post_preview(
             white_space="nowrap",
         )
     
+    # --- 👇 INICIO: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👇 ---
+
+    # 1. Determina el tema que el PREVIEW debe mostrar (light o dark)
+    effective_preview_theme = AppState.card_theme_mode
+
+    # 2. Determina el tema que la TARJETA debe aplicar (normal o invertido)
+    theme_to_apply = rx.cond(
+        AppState.card_theme_invert, # Si el switch "Invertir" está ON
+        rx.cond(effective_preview_theme == "light", "dark", "light"), # Invertido
+        effective_preview_theme # Normal
+    )
+    
+    # 3. Asigna colores basados en el tema a aplicar
+    card_bg_color = rx.cond(
+        AppState.use_default_style,
+        rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        DEFAULT_LIGHT_BG # Fallback (ya no hay custom colors)
+    )
+    title_color = rx.cond(
+        AppState.use_default_style,
+        rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        DEFAULT_LIGHT_TITLE # Fallback
+    )
+    price_color = rx.cond(
+        AppState.use_default_style,
+        rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        DEFAULT_LIGHT_PRICE # Fallback
+    )
+    # --- 👆 FIN: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👆 ---
+
     return rx.box(
         rx.vstack(
              rx.box(
@@ -360,24 +392,16 @@ def post_preview(
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
              ),
              rx.vstack(
-                # --- ✨ ESTA ES LA LÍNEA CORREGIDA ✨ ---
                 rx.text(
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    # 1. Se ha restaurado la lógica de color completa:
-                    color=rx.cond(
-                        AppState.use_default_style, 
-                        rx.color_mode_cond("var(--gray-11)", "white"), 
-                        AppState.live_title_color
-                    ),
-                    # 2. Se ha añadido el estilo de 2 líneas:
+                    color=title_color, # <--- APLICADO
                     style=TITLE_CLAMP_STYLE
                 ),
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(
                     price_cop, size="5", weight="medium",
-                    color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-9)", "var(--gray-a11)"), AppState.live_price_color)
+                    color=price_color # <--- APLICADO
                 ),
                 rx.spacer(),
                 rx.vstack(
@@ -406,7 +430,7 @@ def post_preview(
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=rx.cond(AppState.use_default_style, rx.color_mode_cond("#fdfcff", "var(--gray-2)"), AppState.live_card_bg_color),
+        bg=card_bg_color, # <--- APLICADO
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
