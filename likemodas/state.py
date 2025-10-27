@@ -571,6 +571,24 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     light_mode_appearance: str = "light"
     dark_mode_appearance: str = "dark"
+
+    # --- Setter Modificado ---
+    def set_edit_light_mode_appearance(self, value: Union[str, list[str]]):
+        """Actualiza la apariencia seleccionada para el modo claro en el editor."""
+        # Comprobación de seguridad: si inesperadamente llega una lista, toma el primer elemento.
+        actual_value = value
+        if isinstance(value, list):
+            actual_value = value[0] if value else "light" # Usa 'light' si la lista está vacía
+        self.edit_light_mode_appearance = actual_value
+
+    # --- Setter Modificado ---
+    def set_edit_dark_mode_appearance(self, value: Union[str, list[str]]):
+        """Actualiza la apariencia seleccionada para el modo oscuro en el editor."""
+        # Comprobación de seguridad: si inesperadamente llega una lista, toma el primer elemento.
+        actual_value = value
+        if isinstance(value, list):
+            actual_value = value[0] if value else "dark" # Usa 'dark' si la lista está vacía
+        self.edit_dark_mode_appearance = actual_value
     
     # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---
 
