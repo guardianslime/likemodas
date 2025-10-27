@@ -159,19 +159,22 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
-
-    # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
     main_image_url: str = ""
     
     # --- ✨ INICIO: CAMPOS DE ESTILO CORREGIDOS Y COMPLETOS ✨ ---
     use_default_style: bool = True
+    
+    card_theme_invert: bool = False # <--- ¡ESTA ES LA LÍNEA QUE FALTABA!
+    
+    # (Los campos de color personalizados aún están aquí, 
+    # puedes borrarlos si ya no los usas en el "Modal Artista")
     light_card_bg_color: Optional[str] = None
     light_title_color: Optional[str] = None
     light_price_color: Optional[str] = None
     dark_card_bg_color: Optional[str] = None
     dark_title_color: Optional[str] = None
     dark_price_color: Optional[str] = None
-    image_styles: dict = {} # <-- CAMPO AÑADIDO PARA GUARDAR ZOOM/POSICIÓN
+    image_styles: dict = {}
     # --- ✨ FIN ✨ ---
     
     class Config:
