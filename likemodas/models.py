@@ -342,32 +342,24 @@ class BlogPostModel(rx.Model, table=True):
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
 
-    # --- ✨ SECCIÓN DE ESTILOS CORREGIDA (SOLO DEBE QUEDAR ESTO) ✨ ---
+    # --- SECCIÓN DE ESTILOS ---
     use_default_style: bool = Field(default=True, nullable=False)
 
-    # Colores para el modo claro
+    # Nuevo campo para la inversión del tema
+    card_theme_invert: bool = Field(default=False, nullable=False) # <--- AÑADE ESTA LÍNEA
+
+    # Colores para el modo claro (Estos se quedan)
     light_card_bg_color: Optional[str] = Field(default=None)
     light_title_color: Optional[str] = Field(default=None)
     light_price_color: Optional[str] = Field(default=None)
-    
-    # Colores para el modo oscuro
+
+    # Colores para el modo oscuro (Estos se quedan)
     dark_card_bg_color: Optional[str] = Field(default=None)
     dark_title_color: Optional[str] = Field(default=None)
     dark_price_color: Optional[str] = Field(default=None)
-    # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
 
-    # --- ✨ SECCIÓN DE ESTILOS SIMPLIFICADA ✨ ---
-    use_default_style: bool = Field(default=True, nullable=False)
-    
-    # Nuevo campo para la inversión del tema
-    card_theme_invert: bool = Field(default=False, nullable=False)
-
-    # (Aquí es donde eliminamos los 6 campos de color: light_card_bg_color, etc.)
-    # --- ✨ FIN DE LA SECCIÓN SIMPLIFICADA ✨ ---
-
-    # --- El estilo de imagen se mantiene ---
+    # El estilo de imagen se mantiene
     image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
-    # --- ✨ FIN: AÑADE ESTA LÍNEA ✨ ---
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'
