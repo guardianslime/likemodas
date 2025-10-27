@@ -687,7 +687,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # Guardar estilos de tarjeta (los colores se guardan desde los pickers)
             post_to_update.use_default_style = self.use_default_style
-            post_to_update.card_theme_invert = self.card_theme_invert
+            # --- SE ELIMINÓ LA LÍNEA DE card_theme_invert ---
+
+            # +++ SE AÑADIERON ESTAS DOS LÍNEAS PARA GUARDAR LAS NUEVAS CONFIGURACIONES +++
+            post_to_update.light_mode_appearance = self.edit_light_mode_appearance
+            post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
             post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             post_to_update.light_title_color = self.light_theme_colors.get("title")
             post_to_update.light_price_color = self.light_theme_colors.get("price")
@@ -4301,7 +4307,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
             return
-        
+
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
@@ -4310,12 +4316,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
-            
-            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA EN EDICIÓN ✨ ---
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
             threshold = float(self.edit_free_shipping_threshold_str) if self.edit_is_moda_completa and self.edit_free_shipping_threshold_str else None
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
-        
+
         except (ValueError, TypeError):
             yield rx.toast.error("Valores numéricos inválidos en el formulario de edición.")
             return
@@ -4323,10 +4327,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         all_variants_for_db = []
         for group_index, generated_list in self.edit_generated_variants_map.items():
             if group_index >= len(self.edit_variant_groups): continue
-            
+
             image_urls_for_group = self.edit_variant_groups[group_index].image_urls
             for variant_data in generated_list:
-                # Se preserva el UUID si ya existe, o se crea uno nuevo
                 variant_uuid = getattr(variant_data, 'variant_uuid', str(uuid.uuid4()))
                 variant_dict = {
                     "attributes": variant_data.attributes,
@@ -4335,7 +4338,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "variant_uuid": variant_uuid
                 }
                 all_variants_for_db.append(variant_dict)
-        
+
         if not all_variants_for_db:
             yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
@@ -4345,7 +4348,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not post_to_update or post_to_update.userinfo_id != owner_id:
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
-            
+
             # Actualización de todos los campos del producto
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
@@ -4355,7 +4358,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.attr_material = self.edit_attr_material # Actualizar material
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
-            post_to_update.shipping_cost = shipping_cost # <-- Se guarda el costo de envío
+            post_to_update.shipping_cost = shipping_cost
             post_to_update.is_moda_completa_eligible = self.edit_is_moda_completa
             post_to_update.free_shipping_threshold = threshold
             post_to_update.combines_shipping = self.edit_combines_shipping
@@ -4363,19 +4366,34 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.variants = all_variants_for_db
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
 
-            # --- 👇 INICIO: GUARDADO DE ESTILO SIMPLIFICADO 👇 ---
+            # --- 👇 GUARDADO DE ESTILO CORREGIDO 👇 ---
             post_to_update.use_default_style = self.use_default_style
-            post_to_update.card_theme_invert = self.card_theme_invert
-            # --- 👆 FIN 👆 ---
+            # --- SE ELIMINÓ LA LÍNEA DE card_theme_invert ---
 
-            # --- 👇 ELIMINA ESTAS LÍNEAS DE AQUÍ 👇 ---
-            # post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
-            # ... (elimina las 6 líneas de color) ...
-            # post_to_update.image_styles = {"zoom": self.preview_zoom, ...}
-            # --- 👆 FIN DE LÍNEAS A ELIMINAR 👆 ---
+            # +++ SE AÑADIERON ESTAS DOS LÍNEAS +++
+            post_to_update.light_mode_appearance = self.edit_light_mode_appearance
+            post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance
+            # +++++++++++++++++++++++++++++++++++++
+
+            # Los colores personalizados se guardan igual que antes
+            post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
+            post_to_update.light_title_color = self.light_theme_colors.get("title")
+            post_to_update.light_price_color = self.light_theme_colors.get("price")
+            post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
+            post_to_update.dark_title_color = self.dark_theme_colors.get("title")
+            post_to_update.dark_price_color = self.dark_theme_colors.get("price")
+
+            # Los estilos de imagen se guardan igual que antes
+            post_to_update.image_styles = {
+                "zoom": self.preview_zoom,
+                "rotation": self.preview_rotation,
+                "offsetX": self.preview_offset_x,
+                "offsetY": self.preview_offset_y,
+            }
+            # --- 👆 FIN DE GUARDADO DE ESTILO CORREGIDO 👆 ---
 
             session.add(post_to_update)
-            
+
             log_entry = ActivityLog(
                 actor_id=self.authenticated_user_info.id,
                 owner_id=post_to_update.userinfo_id,
@@ -4384,7 +4402,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(log_entry)
             session.commit()
-            
+
         yield self.cancel_editing_post(False)
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
