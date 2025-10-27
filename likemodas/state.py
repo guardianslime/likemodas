@@ -576,7 +576,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def open_artist_modal(self, post_id: int):
         """
         Abre el modal de Edición Artística.
-        Carga todos los datos necesarios para la previsualización y los estilos.
+        Carga solo los datos necesarios para la previsualización y los estilos.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
@@ -589,11 +589,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # 1. Guardar el ID para saber qué post guardar
             self.post_to_edit_id = db_post.id
-
+            
             # 2. Cargar datos MÍNIMOS para la previsualización
             self.edit_post_title = db_post.title
             self.edit_price_str = str(db_post.price or 0.0)
-
+            
             main_image = ""
             if db_post.variants and db_post.variants[0].get("image_urls"):
                 main_image = db_post.variants[0]["image_urls"][0]
@@ -608,9 +608,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_is_imported = db_post.is_imported
 
             # 3. Cargar los estilos de tarjeta e imagen
-            self._load_card_styles_from_db(db_post) # Carga use_default_style y card_theme_invert
-            self._load_image_styles_from_db(db_post) # Carga zoom, rotación, etc.
-
+            self._load_card_styles_from_db(db_post)
+            self._load_image_styles_from_db(db_post)
+            
             # 4. Abrir el modal
             self.show_artist_modal = True
 
@@ -620,7 +620,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not state:
             # Limpia todo al cerrar
             self.post_to_edit_id = None
-            self._clear_card_styles() # Resetea use_default_style y card_theme_invert
+            self._clear_card_styles()
             self._clear_image_styles()
             self.edit_post_title = ""
             self.edit_price_str = ""
@@ -637,7 +637,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Guarda solo los cambios visuales (estilos y ajuste de imagen)."""
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             return rx.toast.error("Error de sesión. No se pudo guardar.")
-
+        
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             return rx.toast.error("No se pudo verificar la identidad del usuario.")
@@ -647,16 +647,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not post_to_update or post_to_update.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para guardar esta publicación.")
 
-            # Guardar estilos de tarjeta (los colores se guardan desde los pickers)
+            # Guardar estilos de tarjeta
             post_to_update.use_default_style = self.use_default_style
-            post_to_update.card_theme_invert = self.card_theme_invert
             post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             post_to_update.light_title_color = self.light_theme_colors.get("title")
             post_to_update.light_price_color = self.light_theme_colors.get("price")
             post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
-
+            
             # Guardar estilos de imagen
             post_to_update.image_styles = {
                 "zoom": self.preview_zoom,
@@ -664,15 +663,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 "offsetX": self.preview_offset_x,
                 "offsetY": self.preview_offset_y
             }
-
+            
             # Marcar como modificado
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
-
+            
             session.add(post_to_update)
             session.commit()
-
+        
         yield self.set_show_artist_modal(False)
-        yield AppState.load_mis_publicaciones # Recarga la lista
+        yield AppState.load_mis_publicaciones # Recarga la lista para ver los cambios de auditoría
         yield rx.toast.success("Estilo artístico guardado.")
     
     # --- FIN: Nuevos manejadores ---
