@@ -559,11 +559,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     # Controla la visibilidad del nuevo modal
     show_artist_modal: bool = False
+    
+    # Nuevo estado para el switch "Invertir Tema"
+    card_theme_invert: bool = False
 
     # --- FIN: Nuevas variables ---
 
 
     # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---
+
+    def set_card_theme_invert(self, value: bool):
+        """Actualiza el estado del switch de inversión de tema."""
+        self.card_theme_invert = value
 
     @rx.event
     def open_artist_modal(self, post_id: int):
@@ -601,8 +608,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_is_imported = db_post.is_imported
 
             # 3. Cargar los estilos de tarjeta e imagen
-            self._load_card_styles_from_db(db_post)
-            self._load_image_styles_from_db(db_post)
+            self._load_card_styles_from_db(db_post) # Carga use_default_style y card_theme_invert
+            self._load_image_styles_from_db(db_post) # Carga zoom, rotación, etc.
             
             # 4. Abrir el modal
             self.show_artist_modal = True
@@ -613,7 +620,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not state:
             # Limpia todo al cerrar
             self.post_to_edit_id = None
-            self._clear_card_styles()
+            self._clear_card_styles() # Resetea use_default_style y card_theme_invert
             self._clear_image_styles()
             self.edit_post_title = ""
             self.edit_price_str = ""
@@ -642,12 +649,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # Guardar estilos de tarjeta
             post_to_update.use_default_style = self.use_default_style
-            post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
-            post_to_update.light_title_color = self.light_theme_colors.get("title")
-            post_to_update.light_price_color = self.light_theme_colors.get("price")
-            post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
-            post_to_update.dark_title_color = self.dark_theme_colors.get("title")
-            post_to_update.dark_price_color = self.dark_theme_colors.get("price")
+            post_to_update.card_theme_invert = self.card_theme_invert # Guarda el nuevo estado
             
             # Guardar estilos de imagen
             post_to_update.image_styles = {
@@ -664,7 +666,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         
         yield self.set_show_artist_modal(False)
-        yield AppState.load_mis_publicaciones # Recarga la lista para ver los cambios de auditoría
+        yield AppState.load_mis_publicaciones # Recarga la lista
         yield rx.toast.success("Estilo artístico guardado.")
     
     # --- FIN: Nuevos manejadores ---
@@ -3307,14 +3309,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ 3. REEMPLAZA LAS FUNCIONES DE MANEJO DE ESTILO CON ESTAS ✨ ---
     def set_use_default_style(self, checked: bool):
-        """Maneja el switch de estilo predeterminado y actualiza los colores."""
+        """Maneja el switch de estilo predeterminado."""
         self.use_default_style = checked
-        self.update_card_colors()
 
     def set_card_theme_mode(self, mode: str):
         """Cambia entre la previsualización del modo claro y oscuro."""
         self.card_theme_mode = mode
-        self.update_card_colors()
 
     def update_card_colors(self):
         """Actualiza los colores 'vivos' de la previsualización basándose en el estado actual."""
@@ -3380,6 +3380,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Limpia todos los estados de estilo al resetear el formulario."""
         self.use_default_style = True
         self.card_theme_mode = "light"
+        self.card_theme_invert = False # Resetea el nuevo estado
         self.live_card_bg_color = "#FFFFFF"
         self.live_title_color = "#1C1C1C"
         self.live_price_color = "#6F6F6F"
@@ -3389,6 +3390,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def _load_card_styles_from_db(self, db_post: BlogPostModel):
         """Carga los estilos guardados desde un objeto de la base de datos."""
         self.use_default_style = db_post.use_default_style
+        self.card_theme_invert = db_post.card_theme_invert # Carga el nuevo estado
         self.light_theme_colors = {
             "bg": db_post.light_card_bg_color or "",
             "title": db_post.light_title_color or "",
@@ -4649,13 +4651,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             sizes, size_key = group_attrs.get("Tamaño", []), "Tamaño"
 
         if not color or not sizes:
-            return rx.toast.error("El grupo debe tener un color y al menos una talla/tamaño/número asignado.")
+            return rx.toast.error(f"El grupo debe tener un color y al menos un/a {size_key.lower()} asignado.")
 
-        generated_variants = []
-        for size in sizes:
-            generated_variants.append(
-                VariantFormData(attributes={"Color": color, size_key: size})
-            )
+        # Preserva el stock existente si la variante (talla/número) ya existía
+        existing_stock = {v.attributes.get(size_key): v.stock for v in self.generated_variants_map.get(group_index, [])}
+        generated_variants = [
+            VariantFormData(
+                attributes={"Color": color, size_key: size},
+                stock=existing_stock.get(size, 10) # Usa stock antiguo o 10 por defecto
+            ) 
+            for size in sizes
+        ]
         
         self.generated_variants_map[group_index] = generated_variants
         
@@ -6131,20 +6137,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VERSIÓN CORREGIDA] Carga las publicaciones,
         manejando el estado is_loading correctamente.
         """
-        self.is_loading = True # <--- AÑADIR ESTA LÍNEA
+        self.is_loading = True # <--- PONE EL SPINNER
         yield
 
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             self.mis_publicaciones_list = []
             self._raw_mis_publicaciones_list = []
-            self.is_loading = False # <--- AÑADIR ESTA LÍNEA
+            self.is_loading = False # <--- QUITA EL SPINNER (en caso de error)
             return
 
         base_url = get_config().deploy_url
 
         with rx.session() as session:
-            # ... (Toda la lógica de consulta y creación de la lista admin_posts se mantiene igual) ...
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
@@ -6204,7 +6209,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.mis_publicaciones_list = admin_posts
             self._raw_mis_publicaciones_list = admin_posts
 
-        self.is_loading = False # <--- AÑADIR ESTA LÍNEA AL FINAL
+        self.is_loading = False # <--- QUITA EL SPINNER (al finalizar)
 
 
     @rx.event

@@ -356,7 +356,16 @@ class BlogPostModel(rx.Model, table=True):
     dark_price_color: Optional[str] = Field(default=None)
     # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
 
-    # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+    # --- ✨ SECCIÓN DE ESTILOS SIMPLIFICADA ✨ ---
+    use_default_style: bool = Field(default=True, nullable=False)
+    
+    # Nuevo campo para la inversión del tema
+    card_theme_invert: bool = Field(default=False, nullable=False)
+
+    # (Aquí es donde eliminamos los 6 campos de color: light_card_bg_color, etc.)
+    # --- ✨ FIN DE LA SECCIÓN SIMPLIFICADA ✨ ---
+
+    # --- El estilo de imagen se mantiene ---
     image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
     # --- ✨ FIN: AÑADE ESTA LÍNEA ✨ ---
 
