@@ -128,8 +128,6 @@ def edit_post_dialog() -> rx.Component:
                     rx.text("Invertir Tema de Tarjeta", size="3", color_scheme="violet"),
                     rx.spacer(),
                     rx.switch(
-                        is_checked=AppState.card_theme_invert, 
-                        on_change=AppState.set_card_theme_invert, 
                         size="2",
                         color_scheme="violet"
                     ),
@@ -148,10 +146,10 @@ def edit_post_dialog() -> rx.Component:
         rx.segmented_control.root(
             rx.segmented_control.item("Claro", value="light"),
             rx.segmented_control.item("Oscuro", value="dark"),
-            value=AppState.edit_light_mode_appearance,
+            value=AppState.edit_light_mode_appearance, # Usa la nueva variable
             on_change=AppState.set_edit_light_mode_appearance, # Usa el nuevo setter
             width="100%",
-            color_scheme="violet", # Opcional: para estilo
+            color_scheme="violet",
         ),
 
         rx.divider(margin_top="1em"),
@@ -159,10 +157,10 @@ def edit_post_dialog() -> rx.Component:
         rx.segmented_control.root(
             rx.segmented_control.item("Claro", value="light"),
             rx.segmented_control.item("Oscuro", value="dark"),
-            value=AppState.edit_dark_mode_appearance,
+            value=AppState.edit_dark_mode_appearance, # Usa la nueva variable
             on_change=AppState.set_edit_dark_mode_appearance, # Usa el nuevo setter
             width="100%",
-            color_scheme="violet", # Opcional: para estilo
+            color_scheme="violet",
         ),
 
         # --- 🚫 ELIMINADOS los popover de color pickers y el botón "Guardar" 🚫 ---
