@@ -118,52 +118,48 @@ def edit_post_dialog() -> rx.Component:
             width="100%", align="center",
         ),
 
-        # Opciones visibles solo si "Usar predeterminado" está APAGADO
-        rx.cond(
-            ~AppState.use_default_style,
-            rx.vstack(
-                rx.divider(),
-                # --- ASEGÚRATE DE QUE EL rx.switch DE "Invertir Tema" NO ESTÉ AQUÍ ---
-
-                # --- Y ASEGÚRATE DE QUE ESTOS segmented_control SÍ ESTÉN AQUÍ ---
-                rx.divider(margin_top="1em"), # Puede ser 'margin_y' o 'margin_top'
-                rx.text("Apariencia en Modo Claro:", size="3"),
-                rx.segmented_control.root(
-                    rx.segmented_control.item("Claro", value="light"),
-                    rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.edit_light_mode_appearance, # Usa la nueva variable
-                    on_change=AppState.set_edit_light_mode_appearance, # Usa el nuevo setter
-                    width="100%",
-                    color_scheme="violet",
-                ),
-
-                rx.divider(margin_top="1em"), # Puede ser 'margin_y' o 'margin_top'
-                rx.text("Apariencia en Modo Oscuro:", size="3"),
-                rx.segmented_control.root(
-                    rx.segmented_control.item("Claro", value="light"),
-                    rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.edit_dark_mode_appearance, # Usa la nueva variable
-                    on_change=AppState.set_edit_dark_mode_appearance, # Usa el nuevo setter
-                    width="100%",
-                    color_scheme="violet",
-                ),
-                # -----------------------------------------------------------------
-
-                spacing="3", width="100%", margin_top="1em"
-            ),
-        ),
-
-        # --- SECCIÓN PARA SELECCIONAR MODO DE PREVISUALIZACIÓN (Esto ya estaba bien) ---
+        # --- REORDENADO: Selector de Modo de Previsualización ---
         rx.divider(margin_top="1em"),
         rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
         rx.segmented_control.root(
             rx.segmented_control.item("Modo Claro", value="light"),
             rx.segmented_control.item("Modo Oscuro", value="dark"),
-            on_change=AppState.toggle_preview_mode, # Este on_change es diferente y está bien
-            value=AppState.card_theme_mode,         # Esta variable está bien
+            on_change=AppState.toggle_preview_mode,
+            value=AppState.card_theme_mode,
             width="100%",
         ),
-        # -------------------------------------------------------------------------
+        # --------------------------------------------------------
+
+        # Opciones visibles solo si "Usar predeterminado" está APAGADO
+        rx.cond(
+            ~AppState.use_default_style,
+            rx.vstack(
+                # --- REORDENADO: Controles de Apariencia ---
+                rx.divider(margin_top="1em"), # Separador añadido
+                rx.text("Apariencia en Modo Claro:", size="3"),
+                rx.segmented_control.root(
+                    rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Oscuro", value="dark"),
+                    value=AppState.edit_light_mode_appearance, # Usa la variable correcta
+                    on_change=AppState.set_edit_light_mode_appearance, # Usa el setter correcto
+                    width="100%",
+                    color_scheme="violet",
+                ),
+
+                rx.divider(margin_top="1em"), # Separador añadido
+                rx.text("Apariencia en Modo Oscuro:", size="3"),
+                rx.segmented_control.root(
+                    rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Oscuro", value="dark"),
+                    value=AppState.edit_dark_mode_appearance, # Usa la variable correcta
+                    on_change=AppState.set_edit_dark_mode_appearance, # Usa el setter correcto
+                    width="100%",
+                    color_scheme="violet",
+                ),
+                # ---------------------------------------------
+                spacing="3", width="100%", margin_top="1em" # Ajusta el margen si es necesario
+            ),
+        ),
 
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
         border_radius="md", margin_top="1.5em", align_items="stretch",

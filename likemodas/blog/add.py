@@ -336,38 +336,41 @@ def post_preview(
             white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA PARA PREVIEW EN TIEMPO REAL 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA FINAL 👇 ---
 
     # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
     # 2. Determina cómo DEBERÍA verse la tarjeta según las configuraciones del editor
-    #    (Esta parte ayuda a decidir qué colores DEFAULT usar si use_default_style es True)
     card_should_appear_as = rx.cond(
-        preview_site_theme == "light",
-        AppState.edit_light_mode_appearance, # Cómo se ve en modo claro
-        AppState.edit_dark_mode_appearance  # Cómo se ve en modo oscuro
+        AppState.use_default_style, # Si usa default, la apariencia coincide con el preview
+        preview_site_theme,
+        # Si NO usa default, usa la configuración explícita para el modo del preview
+        rx.cond(
+            preview_site_theme == "light",
+            AppState.edit_light_mode_appearance, # Configuración para modo claro
+            AppState.edit_dark_mode_appearance  # Configuración para modo oscuro
+        )
     )
 
-    # 3. Asigna colores: Usa defaults si está activado, SI NO, USA LOS COLORES 'LIVE'
+    # 3. Asigna colores basados en cómo debería verse ('card_should_appear_as')
+    #    y si se están usando colores personalizados ('live_...') o defaults.
     card_bg_color = rx.cond(
         AppState.use_default_style,
-        # Si usa default, aplica el color default según cómo debería verse
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, SIEMPRE usa el color LIVE del picker para la preview
-        AppState.live_card_bg_color # <-- CORRECCIÓN CLAVE
+        AppState.live_card_bg_color # Si no es default, usa el color 'live' del picker
     )
     title_color = rx.cond(
         AppState.use_default_style,
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        AppState.live_title_color # <-- CORRECCIÓN CLAVE
+        AppState.live_title_color # Si no es default, usa el color 'live' del picker
     )
     price_color = rx.cond(
         AppState.use_default_style,
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        AppState.live_price_color # <-- CORRECCIÓN CLAVE
+        AppState.live_price_color # Si no es default, usa el color 'live' del picker
     )
-    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA FINAL 👆 ---
 
     return rx.box(
         rx.vstack(
