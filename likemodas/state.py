@@ -3415,12 +3415,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Limpia todos los estados de estilo al resetear el formulario."""
         self.use_default_style = True
         self.card_theme_mode = "light"
-        self.card_theme_invert = False # <--- AÑADE ESTA LÍNEA
+        # --- LA LÍNEA PROBLEMÁTICA HA SIDO ELIMINADA DE AQUÍ ---
+
         self.live_card_bg_color = DEFAULT_LIGHT_BG
         self.live_title_color = DEFAULT_LIGHT_TITLE
         self.live_price_color = DEFAULT_LIGHT_PRICE
         self.light_theme_colors = {"bg": "", "title": "", "price": ""}
         self.dark_theme_colors = {"bg": "", "title": "", "price": ""}
+        # --- Asegúrate de que estas dos líneas estén presentes ---
+        self.edit_light_mode_appearance = "light" # Resetea a 'light'
+        self.edit_dark_mode_appearance = "dark"   # Resetea a 'dark'
 
     def _load_card_styles_from_db(self, db_post: BlogPostModel):
         """Carga los estilos guardados desde un objeto de la base de datos."""
