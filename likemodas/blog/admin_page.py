@@ -108,14 +108,24 @@ def edit_post_dialog() -> rx.Component:
     # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
     personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
-        rx.text("Personalizar Tarjeta", weight="bold", size="4"),
-
-        # Switch 1: Usar predeterminado
+        # --- MODIFICACIÓN AQUÍ: Añadir HStack con botón ---
         rx.hstack(
-            rx.text("Usar estilo predeterminado", size="3"),
+            rx.text("Personalizar Tarjeta", weight="bold", size="4"),
             rx.spacer(),
-            rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
-            width="100%", align="center",
+            rx.tooltip(
+                rx.icon_button(
+                    rx.icon("rotate-ccw", size=14), # Icono de reset
+                    on_click=AppState.reset_card_styles_to_default, # Llama al nuevo handler
+                    variant="ghost", # Estilo sutil
+                    color_scheme="gray",
+                    size="1",
+                    type="button", # Importante para no interferir con forms
+                ),
+                content="Restablecer estilos predeterminados"
+            ),
+            justify="between", # Alinea título a la izq, botón a la der
+            width="100%",
+            align_items="center", # Alinea verticalmente
         ),
 
         # --- REORDENADO: Selector de Modo de Previsualización ---

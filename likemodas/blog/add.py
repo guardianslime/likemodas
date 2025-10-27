@@ -153,6 +153,21 @@ def blog_post_add_form() -> rx.Component:
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
                         spacing="3", align_items="stretch",
                      ),
+                     # +++ AÑADE ESTE NUEVO VSTACK +++
+                    rx.vstack(
+                        rx.text("Fondo Lightbox", weight="medium"),
+                        rx.segmented_control.root(
+                            rx.segmented_control.item("Oscuro", value="dark"),
+                            rx.segmented_control.item("Blanco", value="white"),
+                            value=AppState.edit_temp_lightbox_bg,
+                            on_change=AppState.set_edit_temp_lightbox_bg,
+                            color_scheme="gray", # Opcional
+                            size="1",
+                        ),
+                        rx.text("Color de fondo al ver imagen en pantalla completa.", size="1", color_scheme="gray"),
+                        spacing="2", align_items="stretch",
+                    ),
+                    # +++++++++++++++++++++++++++++++
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
                         # Usar lambda si la función toma argumentos

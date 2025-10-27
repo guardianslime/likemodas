@@ -488,20 +488,18 @@ def lightbox_modal() -> rx.Component:
                 ),
                 width="100%",
                 height="100%",
+                # --- MODIFICACIÓN AQUÍ ---
                 bg=rx.cond(
-                    AppState.product_in_modal.use_default_style,
-                    rx.color_mode_cond("white", "black"),
-                    rx.cond(
-                        AppState.product_in_modal.light_card_bg_color & AppState.product_in_modal.dark_card_bg_color,
-                        rx.color_mode_cond(AppState.product_in_modal.light_card_bg_color, AppState.product_in_modal.dark_card_bg_color),
-                        AppState.product_in_modal.light_card_bg_color | AppState.product_in_modal.dark_card_bg_color | rx.color_mode_cond("white", "black")
-                    )
-                ),
+                    AppState.product_in_modal.lightbox_bg == "white",
+                    "white", # Fondo blanco si se seleccionó
+                    "black"  # Fondo negro (o un gris oscuro si prefieres) por defecto
+                )
+                # --- FIN MODIFICACIÓN ---
             ),
-            style={
+            style={ # Estilos del content (sin cambios)
                 "position": "fixed", "inset": "0", "width": "auto", "height": "auto",
                 "max_width": "none", "padding": "0", "margin": "0", "border_radius": "0",
-                "background_color": "rgba(0, 0, 0, 0.5)",
+                "background_color": "rgba(0, 0, 0, 0.5)", # Fondo semi-transparente exterior
                 "backdrop_filter": "blur(4px)",
             },
         ),

@@ -212,6 +212,7 @@ class ProductDetailData(rx.Base):
     # --- ✨ INICIO: CAMPOS DE ESTILO AÑADIDOS ✨ ---
     use_default_style: bool = True
     light_card_bg_color: Optional[str] = None
+    lightbox_bg: str = "dark" # Añade esta línea
     light_title_color: Optional[str] = None
     light_price_color: Optional[str] = None
     dark_card_bg_color: Optional[str] = None
@@ -651,6 +652,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # 4. Abrir el modal
             self.show_artist_modal = True
+
+    @rx.event
+    def reset_card_styles_to_default(self):
+        """Resetea los estilos de la tarjeta a los predeterminados."""
+        self._clear_card_styles() # Llama a la función que ya resetea todo
+        # Aseguramos que la preview se actualice inmediatamente
+        self.toggle_preview_mode(self.card_theme_mode)
+        yield rx.toast.info("Estilos de tarjeta reseteados.")
 
     def set_show_artist_modal(self, state: bool):
         """Controla la apertura/cierre del modal artístico y limpia el estado."""
@@ -4295,6 +4304,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.price_str = ""
             self.post_images_in_form = []
 
+    # Dentro de la clase AppState
+    edit_temp_lightbox_bg: str = "dark" # Valor por defecto
+
+    # Dentro de la clase AppState
+    def set_edit_temp_lightbox_bg(self, value: Union[str, list[str]]):
+        actual_value = value
+        if isinstance(value, list):
+            actual_value = value[0] if value else "dark"
+        self.edit_temp_lightbox_bg = actual_value
+
     # --- FUNCIÓN CLAVE: Guardar los datos editados ---
     @rx.event
     async def save_edited_post(self):
@@ -4335,7 +4354,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
-                    "variant_uuid": variant_uuid
+                    "variant_uuid": variant_uuid,
+                    # +++ AÑADE ESTA LÍNEA +++
+                    # (Usaremos self.edit_temp_lightbox_bg que definiremos luego)
+                    "lightbox_bg": self.edit_temp_lightbox_bg if hasattr(self, 'edit_temp_lightbox_bg') else "dark"
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -4894,7 +4916,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
             # --- FIN ---
             
-        self._update_edit_preview_image()
+        variants_in_group = self.edit_generated_variants_map.get(group_index, [])
+        if variants_in_group:
+             # Asume que todas las variantes del grupo tienen el mismo bg
+             first_variant_db_data = next((v for v in self.product_in_modal.variants
+                                          if v.get('variant_uuid') == getattr(variants_in_group[0], 'variant_uuid', None)), None)
+             self.edit_temp_lightbox_bg = first_variant_db_data.get("lightbox_bg", "dark") if first_variant_db_data else "dark"
+        else:
+             self.edit_temp_lightbox_bg = "dark" # Valor por defecto si no hay variantes aún
+        # +++++++++++++++++++++++++
+        self._update_edit_preview_image() # (Esta línea ya existía)
 
     @rx.event
     def update_edit_group_attributes(self):
@@ -5318,6 +5349,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             # Actualizamos los atributos seleccionables (Talla, etc.)
             self.modal_selected_attributes = {}
             self._set_default_attributes_from_variant(selected_item.variant)
+
+        # Actualizar el fondo del lightbox según el grupo visual seleccionado
+        new_variant_data = self.current_modal_variant # Obtiene la variante ya actualizada
+        if new_variant_data and self.product_in_modal:
+            self.product_in_modal.lightbox_bg = new_variant_data.get("lightbox_bg", "dark")
+        # +++++++++++++++++++++++++
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
@@ -8967,13 +9004,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     is_lightbox_open: bool = False
     lightbox_start_index: int = 0
 
-    @rx.event
+    # Asegúrate que la función se vea así:
     def open_lightbox(self, index: int):
-        """
-        Abre el lightbox y establece la imagen inicial.
-        """
+        """Abre el lightbox y establece la imagen inicial."""
         self.lightbox_start_index = index
         self.is_lightbox_open = True
+        # No se necesita 'yield' aquí si solo estás asignando variables
 
     def close_lightbox(self, open_state: bool):
         """
@@ -9108,6 +9144,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
+
+            # Cargar el fondo del lightbox de la variante inicial
+            initial_lightbox_bg = "dark"
+            if self.product_in_modal.variants:
+                initial_variant = self.product_in_modal.variants[0]
+                initial_lightbox_bg = initial_variant.get("lightbox_bg", "dark")
+            self.product_in_modal.lightbox_bg = initial_lightbox_bg
+
+            if self.product_in_modal.variants:
+                self._set_default_attributes_from_variant(self.product_in_modal.variants[0]) # (Esta línea ya existía)
 
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
