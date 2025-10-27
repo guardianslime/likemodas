@@ -321,13 +321,11 @@ def post_preview(
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
 
+    # --- La función interna _preview_badge NO cambia ---
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        # ... (esta función interna no cambia) ...
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
-        # --- CORRECCIÓN: Usa AppState.card_theme_mode aquí también ---
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
-        # --- FIN CORRECCIÓN ---
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"],
@@ -338,49 +336,38 @@ def post_preview(
             white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE TEMA Y COLOR CORREGIDA PARA PREVIEW 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA PARA PREVIEW EN TIEMPO REAL 👇 ---
 
     # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
     # 2. Determina cómo DEBERÍA verse la tarjeta según las configuraciones del editor
+    #    (Esta parte ayuda a decidir qué colores DEFAULT usar si use_default_style es True)
     card_should_appear_as = rx.cond(
         preview_site_theme == "light",
         AppState.edit_light_mode_appearance, # Cómo se ve en modo claro
         AppState.edit_dark_mode_appearance  # Cómo se ve en modo oscuro
     )
 
-    # 3. Asigna colores basados en cómo debería verse
+    # 3. Asigna colores: Usa defaults si está activado, SI NO, USA LOS COLORES 'LIVE'
     card_bg_color = rx.cond(
         AppState.use_default_style,
         # Si usa default, aplica el color default según cómo debería verse
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, usa los colores GUARDADOS para el tema que debería mostrar
-        rx.cond(
-            card_should_appear_as == "light",
-            AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG, # Usa el guardado o fallback
-            AppState.dark_theme_colors.get("bg") | DEFAULT_DARK_BG   # Usa el guardado o fallback
-        )
+        # Si NO usa default, SIEMPRE usa el color LIVE del picker para la preview
+        AppState.live_card_bg_color # <-- CORRECCIÓN CLAVE
     )
     title_color = rx.cond(
         AppState.use_default_style,
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        rx.cond(
-            card_should_appear_as == "light",
-            AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
-            AppState.dark_theme_colors.get("title") | DEFAULT_DARK_TITLE
-        )
+        AppState.live_title_color # <-- CORRECCIÓN CLAVE
     )
     price_color = rx.cond(
         AppState.use_default_style,
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        rx.cond(
-            card_should_appear_as == "light",
-            AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
-            AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
-        )
+        AppState.live_price_color # <-- CORRECCIÓN CLAVE
     )
-    # --- 👆 FIN: LÓGICA DE TEMA Y COLOR CORREGIDA PARA PREVIEW 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA 👆 ---
 
     return rx.box(
         rx.vstack(
@@ -404,20 +391,19 @@ def post_preview(
                 position="relative", width="100%", height="260px",
                 overflow="hidden",
                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                # Fondo de la imagen (debe usar el tema del PREVIEW, no el calculado para la tarjeta)
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
              ),
              rx.vstack(
                 rx.text(
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    color=title_color, # <--- APLICADO
+                    color=title_color, # Aplicado
                     style=TITLE_CLAMP_STYLE
                 ),
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(
                     price_cop, size="5", weight="medium",
-                    color=price_color # <--- APLICADO
+                    color=price_color # Aplicado
                 ),
                 rx.spacer(),
                 rx.vstack(
@@ -427,26 +413,20 @@ def post_preview(
                             is_moda_completa,
                             rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                         ),
-                        columns="auto auto",
-                        spacing="2",
-                        align="center",
-                        justify="start",
-                        width="100%",
+                        columns="auto auto", spacing="2", align="center", justify="start", width="100%",
                     ),
                     rx.cond(
                         combines_shipping,
                         rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text),
                     ),
-                    spacing="1",
-                    align_items="start",
-                    width="100%",
+                    spacing="1", align_items="start", width="100%",
                 ),
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=card_bg_color, # <--- APLICADO
+        bg=card_bg_color, # Aplicado
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
