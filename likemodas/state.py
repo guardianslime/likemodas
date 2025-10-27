@@ -3425,7 +3425,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def _load_card_styles_from_db(self, db_post: BlogPostModel):
         """Carga los estilos guardados desde un objeto de la base de datos."""
         self.use_default_style = db_post.use_default_style
-        self.card_theme_invert = db_post.card_theme_invert # <--- AÑADE ESTA LÍNEA
+        # --- ESTA LÍNEA ES LA CAUSA DEL ERROR ---
+        self.card_theme_invert = db_post.card_theme_invert # <--- AÑADE ESTA LÍNEA  <- ¡¡ELIMINA ESTA LÍNEA!!
+        # ----------------------------------------
         self.light_theme_colors = {
             "bg": db_post.light_card_bg_color or "",
             "title": db_post.light_title_color or "",
@@ -3436,6 +3438,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             "title": db_post.dark_title_color or "",
             "price": db_post.dark_price_color or "",
         }
+        # --- AÑADE ESTAS DOS LÍNEAS PARA CARGAR LAS NUEVAS CONFIGURACIONES ---
+        self.edit_light_mode_appearance = db_post.light_mode_appearance
+        self.edit_dark_mode_appearance = db_post.dark_mode_appearance
+        # -----------------------------------------------------------------
         # Inicia la previsualización en modo claro por defecto
         self.toggle_preview_mode("light")
 
