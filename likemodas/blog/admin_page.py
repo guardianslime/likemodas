@@ -106,7 +106,7 @@ def edit_post_dialog() -> rx.Component:
     """
 
     # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
-    personalizar_tarjeta_panel = rx.vstack( 
+    personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.text("Personalizar Tarjeta", weight="bold", size="4"),
 
@@ -122,51 +122,48 @@ def edit_post_dialog() -> rx.Component:
         rx.cond(
             ~AppState.use_default_style,
             rx.vstack(
-                rx.divider(margin_top="1em"),
-                # Switch 2: Invertir tema
-                rx.hstack(
-                    rx.text("Invertir Tema de Tarjeta", size="3", color_scheme="violet"),
-                    rx.spacer(),
-                    rx.switch(
-                        is_checked=AppState.card_theme_invert,  # <-- ESTA LÍNEA CAUSA EL ERROR
-                        on_change=AppState.set_card_theme_invert, # <-- ESTA LÍNEA TAMBIÉN
-                        size="2",
-                        color_scheme="violet"
-                    ),
-                    width="100%", align="center",
+                rx.divider(),
+                # --- ASEGÚRATE DE QUE EL rx.switch DE "Invertir Tema" NO ESTÉ AQUÍ ---
+
+                # --- Y ASEGÚRATE DE QUE ESTOS segmented_control SÍ ESTÉN AQUÍ ---
+                rx.divider(margin_top="1em"), # Puede ser 'margin_y' o 'margin_top'
+                rx.text("Apariencia en Modo Claro:", size="3"),
+                rx.segmented_control.root(
+                    rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Oscuro", value="dark"),
+                    value=AppState.edit_light_mode_appearance, # Usa la nueva variable
+                    on_change=AppState.set_edit_light_mode_appearance, # Usa el nuevo setter
+                    width="100%",
+                    color_scheme="violet",
                 ),
-                # -----------------------------------------------------------
-                rx.text(
-                    "Activa esto si tu producto se pierde con el fondo del tema.",
-                    size="1", color_scheme="gray"
+
+                rx.divider(margin_top="1em"), # Puede ser 'margin_y' o 'margin_top'
+                rx.text("Apariencia en Modo Oscuro:", size="3"),
+                rx.segmented_control.root(
+                    rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Oscuro", value="dark"),
+                    value=AppState.edit_dark_mode_appearance, # Usa la nueva variable
+                    on_change=AppState.set_edit_dark_mode_appearance, # Usa el nuevo setter
+                    width="100%",
+                    color_scheme="violet",
                 ),
+                # -----------------------------------------------------------------
+
                 spacing="3", width="100%", margin_top="1em"
             ),
         ),
 
+        # --- SECCIÓN PARA SELECCIONAR MODO DE PREVISUALIZACIÓN (Esto ya estaba bien) ---
         rx.divider(margin_top="1em"),
-        rx.text("Apariencia en Modo Claro:", size="3"),
+        rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
         rx.segmented_control.root(
-            rx.segmented_control.item("Claro", value="light"),
-            rx.segmented_control.item("Oscuro", value="dark"),
-            value=AppState.edit_light_mode_appearance, # Usa la nueva variable
-            on_change=AppState.set_edit_light_mode_appearance, # Usa el nuevo setter
+            rx.segmented_control.item("Modo Claro", value="light"),
+            rx.segmented_control.item("Modo Oscuro", value="dark"),
+            on_change=AppState.toggle_preview_mode, # Este on_change es diferente y está bien
+            value=AppState.card_theme_mode,         # Esta variable está bien
             width="100%",
-            color_scheme="violet",
         ),
-
-        rx.divider(margin_top="1em"),
-        rx.text("Apariencia en Modo Oscuro:", size="3"),
-        rx.segmented_control.root(
-            rx.segmented_control.item("Claro", value="light"),
-            rx.segmented_control.item("Oscuro", value="dark"),
-            value=AppState.edit_dark_mode_appearance, # Usa la nueva variable
-            on_change=AppState.set_edit_dark_mode_appearance, # Usa el nuevo setter
-            width="100%",
-            color_scheme="violet",
-        ),
-
-        # --- 🚫 ELIMINADOS los popover de color pickers y el botón "Guardar" 🚫 ---
+        # -------------------------------------------------------------------------
 
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
         border_radius="md", margin_top="1.5em", align_items="stretch",
