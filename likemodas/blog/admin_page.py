@@ -219,10 +219,11 @@ def artist_edit_dialog() -> rx.Component:
     """
     Nuevo modal dedicado a la Edición Artística:
     Personalizar Tarjeta (con colores) y Ajustar Imagen.
+    CORREGIDO: Se eliminó la referencia a 'card_theme_invert'.
     """
 
     # --- Panel de personalización COMPLETO (con colores) ---
-    personalizar_tarjeta_panel = rx.vstack( 
+    personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.text("Personalizar Tarjeta", weight="bold", size="4"),
         rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"),
@@ -242,7 +243,7 @@ def artist_edit_dialog() -> rx.Component:
                     value=AppState.card_theme_mode,
                     width="100%",
                 ),
-                # --- 👇 VUELVEN LOS COLOR PICKERS 👇 ---
+                # --- Color Pickers ---
                 rx.popover.root(
                     rx.popover.trigger(rx.button(rx.hstack(rx.text("Fondo"), rx.spacer(), rx.box(bg=AppState.live_card_bg_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")),
                     rx.popover.content(color_picker(value=AppState.live_card_bg_color, on_change=AppState.set_live_card_bg_color, variant="classic", size="sm"), padding="0.5em"),
@@ -256,26 +257,10 @@ def artist_edit_dialog() -> rx.Component:
                     rx.popover.content(color_picker(value=AppState.live_price_color, on_change=AppState.set_live_price_color, variant="classic", size="sm"), padding="0.5em"),
                 ),
                 rx.button("Guardar Personalización", on_click=AppState.save_current_theme_customization, width="100%", margin_top="0.5em"),
-                # --- 👆 FIN DE LOS COLOR PICKERS 👆 ---
+                # --- FIN Color Pickers ---
 
-                rx.divider(margin_top="1em"),
-                # Switch 2: Invertir tema
-                rx.hstack(
-                    rx.text("Invertir Tema de Tarjeta", size="3", color_scheme="violet"),
-                    rx.spacer(),
-                    rx.switch(
-                        is_checked=AppState.card_theme_invert,  # <-- El atributo que ya no existe
-                        on_change=AppState.set_card_theme_invert, # <-- El setter que ya no existe
-                        size="2",
-                        color_scheme="violet"
-                    ),
-                    width="100%", align="center",
-                ),
-                # ---------------------------------------------
-                rx.text(
-                    "Activa esto si tu producto se pierde con el fondo del tema.",
-                    size="1", color_scheme="gray"
-                ),
+                # --- EL BLOQUE rx.hstack CON EL rx.switch para 'card_theme_invert' HA SIDO ELIMINADO ---
+
                 spacing="3", width="100%", margin_top="1em"
             ),
         ),
@@ -284,7 +269,7 @@ def artist_edit_dialog() -> rx.Component:
         width="290px",
     )
 
-    # --- Panel de Ajustar Imagen (copiado del archivo `add.py`) ---
+    # --- Panel de Ajustar Imagen (sin cambios) ---
     ajustar_imagen_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack(
@@ -293,10 +278,10 @@ def artist_edit_dialog() -> rx.Component:
             rx.tooltip(rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_image_styles, variant="soft", size="1"), content="Resetear ajustes de imagen"),
             width="100%", align="center",
         ),
-        rx.vstack(rx.text("Zoom", size="2"), rx.slider(value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, min=0.5, max=3, step=0.05), spacing="1", align_items="stretch", width="100%"), 
-        rx.vstack(rx.text("Rotación", size="2"), rx.slider(value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, min=-45, max=45, step=1), spacing="1", align_items="stretch", width="100%"), 
-        rx.vstack(rx.text("Posición Horizontal (X)", size="2"), rx.slider(value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%"), 
-        rx.vstack(rx.text("Posición Vertical (Y)", size="2"), rx.slider(value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%"), 
+        rx.vstack(rx.text("Zoom", size="2"), rx.slider(value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, min=0.5, max=3, step=0.05), spacing="1", align_items="stretch", width="100%"),
+        rx.vstack(rx.text("Rotación", size="2"), rx.slider(value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, min=-45, max=45, step=1), spacing="1", align_items="stretch", width="100%"),
+        rx.vstack(rx.text("Posición Horizontal (X)", size="2"), rx.slider(value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%"),
+        rx.vstack(rx.text("Posición Vertical (Y)", size="2"), rx.slider(value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%"),
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
@@ -311,15 +296,13 @@ def artist_edit_dialog() -> rx.Component:
             rx.dialog.description(
                 "Ajusta la apariencia visual y el encuadre de la imagen de tu producto."
             ),
-
-            # --- El layout de este modal es diferente: paneles a la izquierda, preview a la derecha ---
             rx.grid(
                 # Columna Izquierda: Paneles de Edición
                 rx.scroll_area(
                     rx.vstack(
-                        personalizar_tarjeta_panel,
+                        personalizar_tarjeta_panel, # Panel corregido
                         ajustar_imagen_panel,
-                        spacing="4", 
+                        spacing="4",
                         width="350px",
                         on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                     ),
@@ -338,12 +321,14 @@ def artist_edit_dialog() -> rx.Component:
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
                     ),
-                    personalizar_tarjeta_panel,
-                    ajustar_imagen_panel,
+                    # -- DUPLICADO REMOVIDO --
+                    # personalizar_tarjeta_panel, # <-- Se eliminó la duplicación
+                    # ajustar_imagen_panel,      # <-- Se eliminó la duplicación
+                    # -------------------------
                     rx.button(
-                        "Guardar Cambios Artísticos", 
-                        on_click=AppState.save_artist_customization, 
-                        width="100%", 
+                        "Guardar Cambios Artísticos",
+                        on_click=AppState.save_artist_customization,
+                        width="100%",
                         margin_top="1.5em",
                         size="3",
                         color_scheme="violet" # Botón principal
@@ -352,10 +337,12 @@ def artist_edit_dialog() -> rx.Component:
                     width="350px", # Ancho fijo para el contenido centrado
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
+                columns={"initial": "1", "md": "auto 350px"}, # Ajusta el layout a dos columnas
+                spacing="6", # Añade espacio entre columnas
                 width="100%",
                 padding_top="1em",
             ),
-            style={"max_width": "700px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
+            style={"max_width": "900px", "width": "95%", "max_height": "90vh"}, # Ajusta max_width
         ),
         open=AppState.show_artist_modal, # Controlado por la nueva variable de estado
         on_open_change=AppState.set_show_artist_modal, # Controlado por el nuevo setter
