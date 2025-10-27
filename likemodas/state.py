@@ -3733,6 +3733,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_temp_color: str = ""
     edit_temp_talla: str = ""
     edit_attr_tallas_ropa: list[str] = []
+    
+    # --- 👇 AÑADE ESTAS 4 LÍNEAS 👇 ---
+    edit_temp_numero: str = ""
+    edit_attr_numeros_calzado: list[str] = []
+    edit_temp_tamano: str = ""
+    edit_attr_tamanos_mochila: list[str] = []
+    # --- FIN ---
 
     # --- ✨ AÑADE ESTAS DOS LÍNEAS QUE FALTAN AQUÍ ✨ ---
     edit_profit_str: str = ""
@@ -3892,9 +3899,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     # Atributos y Variantes para el formulario de EDICIÓN
     edit_attr_colores: str = ""
-    edit_attr_tallas_ropa: list[str] = []
     edit_attr_numeros_calzado: list[str] = []
-    edit_attr_tamanos_mochila: list[str] = []
     edit_temp_talla: str = ""
     edit_temp_numero: str = ""
     edit_temp_tamano: str = ""
@@ -4238,15 +4243,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_post_title = new_value
     def set_edit_post_content(self, new_value: str):
         self.edit_post_content = new_value
-    def set_edit_category(self, new_value: str): # <--- Ejemplo corregido
+    def set_edit_category(self, new_value: str): 
         self.edit_category = new_value
-        # self.edit_attr_tipo = "" # Reinicia tipo (si tienes esta variable)
-        self.edit_attr_material = "" # Reinicia material
-        # Reinicia también las listas de atributos de variantes de edición
+        self.edit_attr_material = "" 
         self.edit_variant_groups = []
         self.edit_generated_variants_map = {}
         self.edit_selected_group_index = -1
-        # ... (limpia otras variables relacionadas con variantes de edición)
+        
+        # --- 👇 CORRECCIÓN CLAVE: Limpiar todas las listas 👇 ---
+        self.edit_temp_talla = ""
+        self.edit_attr_tallas_ropa = []
+        self.edit_temp_numero = ""
+        self.edit_attr_numeros_calzado = []
+        self.edit_temp_tamano = ""
+        self.edit_attr_tamanos_mochila = []
+        # --- FIN ---
 
     def set_edit_shipping_cost_str(self, new_value: str):
         self.edit_shipping_cost_str = new_value
@@ -4275,31 +4286,63 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Lógica para añadir/quitar atributos en el formulario de EDICIÓN
     @rx.event
     def add_edit_variant_attribute(self, key: str, value: str):
+        """Añade un valor de atributo (ej: talla, número) a la lista de EDICIÓN."""
         if not value: return
         if key == "Talla" and value not in self.edit_attr_tallas_ropa:
             self.edit_attr_tallas_ropa.append(value)
+        elif key == "Número" and value not in self.edit_attr_numeros_calzado:
+            self.edit_attr_numeros_calzado.append(value)
+        elif key == "Tamaño" and value not in self.edit_attr_tamanos_mochila:
+            self.edit_attr_tamanos_mochila.append(value)
 
     @rx.event
     def remove_edit_variant_attribute(self, key: str, value: str):
+        """Elimina un valor de atributo de la lista de EDICIÓN."""
         if key == "Talla" and value in self.edit_attr_tallas_ropa:
             self.edit_attr_tallas_ropa.remove(value)
+        elif key == "Número" and value in self.edit_attr_numeros_calzado:
+            self.edit_attr_numeros_calzado.remove(value)
+        elif key == "Tamaño" and value in self.edit_attr_tamanos_mochila:
+            self.edit_attr_tamanos_mochila.remove(value)
 
     @rx.event
     def generate_edit_variants_for_group(self, group_index: int):
+        """Genera las variantes finales (con stock) para un grupo de EDICIÓN."""
         yield self.update_edit_group_attributes() # Asegura que los atributos estén guardados antes
+        
         if not (0 <= group_index < len(self.edit_variant_groups)):
             return rx.toast.error("Grupo no válido.")
+        
         group = self.edit_variant_groups[group_index]
         group_attrs = group.attributes
         color = group_attrs.get("Color")
-        sizes, size_key = (group_attrs.get("Talla", []), "Talla")
+        
+        # --- 👇 CORRECCIÓN: Lógica de categoría copiada del formulario de creación 👇 ---
+        sizes, size_key = [], ""
+        if self.edit_category == Category.ROPA.value:
+            sizes, size_key = group_attrs.get("Talla", []), "Talla"
+        elif self.edit_category == Category.CALZADO.value:
+            sizes, size_key = group_attrs.get("Número", []), "Número"
+        elif self.edit_category == Category.MOCHILAS.value:
+            sizes, size_key = group_attrs.get("Tamaño", []), "Tamaño"
+        # --- FIN DE LA CORRECCIÓN ---
+
         if not color or not sizes:
-            return rx.toast.error("El grupo debe tener un color y al menos una talla.")
-        existing_stock = {v.attributes.get("Talla"): v.stock for v in self.edit_generated_variants_map.get(group_index, [])}
-        generated = [VariantFormData(attributes={"Color": color, size_key: size}, stock=existing_stock.get(size, 10)) for size in sizes]
+            return rx.toast.error(f"El grupo debe tener un color y al menos un/a {size_key.lower()} asignado.")
+        
+        # Preserva el stock existente si la variante (talla/número) ya existía
+        existing_stock = {v.attributes.get(size_key): v.stock for v in self.edit_generated_variants_map.get(group_index, [])}
+        generated = [
+            VariantFormData(
+                attributes={"Color": color, size_key: size}, 
+                stock=existing_stock.get(size, 10) # Usa stock antiguo o 10 por defecto
+            ) 
+            for size in sizes
+        ]
+        
         self.edit_generated_variants_map[group_index] = generated
         yield rx.toast.info(f"{len(generated)} variantes generadas.")
-        self._update_edit_preview_image() # Actualizar previsualización al generar variantes
+        self._update_edit_preview_image()
 
     async def handle_add_upload(self, files: list[rx.UploadFile]):
         """Maneja la subida de imágenes y las añade a la lista de imágenes disponibles para agrupar."""
@@ -4636,24 +4679,40 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def select_edit_group_for_editing(self, group_index: int):
+        """Selecciona un grupo de EDICIÓN para editar sus atributos."""
         self.edit_selected_group_index = group_index
         if 0 <= group_index < len(self.edit_variant_groups):
             group_attrs = self.edit_variant_groups[group_index].attributes
             self.edit_temp_color = group_attrs.get("Color", "")
+            
+            # --- 👇 CORRECCIÓN: Cargar todos los tipos de atributos 👇 ---
             self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
-        self._update_edit_preview_image() # Actualizar previsualización al seleccionar grupo
+            self.edit_attr_numeros_calzado = group_attrs.get("Número", [])
+            self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
+            # --- FIN ---
+            
+        self._update_edit_preview_image()
 
     @rx.event
     def update_edit_group_attributes(self):
+        """Guarda los atributos del formulario en el grupo de EDICIÓN seleccionado."""
         if not (0 <= self.edit_selected_group_index < len(self.edit_variant_groups)):
             return rx.toast.error("Selecciona un grupo para editar.")
         attributes = {}
         if self.edit_temp_color: attributes["Color"] = self.edit_temp_color
+        
+        # --- 👇 CORRECCIÓN: Lógica de categoría añadida 👇 ---
         if self.edit_category == Category.ROPA.value and self.edit_attr_tallas_ropa:
             attributes["Talla"] = self.edit_attr_tallas_ropa
+        elif self.edit_category == Category.CALZADO.value and self.edit_attr_numeros_calzado:
+            attributes["Número"] = self.edit_attr_numeros_calzado
+        elif self.edit_category == Category.MOCHILAS.value and self.edit_attr_tamanos_mochila:
+            attributes["Tamaño"] = self.edit_attr_tamanos_mochila
+        # --- FIN LÓGICA ---
+
         self.edit_variant_groups[self.edit_selected_group_index].attributes = attributes
         yield rx.toast.success(f"Atributos guardados para el Grupo #{self.edit_selected_group_index + 1}")
-        self._update_edit_preview_image() # Actualizar previsualización al actualizar atributos
+        self._update_edit_preview_image()
 
     @rx.event
     def remove_edited_image(self, filename: str):

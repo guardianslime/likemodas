@@ -72,54 +72,129 @@ def blog_post_add_form() -> rx.Component:
 
 
     def attributes_and_stock_section() -> rx.Component:
-        # ... (esta función interna no cambia) ...
+        """
+        [CORREGIDO] Componente de UI para los atributos y stock 
+        en el modal de EDICIÓN. Muestra los campos correctos 
+        (Talla, Número, Tamaño) según la categoría.
+        """
+        
+        # --- Define los componentes de atributos dinámicos ---
+        
+        # Para Ropa (Talla)
+        ropa_attributes = rx.vstack(
+            rx.text("Talla"),
+            rx.hstack(
+                rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.edit_temp_talla, on_change=AppState.set_edit_temp_talla),
+                rx.button("Añadir", on_click=AppState.add_edit_variant_attribute("Talla", AppState.edit_temp_talla), type="button")
+            ),
+            rx.flex(
+                 rx.foreach(AppState.edit_attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=AppState.remove_edit_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")),
+                wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+            ),
+            spacing="3", align_items="stretch", width="100%"
+        )
+        
+        # Para Calzado (Número) - Asumiendo que tienes LISTA_NUMEROS_CALZADO importada
+        calzado_attributes = rx.vstack(
+            rx.text("Número"),
+            rx.hstack(
+                rx.select(LISTA_NUMEROS_CALZADO, placeholder="Añadir número...", value=AppState.edit_temp_numero, on_change=AppState.set_edit_temp_numero),
+                rx.button("Añadir", on_click=AppState.add_edit_variant_attribute("Número", AppState.edit_temp_numero), type="button")
+            ),
+            rx.flex(
+                 rx.foreach(AppState.edit_attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=AppState.remove_edit_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")),
+                wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+            ),
+            spacing="3", align_items="stretch", width="100%"
+        )
+        
+        # Para Mochilas (Tamaño) - Asumiendo que tienes LISTA_TAMANOS_MOCHILAS importada
+        mochilas_attributes = rx.vstack(
+            rx.text("Tamaño"),
+            rx.hstack(
+                rx.select(LISTA_TAMANOS_MOCHILAS, placeholder="Añadir tamaño...", value=AppState.edit_temp_tamano, on_change=AppState.set_edit_temp_tamano),
+                rx.button("Añadir", on_click=AppState.add_edit_variant_attribute("Tamaño", AppState.edit_temp_tamano), type="button")
+            ),
+            rx.flex(
+                 rx.foreach(AppState.edit_attr_tamanos_mochila, lambda tam: rx.badge(tam, rx.icon("x", size=12, on_click=AppState.remove_edit_variant_attribute("Tamaño", tam), cursor="pointer"), variant="soft", color_scheme="gray")),
+                wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+            ),
+            spacing="3", align_items="stretch", width="100%"
+        )
+
+        # --- Fin de los componentes dinámicos ---
+
         return rx.cond(
-            AppState.selected_group_index >= 0,
+             AppState.edit_selected_group_index >= 0,
             rx.vstack(
-                rx.divider(margin_y="1.5em"),
-                rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
+                 rx.divider(margin_y="1.5em"),
+                rx.heading(f"4. Edición Grupo #{AppState.edit_selected_group_index + 1}", size="5"),
                 rx.grid(
+                    # Columna de Atributos
                     rx.vstack(
                         rx.text("Atributos del Grupo", weight="medium"),
                         rx.text("Color"),
-                        searchable_select(placeholder="Seleccionar color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_temp_color, value_select=AppState.temp_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="color_filter_main"),
-                        rx.text("Talla"),
-                        rx.hstack(
-                            rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                            rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button")
+                        searchable_select(
+                            placeholder="Seleccionar color...", 
+                            options=AppState.filtered_attr_colores, 
+                            on_change_select=AppState.set_edit_temp_color, 
+                            value_select=AppState.edit_temp_color, 
+                            search_value=AppState.search_attr_color, 
+                            on_change_search=AppState.set_search_attr_color, 
+                            filter_name="edit_color_filter"
                         ),
-                        rx.flex(
-                             rx.foreach(
-                                AppState.attr_tallas_ropa,
-                                lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")
-                             ),
-                            wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+                        
+                        # --- 👇 Renderizado condicional de atributos 👇 ---
+                        rx.cond(
+                            AppState.edit_category == Category.ROPA.value,
+                            ropa_attributes,
+                            rx.cond(
+                                AppState.edit_category == Category.CALZADO.value,
+                                calzado_attributes,
+                                rx.cond(
+                                    AppState.edit_category == Category.MOCHILAS.value,
+                                    mochilas_attributes,
+                                    rx.text("Selecciona una categoría válida.", color_scheme="red")
+                                )
+                            )
                         ),
-                        rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
+                        # --- 👆 Fin de la corrección 👆 ---
+                        
+                        rx.button("Guardar Atributos", on_click=AppState.update_edit_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
                         spacing="3", align_items="stretch",
                     ),
+                    # Columna de Variantes y Stock
                     rx.vstack(
-                        rx.text("Variantes y Stock", weight="medium"),
-                        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index), type="button"),
+                         rx.text("Variantes y Stock", weight="medium"),
+                        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_edit_variants_for_group(AppState.edit_selected_group_index), type="button"),
                         rx.cond(
-                            AppState.generated_variants_map.contains(AppState.selected_group_index),
+                            AppState.edit_generated_variants_map.contains(AppState.edit_selected_group_index),
                             rx.scroll_area(
                                 rx.vstack(
                                      rx.foreach(
-                                        AppState.generated_variants_map[AppState.selected_group_index],
+                                        AppState.edit_generated_variants_map[AppState.edit_selected_group_index],
                                         lambda variant, var_index: rx.hstack(
-                                            rx.text(variant.attributes.get("Talla", "N/A")), rx.spacer(),
-                                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
-                                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
-                                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
+                                            # Muestra el atributo dinámicamente
+                                            rx.text(
+                                                variant.attributes.get("Talla", 
+                                                    variant.attributes.get("Número", 
+                                                        variant.attributes.get("Tamaño", "N/A")
+                                                    )
+                                                )
+                                            ), 
+                                            rx.spacer(),
+                                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_edit_variant_stock(AppState.edit_selected_group_index, var_index), size="1", type="button"),
+                                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_edit_variant_stock(AppState.edit_selected_group_index, var_index, val), text_align="center", max_width="50px"),
+                                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_edit_variant_stock(AppState.edit_selected_group_index, var_index), size="1", type="button"),
                                             align="center"
                                         )
                                     ),
                                     spacing="2", width="100%", padding_top="1em"
-                                ),
+                                 ),
                                 max_height="200px", type="auto", scrollbars="vertical"
                             )
                         ),
+                        
                         spacing="3", align_items="stretch",
                     ),
                     columns="2", spacing="4", width="100%"
