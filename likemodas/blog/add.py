@@ -309,6 +309,7 @@ def blog_post_add_form() -> rx.Component:
     ) # --- 👆 FIN DEL rx.form y CORRECCIÓN ESTRUCTURAL 👆 ---
 
 # --- Componente para la previsualización de la tarjeta ---
+# --- Componente para la previsualización de la tarjeta ---
 def post_preview(
     title: rx.Var[str],
     price_cop: rx.Var[str],
@@ -336,7 +337,7 @@ def post_preview(
             white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA FINAL 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA (VERSIÓN FINAL PARA PREVIEW) 👇 ---
 
     # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
     preview_site_theme = AppState.card_theme_mode
@@ -353,24 +354,26 @@ def post_preview(
         )
     )
 
-    # 3. Asigna colores basados en cómo debería verse ('card_should_appear_as')
-    #    y si se están usando colores personalizados ('live_...') o defaults.
+    # 3. Asigna colores basados ÚNICAMENTE en 'card_should_appear_as'
+    #    Ya no consideramos 'live_...' aquí, ya que esos son solo para el modal artístico.
     card_bg_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        AppState.live_card_bg_color # Si no es default, usa el color 'live' del picker
+        card_should_appear_as == "light",
+        # Si debe ser claro: Usa el color personalizado claro guardado O el default claro
+        AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG,
+        # Si debe ser oscuro: Usa el color personalizado oscuro guardado O el default oscuro
+        AppState.dark_theme_colors.get("bg") | DEFAULT_DARK_BG
     )
     title_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        AppState.live_title_color # Si no es default, usa el color 'live' del picker
+        card_should_appear_as == "light",
+        AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
+        AppState.dark_theme_colors.get("title") | DEFAULT_DARK_TITLE
     )
     price_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        AppState.live_price_color # Si no es default, usa el color 'live' del picker
+        card_should_appear_as == "light",
+        AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
+        AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
     )
-    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA FINAL 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA (VERSIÓN FINAL PARA PREVIEW) 👆 ---
 
     return rx.box(
         rx.vstack(
@@ -394,7 +397,8 @@ def post_preview(
                 position="relative", width="100%", height="260px",
                 overflow="hidden",
                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
+                # El fondo de la imagen siempre usa el modo de previsualización
+                bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
              ),
              rx.vstack(
                 rx.text(
