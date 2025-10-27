@@ -2535,9 +2535,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def submit_and_publish_manual(self):
         """
         [VERSIÓN FINAL CORREGIDA]
-        Manejador para crear y publicar un nuevo producto. Ahora lee correctamente
-        todos los campos del formulario desde el estado, incluyendo el costo de envío,
-        y realiza las validaciones numéricas necesarias.
+        Manejador para crear y publicar un nuevo producto. Ahora guarda correctamente
+        las configuraciones de apariencia light/dark mode y el fondo del lightbox.
         """
         owner_id = None
         creator_id_to_save = None
@@ -2554,7 +2553,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             creator_id_to_save = self.authenticated_user_info.id
         else:
             owner_id = self.authenticated_user_info.id
-        
+
         if not owner_id:
             yield rx.toast.error("Error de sesión o contexto no válido.")
             return
@@ -2562,7 +2561,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         title = self.title.strip()
         price_str = self.price_str
         category = self.category
-        
+
         if not all([title, price_str, category]):
             yield rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
             return
@@ -2574,12 +2573,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price_float = float(price_str)
             profit_float = float(self.profit_str) if self.profit_str else None
-            
-            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA ✨ ---
             shipping_cost_float = float(self.shipping_cost_str) if self.shipping_cost_str else None
             limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
-        
+
         except (ValueError, TypeError):
             yield rx.toast.error("Los valores de precio, ganancia, costo de envío y límite deben ser números válidos.")
             return
@@ -2588,18 +2585,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         for group_index, generated_list in self.generated_variants_map.items():
             if group_index >= len(self.variant_groups):
                 continue
-            
+
             image_urls_for_group = self.variant_groups[group_index].image_urls
             for variant_data in generated_list:
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
-                    "lightbox_bg": self.edit_temp_lightbox_bg,
-                    "variant_uuid": str(uuid.uuid4())
+                    "variant_uuid": str(uuid.uuid4()),
+                     # Lee el valor temporal seleccionado en la UI para guardarlo
+                    "lightbox_bg": self.edit_temp_lightbox_bg # Asumimos que edit_temp_lightbox_bg aplica aquí también
                 }
                 all_variants_for_db.append(variant_dict)
-        
+
         if not all_variants_for_db:
             yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
@@ -2621,18 +2619,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 profit=profit_float,
                 price_includes_iva=self.price_includes_iva,
                 category=category,
-                attr_material=self.attr_material, # Guardar material
+                attr_material=self.attr_material,
                 variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                shipping_cost=shipping_cost_float, # <-- Se guarda el costo de envío
+                shipping_cost=shipping_cost_float,
                 is_moda_completa_eligible=self.is_moda_completa,
                 free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
-                card_theme_invert=self.card_theme_invert, # <--- AÑADE ESTA LÍNEA
+                # --- GUARDADO DE ESTILO CORREGIDO ---
+                # (Se eliminó card_theme_invert)
+                light_mode_appearance=self.edit_light_mode_appearance, # Guarda la configuración
+                dark_mode_appearance=self.edit_dark_mode_appearance,   # Guarda la configuración
+                # ------------------------------------
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
                 light_price_color=self.light_theme_colors.get("price"),
