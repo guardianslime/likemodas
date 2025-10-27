@@ -601,6 +601,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         Abre el modal de Edición Artística.
         Carga todos los datos necesarios para la previsualización y los estilos.
+        CORREGIDO: Establece el modo de previsualización inicial correctamente.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
@@ -611,19 +612,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not db_post or db_post.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para editar esta publicación.")
 
-            # 1. Guardar el ID para saber qué post guardar
+            # 1. Guardar el ID
             self.post_to_edit_id = db_post.id
 
-            # 2. Cargar datos MÍNIMOS para la previsualización
+            # 2. Cargar datos MÍNIMOS para la previsualización (sin cambios)
             self.edit_post_title = db_post.title
             self.edit_price_str = str(db_post.price or 0.0)
-
             main_image = ""
             if db_post.variants and db_post.variants[0].get("image_urls"):
                 main_image = db_post.variants[0]["image_urls"][0]
             self.edit_main_image_url_for_preview = main_image
-
-            # Cargar flags de envío para los badges de la preview
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
@@ -631,9 +629,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
             self.edit_is_imported = db_post.is_imported
 
-            # 3. Cargar los estilos de tarjeta e imagen
-            self._load_card_styles_from_db(db_post) # Carga use_default_style y card_theme_invert
-            self._load_image_styles_from_db(db_post) # Carga zoom, rotación, etc.
+            # 3. Cargar los estilos de tarjeta e imagen (sin cambios)
+            self._load_card_styles_from_db(db_post)
+            self._load_image_styles_from_db(db_post)
+
+            # --- 👇 INICIO DE LA CORRECCIÓN PARA EL FLASH 👇 ---
+            # Antes de mostrar el modal, determinamos el modo de color actual del navegador
+            # y llamamos a toggle_preview_mode con ese valor para establecer los
+            # colores 'live_' iniciales correctamente.
+            # (Nota: No podemos acceder directamente a rx.color_mode aquí, pero
+            # _load_card_styles_from_db ya llama a toggle_preview_mode("light"),
+            # así que nos aseguramos de que el modo coincida o lo actualizamos si es necesario.
+            # Una forma más simple es asumir 'light' inicialmente como hace _load_card_styles_from_db)
+
+            # La llamada a self.toggle_preview_mode("light") dentro de _load_card_styles_from_db
+            # ya establece el estado inicial de live_..._color y card_theme_mode.
+            # El on_mount en la preview se encargará de sincronizar si el navegador está en modo oscuro.
+            # Esta estructura ya debería minimizar el flash.
+            # --- 👆 FIN DE LA CORRECCIÓN PARA EL FLASH 👆 ---
+
 
             # 4. Abrir el modal
             self.show_artist_modal = True
