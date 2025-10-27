@@ -316,13 +316,13 @@ def post_preview(
     is_imported: rx.Var[bool],
     shipping_cost_badge_text: rx.Var[str],
     is_moda_completa: rx.Var[bool],
-    moda_completa_tooltip_text: rx.Var[str],
+    moda_completa_tooltip_text: rx.Var[str], 
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
     
-    # ... (la función interna _preview_badge no cambia) ...
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # [cite_start]... (esta función interna no cambia) [cite: 2381]
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
@@ -371,18 +371,18 @@ def post_preview(
         rx.vstack(
              rx.box(
                  rx.image(
-                    src=rx.get_upload_url(first_image_url),
+                    src=rx.get_upload_url(first_image_url), 
                     fallback="/image_off.png", 
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
-                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
+                        f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
                         "scale(1)"
                     ),
                     transition="transform 0.2s ease-out",
                 ),
                 rx.badge(
-                     rx.cond(is_imported, "Importado", "Nacional"),
+                    rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
@@ -396,12 +396,12 @@ def post_preview(
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
                     color=title_color, # <--- APLICADO
-                    style=TITLE_CLAMP_STYLE
+                    style=TITLE_CLAMP_STYLE 
                 ),
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(
                     price_cop, size="5", weight="medium",
-                    color=price_color # <--- APLICADO
+                    color=price_color # <--- APLICADO [cite: 2388]
                 ),
                 rx.spacer(),
                 rx.vstack(

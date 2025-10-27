@@ -157,8 +157,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         """Función interna para renderizar una sola tarjeta de producto."""
         
         # 1. Obtiene los estilos de imagen (Zoom/Rotación)
-        image_styles = post.image_styles
-        zoom = image_styles.get("zoom", 1.0)
+        image_styles = post.image_styles 
+        zoom = image_styles.get("zoom", 1.0) 
         rotation = image_styles.get("rotation", 0)
         offset_x = image_styles.get("offsetX", 0)
         offset_y = image_styles.get("offsetY", 0)
@@ -214,19 +214,19 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.cond(
                             post.main_image_url != "",
                             rx.image(
-                                src=rx.get_upload_url(post.main_image_url), 
+                                src=rx.get_upload_url(post.main_image_url),
                                 width="100%", height="260px", 
                                 object_fit="contain",
                                 transform=transform_style,
                                 transition="transform 0.2s ease-out",
                             ),
-                            rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
+                            rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center") 
                         ),
                         rx.badge(
                             rx.cond(post.is_imported, "Importado", "Nacional"),
                             color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
                             variant="solid",
-                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
+                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"} 
                         ),
                         position="relative",
                         width="100%", height="260px",
@@ -239,18 +239,18 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             weight="bold", 
                             size="6", 
                             width="100%", 
-                            color=title_color, # <--- APLICADO
-                            style=TITLE_CLAMP_STYLE
+                            color=title_color, # <--- APLICADO [cite: 2840]
+                            style=TITLE_CLAMP_STYLE 
                         ),
-                        star_rating_display_safe(post.average_rating, post.rating_count, size=24),
-                        rx.text(post.price_cop, size="5", weight="medium", color=price_color), # <--- APLICADO
+                        star_rating_display_safe(post.average_rating, post.rating_count, size=24), 
+                        rx.text(post.price_cop, size="5", weight="medium", color=price_color), # <--- APLICADO [cite: 2840]
                         rx.spacer(),
                         rx.vstack(
                             rx.hstack(
                                 rx.badge(post.shipping_display_text, color_scheme="gray", variant="soft", size="2"),
                                 rx.cond(
                                     post.is_moda_completa_eligible,
-                                    rx.tooltip(rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"), content=post.moda_completa_tooltip_text),
+                                    rx.tooltip(rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"), content=post.moda_completa_tooltip_text), 
                                 ),
                                 spacing="3", align="center",
                             ),
@@ -266,7 +266,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                 ),
                 on_click=AppState.open_product_detail_modal(post.id),
                 cursor="pointer",
-                height="100%"
+                height="100%" 
             ),
             width="290px", 
             height="480px",

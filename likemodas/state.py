@@ -579,7 +579,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def open_artist_modal(self, post_id: int):
         """
         Abre el modal de Edición Artística.
-        Carga solo los datos necesarios para la previsualización y los estilos.
+        Carga todos los datos necesarios para la previsualización y los estilos.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
@@ -592,11 +592,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # 1. Guardar el ID para saber qué post guardar
             self.post_to_edit_id = db_post.id
-            
+
             # 2. Cargar datos MÍNIMOS para la previsualización
             self.edit_post_title = db_post.title
             self.edit_price_str = str(db_post.price or 0.0)
-            
+
             main_image = ""
             if db_post.variants and db_post.variants[0].get("image_urls"):
                 main_image = db_post.variants[0]["image_urls"][0]
@@ -611,9 +611,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_is_imported = db_post.is_imported
 
             # 3. Cargar los estilos de tarjeta e imagen
-            self._load_card_styles_from_db(db_post)
-            self._load_image_styles_from_db(db_post)
-            
+            self._load_card_styles_from_db(db_post) # Carga use_default_style y card_theme_invert
+            self._load_image_styles_from_db(db_post) # Carga zoom, rotación, etc.
+
             # 4. Abrir el modal
             self.show_artist_modal = True
 
@@ -623,7 +623,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not state:
             # Limpia todo al cerrar
             self.post_to_edit_id = None
-            self._clear_card_styles()
+            self._clear_card_styles() # Resetea use_default_style y card_theme_invert
             self._clear_image_styles()
             self.edit_post_title = ""
             self.edit_price_str = ""
@@ -640,7 +640,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Guarda solo los cambios visuales (estilos y ajuste de imagen)."""
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             return rx.toast.error("Error de sesión. No se pudo guardar.")
-        
+
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             return rx.toast.error("No se pudo verificar la identidad del usuario.")
@@ -650,15 +650,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not post_to_update or post_to_update.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para guardar esta publicación.")
 
-            # Guardar estilos de tarjeta
+            # Guardar estilos de tarjeta (los colores se guardan desde los pickers)
             post_to_update.use_default_style = self.use_default_style
+            post_to_update.card_theme_invert = self.card_theme_invert
             post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             post_to_update.light_title_color = self.light_theme_colors.get("title")
             post_to_update.light_price_color = self.light_theme_colors.get("price")
             post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
-            
+
             # Guardar estilos de imagen
             post_to_update.image_styles = {
                 "zoom": self.preview_zoom,
@@ -666,15 +667,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 "offsetX": self.preview_offset_x,
                 "offsetY": self.preview_offset_y
             }
-            
+
             # Marcar como modificado
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
-            
+
             session.add(post_to_update)
             session.commit()
-        
+
         yield self.set_show_artist_modal(False)
-        yield AppState.load_mis_publicaciones # Recarga la lista para ver los cambios de auditoría
+        yield AppState.load_mis_publicaciones # Recarga la lista
         yield rx.toast.success("Estilo artístico guardado.")
     
     # --- FIN: Nuevos manejadores ---
@@ -2573,6 +2574,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
+                card_theme_invert=self.card_theme_invert, # <--- AÑADE ESTA LÍNEA
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
                 light_price_color=self.light_theme_colors.get("price"),
@@ -4309,8 +4311,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.variants = all_variants_for_db
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
 
+            # --- 👇 INICIO: GUARDADO DE ESTILO SIMPLIFICADO 👇 ---
+            post_to_update.use_default_style = self.use_default_style
+            post_to_update.card_theme_invert = self.card_theme_invert
+            # --- 👆 FIN 👆 ---
+
             # --- 👇 ELIMINA ESTAS LÍNEAS DE AQUÍ 👇 ---
-            # post_to_update.use_default_style = self.use_default_style
             # post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             # ... (elimina las 6 líneas de color) ...
             # post_to_update.image_styles = {"zoom": self.preview_zoom, ...}
@@ -4433,7 +4439,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Genera las variantes finales (con stock) para un grupo de EDICIÓN."""
         
         # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
-        # yield self.update_edit_group_attributes() # <--- LÍNEA INCORRECTA
+        # [cite_start]yield self.update_edit_group_attributes() # <--- LÍNEA INCORRECTA [cite: 2498]
         yield AppState.update_edit_group_attributes   # <--- LÍNEA CORREGIDA
         # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
         
@@ -4465,7 +4471,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
         
         self.edit_generated_variants_map[group_index] = generated
-        yield rx.toast.info(f"{len(generated)} variantes generadas.")
+        yield rx.toast.info(f"{len(generated)} variantes generadas.") 
         self._update_edit_preview_image()
 
     async def handle_add_upload(self, files: list[rx.UploadFile]):
@@ -4642,7 +4648,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
         # yield self.update_group_attributes() # <--- LÍNEA INCORRECTA
-        yield AppState.update_group_attributes   # <--- LÍNEA CORREGIDA
+        yield AppState.update_group_attributes   # <--- LÍNEA CORREGIDA [cite: 3416]
         # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
 
         group = self.variant_groups[group_index]
@@ -4658,7 +4664,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             sizes, size_key = group_attrs.get("Tamaño", []), "Tamaño"
 
         if not color or not sizes:
-            return rx.toast.error(f"El grupo debe tener un color y al menos un/a {size_key.lower()} asignado.")
+            return rx.toast.error(f"El grupo debe tener un color y al menos un/a {size_key.lower()} asignado.") 
 
         existing_stock = {v.attributes.get(size_key): v.stock for v in self.generated_variants_map.get(group_index, [])}
         generated_variants = [
@@ -4670,7 +4676,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
         
         self.generated_variants_map[group_index] = generated_variants
-        return rx.toast.info(f"{len(generated_variants)} variantes generadas para el Grupo #{group_index + 1}.")
+        return rx.toast.info(f"{len(generated_variants)} variantes generadas para el Grupo #{group_index + 1}.") 
 
     @rx.event
     def remove_uploaded_image(self, image_name: str):
@@ -6142,7 +6148,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VERSIÓN CORREGIDA] Carga las publicaciones,
         manejando el estado is_loading correctamente.
         """
-        self.is_loading = True # <--- AÑADIDO: Pone el spinner
+        self.is_loading = True # <--- AÑADIDO: Pone el spinner [cite: 2006]
         yield
 
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
@@ -6152,7 +6158,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.is_loading = False # <--- AÑADIDO: Quita el spinner (en caso de error)
             return
 
-        base_url = get_config().deploy_url
+        base_url = get_config().deploy_url 
 
         with rx.session() as session:
             posts_from_db = session.exec(
@@ -6164,33 +6170,33 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 .where(BlogPostModel.userinfo_id == owner_id)
                 .order_by(BlogPostModel.created_at.desc())
-            ).all()
+            ).all() 
 
             admin_posts = []
             for p in posts_from_db:
                 main_image = ""
                 if p.variants and p.variants[0].get("image_urls"):
-                    main_image = p.variants[0]["image_urls"][0]
+                    main_image = p.variants[0]["image_urls"][0] 
 
                 creator_username = p.creator.user.username if p.creator and p.creator.user else None
                 owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
                 modifier_username = p.last_modified_by.user.username if p.last_modified_by and p.last_modified_by.user else None
                 
                 variants_dto_list = []
-                if p.variants:
+                if p.variants: 
                     for v in p.variants:
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
-                        unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
+                        unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else "" 
                         
                         variants_dto_list.append(
                             AdminVariantData(
                                 variant_uuid=variant_uuid,
-                                stock=v.get("stock", 0),
+                                stock=v.get("stock", 0), 
                                 attributes_str=attrs_str,
                                 attributes=attrs,
-                                qr_url=unified_url
+                                qr_url=unified_url 
                             )
                         )
 
@@ -6198,24 +6204,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                     AdminPostRowData(
                         id=p.id,
                         title=p.title,
-                        price_cop=p.price_cop,
-                        price=p.price, 
+                        price_cop=p.price_cop, 
+                        price=p.price, # <--- DATO AÑADIDO
                         publish_active=p.publish_active,
                         main_image_url=main_image,
                         variants=variants_dto_list,
                         creator_name=creator_username,
                         owner_name=owner_username,
-                        last_modified_by_name=modifier_username,
+                        last_modified_by_name=modifier_username, 
+                        # --- DATOS AÑADIDOS PARA FILTRAR ---
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible
                     )
                 )
             
-            self.mis_publicaciones_list = admin_posts
+            self.mis_publicaciones_list = admin_posts 
             self._raw_mis_publicaciones_list = admin_posts
 
         self.is_loading = False # <--- AÑADIDO: Quita el spinner (al finalizar)
-
 
     @rx.event
     def delete_post(self, post_id: int):
