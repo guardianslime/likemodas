@@ -380,7 +380,14 @@ class ModalSelectorDTO(rx.Base):
     key: str; options: list[str]; current_value: str
 
 class VariantFormData(rx.Base):
-    attributes: dict[str, str]; stock: int = 10; image_url: str = ""
+    attributes: dict[str, str]
+    stock: int = 10
+    image_url: str = ""
+    # +++ AÑADE ESTA LÍNEA +++
+    lightbox_bg: str = "dark" # Valor por defecto
+    # +++++++++++++++++++++++++
+    # Puedes necesitar añadir 'variant_uuid' aquí también si lo usas
+    variant_uuid: Optional[str] = None
 
 class UserProfileData(rx.Base):
     username: str = ""
@@ -2528,9 +2535,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def submit_and_publish_manual(self):
         """
         [VERSIÓN FINAL CORREGIDA]
-        Manejador para crear y publicar un nuevo producto. Ahora lee correctamente
-        todos los campos del formulario desde el estado, incluyendo el costo de envío,
-        y realiza las validaciones numéricas necesarias.
+        Manejador para crear y publicar un nuevo producto. Ahora guarda correctamente
+        las configuraciones de apariencia light/dark mode y el fondo del lightbox.
         """
         owner_id = None
         creator_id_to_save = None
@@ -2547,7 +2553,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             creator_id_to_save = self.authenticated_user_info.id
         else:
             owner_id = self.authenticated_user_info.id
-        
+
         if not owner_id:
             yield rx.toast.error("Error de sesión o contexto no válido.")
             return
@@ -2555,7 +2561,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         title = self.title.strip()
         price_str = self.price_str
         category = self.category
-        
+
         if not all([title, price_str, category]):
             yield rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
             return
@@ -2567,12 +2573,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price_float = float(price_str)
             profit_float = float(self.profit_str) if self.profit_str else None
-            
-            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA ✨ ---
             shipping_cost_float = float(self.shipping_cost_str) if self.shipping_cost_str else None
             limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
-        
+
         except (ValueError, TypeError):
             yield rx.toast.error("Los valores de precio, ganancia, costo de envío y límite deben ser números válidos.")
             return
@@ -2581,17 +2585,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         for group_index, generated_list in self.generated_variants_map.items():
             if group_index >= len(self.variant_groups):
                 continue
-            
+
             image_urls_for_group = self.variant_groups[group_index].image_urls
             for variant_data in generated_list:
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
-                    "variant_uuid": str(uuid.uuid4())
+                    "variant_uuid": str(uuid.uuid4()),
+                     # Lee el valor temporal seleccionado en la UI para guardarlo
+                    "lightbox_bg": self.edit_temp_lightbox_bg # Asumimos que edit_temp_lightbox_bg aplica aquí también
                 }
                 all_variants_for_db.append(variant_dict)
-        
+
         if not all_variants_for_db:
             yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
@@ -2613,18 +2619,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 profit=profit_float,
                 price_includes_iva=self.price_includes_iva,
                 category=category,
-                attr_material=self.attr_material, # Guardar material
+                attr_material=self.attr_material,
                 variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                shipping_cost=shipping_cost_float, # <-- Se guarda el costo de envío
+                shipping_cost=shipping_cost_float,
                 is_moda_completa_eligible=self.is_moda_completa,
                 free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
-                card_theme_invert=self.card_theme_invert, # <--- AÑADE ESTA LÍNEA
+                # --- GUARDADO DE ESTILO CORREGIDO ---
+                # (Se eliminó card_theme_invert)
+                light_mode_appearance=self.edit_light_mode_appearance, # Guarda la configuración
+                dark_mode_appearance=self.edit_dark_mode_appearance,   # Guarda la configuración
+                # ------------------------------------
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
                 light_price_color=self.light_theme_colors.get("price"),
@@ -4143,10 +4153,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 for variant_db in group_data["variants"]:
                     attrs = variant_db.get("attributes", {})
-                    # Re-attach the UUID if it exists to preserve it on save
-                    variant_form_data = VariantFormData(attributes=attrs, stock=variant_db.get("stock", 0))
-                    if 'variant_uuid' in variant_db:
-                        variant_form_data.variant_uuid = variant_db['variant_uuid']
+                    variant_form_data = VariantFormData(
+                        attributes=attrs,
+                        stock=variant_db.get("stock", 0),
+                        # +++ AÑADE ESTA LÍNEA +++
+                        lightbox_bg=variant_db.get("lightbox_bg", "dark"),
+                        # +++++++++++++++++++++++++
+                        variant_uuid=variant_db.get('variant_uuid') # Si ya tenías esto
+                    )
+                    # --- SE ELIMINÓ LA LÍNEA getattr(...) ---
                     generated_variants_list.append(variant_form_data)
                     
                     if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
@@ -4355,9 +4370,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": variant_uuid,
-                    # +++ AÑADE ESTA LÍNEA +++
-                    # (Usaremos self.edit_temp_lightbox_bg que definiremos luego)
-                    "lightbox_bg": self.edit_temp_lightbox_bg if hasattr(self, 'edit_temp_lightbox_bg') else "dark"
+                    # Lee el valor temporal seleccionado en la UI para guardarlo
+                    "lightbox_bg": self.edit_temp_lightbox_bg
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -4377,7 +4391,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.price = price
             post_to_update.profit = profit
             post_to_update.category = self.edit_category
-            post_to_update.attr_material = self.edit_attr_material # Actualizar material
+            post_to_update.attr_material = self.edit_attr_material
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
             post_to_update.shipping_cost = shipping_cost
@@ -4388,16 +4402,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.variants = all_variants_for_db
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
 
-            # --- 👇 GUARDADO DE ESTILO CORREGIDO 👇 ---
+            # --- GUARDADO DE ESTILO CORREGIDO ---
             post_to_update.use_default_style = self.use_default_style
-            # --- SE ELIMINÓ LA LÍNEA DE card_theme_invert ---
+            # (Se eliminó la línea de card_theme_invert)
+            post_to_update.light_mode_appearance = self.edit_light_mode_appearance # Guarda la configuración
+            post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance   # Guarda la configuración
 
-            # +++ SE AÑADIERON ESTAS DOS LÍNEAS +++
-            post_to_update.light_mode_appearance = self.edit_light_mode_appearance
-            post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance
-            # +++++++++++++++++++++++++++++++++++++
-
-            # Los colores personalizados se guardan igual que antes
+            # Los colores personalizados se guardan igual
             post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             post_to_update.light_title_color = self.light_theme_colors.get("title")
             post_to_update.light_price_color = self.light_theme_colors.get("price")
@@ -4405,14 +4416,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
 
-            # Los estilos de imagen se guardan igual que antes
+            # Los estilos de imagen se guardan igual
             post_to_update.image_styles = {
                 "zoom": self.preview_zoom,
                 "rotation": self.preview_rotation,
                 "offsetX": self.preview_offset_x,
                 "offsetY": self.preview_offset_y,
             }
-            # --- 👆 FIN DE GUARDADO DE ESTILO CORREGIDO 👆 ---
+            # --- FIN GUARDADO DE ESTILO CORREGIDO ---
 
             session.add(post_to_update)
 
@@ -4909,23 +4920,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         if 0 <= group_index < len(self.edit_variant_groups):
             group_attrs = self.edit_variant_groups[group_index].attributes
             self.edit_temp_color = group_attrs.get("Color", "")
-            
-            # --- 👇 CORRECCIÓN: Cargar todos los tipos de atributos 👇 ---
             self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
             self.edit_attr_numeros_calzado = group_attrs.get("Número", [])
             self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
-            # --- FIN ---
-            
-        variants_in_group = self.edit_generated_variants_map.get(group_index, [])
-        if variants_in_group:
-             # Asume que todas las variantes del grupo tienen el mismo bg
-             first_variant_db_data = next((v for v in self.product_in_modal.variants
-                                          if v.get('variant_uuid') == getattr(variants_in_group[0], 'variant_uuid', None)), None)
-             self.edit_temp_lightbox_bg = first_variant_db_data.get("lightbox_bg", "dark") if first_variant_db_data else "dark"
-        else:
-             self.edit_temp_lightbox_bg = "dark" # Valor por defecto si no hay variantes aún
-        # +++++++++++++++++++++++++
-        self._update_edit_preview_image() # (Esta línea ya existía)
+
+            # --- 👇 REEMPLAZA LA LÓGICA ANTERIOR CON ESTO 👇 ---
+            # Carga el fondo del lightbox guardado para este grupo desde el mapa del editor
+            variants_in_map = self.edit_generated_variants_map.get(group_index, [])
+            if variants_in_map:
+                # Asume que todas las variantes del grupo tienen el mismo bg guardado
+                self.edit_temp_lightbox_bg = variants_in_map[0].lightbox_bg
+            else:
+                self.edit_temp_lightbox_bg = "dark" # Valor por defecto si no hay variantes aún
+            # --- 👆 FIN DEL REEMPLAZO 👆 ---
+
+        self._update_edit_preview_image()
 
     @rx.event
     def update_edit_group_attributes(self):
