@@ -4,7 +4,7 @@ import reflex as rx
 from ..state import AppState, VariantGroupDTO, VariantFormData
 from ..models import Category
 from ..ui.components import searchable_select
-from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
+from ..data.product_options import LISTA_COLORES, LISTA_NUMEROS_CALZADO, LISTA_TALLAS_ROPA, LISTA_TAMANOS_MOCHILAS
 
 # =============================================================================
 # FORMULARIO PARA CREAR PUBLICACIONES (COMPLETO)

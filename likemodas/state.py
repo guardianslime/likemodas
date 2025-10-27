@@ -4308,7 +4308,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def generate_edit_variants_for_group(self, group_index: int):
         """Genera las variantes finales (con stock) para un grupo de EDICIÓN."""
-        yield self.update_edit_group_attributes() # Asegura que los atributos estén guardados antes
+        
+        # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
+        # yield self.update_edit_group_attributes() # <--- LÍNEA INCORRECTA
+        yield AppState.update_edit_group_attributes   # <--- LÍNEA CORREGIDA
+        # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
         
         if not (0 <= group_index < len(self.edit_variant_groups)):
             return rx.toast.error("Grupo no válido.")
@@ -4317,7 +4321,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         group_attrs = group.attributes
         color = group_attrs.get("Color")
         
-        # --- 👇 CORRECCIÓN: Lógica de categoría copiada del formulario de creación 👇 ---
         sizes, size_key = [], ""
         if self.edit_category == Category.ROPA.value:
             sizes, size_key = group_attrs.get("Talla", []), "Talla"
@@ -4325,17 +4328,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             sizes, size_key = group_attrs.get("Número", []), "Número"
         elif self.edit_category == Category.MOCHILAS.value:
             sizes, size_key = group_attrs.get("Tamaño", []), "Tamaño"
-        # --- FIN DE LA CORRECCIÓN ---
 
         if not color or not sizes:
             return rx.toast.error(f"El grupo debe tener un color y al menos un/a {size_key.lower()} asignado.")
         
-        # Preserva el stock existente si la variante (talla/número) ya existía
         existing_stock = {v.attributes.get(size_key): v.stock for v in self.edit_generated_variants_map.get(group_index, [])}
         generated = [
             VariantFormData(
                 attributes={"Color": color, size_key: size}, 
-                stock=existing_stock.get(size, 10) # Usa stock antiguo o 10 por defecto
+                stock=existing_stock.get(size, 10)
             ) 
             for size in sizes
         ]
@@ -4516,11 +4517,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not (0 <= group_index < len(self.variant_groups)):
             return rx.toast.error("Grupo no válido.")
 
-        yield self.update_group_attributes()
+        # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
+        # yield self.update_group_attributes() # <--- LÍNEA INCORRECTA
+        yield AppState.update_group_attributes   # <--- LÍNEA CORREGIDA
+        # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
 
         group = self.variant_groups[group_index]
-        
-        # --- ✨ CORRECCIÓN CLAVE: Se accede al atributo con '.' en lugar de '.get()' ✨ ---
         group_attrs = group.attributes
         
         color = group_attrs.get("Color")
@@ -4542,8 +4544,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
         
         self.generated_variants_map[group_index] = generated_variants
+        
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para el Grupo #{group_index + 1}.")
-    # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
 
     @rx.event
     def remove_uploaded_image(self, image_name: str):
@@ -6012,18 +6014,23 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_mis_publicaciones(self):
         """
-        [VERSIÓN MODIFICADA] Carga las publicaciones para la página 'Mis Publicaciones',
-        rellenando los datos necesarios para el filtrado y guardando una copia raw.
+        [VERSIÓN CORREGIDA] Carga las publicaciones,
+        manejando el estado is_loading correctamente.
         """
+        self.is_loading = True # <--- AÑADIR ESTA LÍNEA
+        yield
+
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             self.mis_publicaciones_list = []
-            self._raw_mis_publicaciones_list = [] # Limpia también la copia
+            self._raw_mis_publicaciones_list = []
+            self.is_loading = False # <--- AÑADIR ESTA LÍNEA
             return
 
         base_url = get_config().deploy_url
 
         with rx.session() as session:
+            # ... (Toda la lógica de consulta y creación de la lista admin_posts se mantiene igual) ...
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
@@ -6068,23 +6075,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price_cop=p.price_cop,
-                        price=p.price, # <--- DATO AÑADIDO
+                        price=p.price, 
                         publish_active=p.publish_active,
                         main_image_url=main_image,
                         variants=variants_dto_list,
                         creator_name=creator_username,
                         owner_name=owner_username,
                         last_modified_by_name=modifier_username,
-                        # --- DATOS AÑADIDOS PARA FILTRAR ---
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible
-                        # (Si añades attributes al DTO, popúlalo aquí también)
                     )
                 )
             
-            # Guarda la lista en ambas variables
             self.mis_publicaciones_list = admin_posts
             self._raw_mis_publicaciones_list = admin_posts
+
+        self.is_loading = False # <--- AÑADIR ESTA LÍNEA AL FINAL
 
 
     @rx.event
