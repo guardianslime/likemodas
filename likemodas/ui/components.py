@@ -180,17 +180,30 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         card_bg_color = rx.cond(
             post.use_default_style,
             rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-            DEFAULT_LIGHT_BG # Fallback (ya no hay custom colors)
+            # Si no es default, usa los colores guardados
+            rx.cond(
+                theme_to_apply == "light",
+                post.light_card_bg_color | DEFAULT_LIGHT_BG,
+                post.dark_card_bg_color | DEFAULT_DARK_BG
+            )
         )
         title_color = rx.cond(
             post.use_default_style,
             rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-            DEFAULT_LIGHT_TITLE # Fallback
+            rx.cond(
+                theme_to_apply == "light",
+                post.light_title_color | DEFAULT_LIGHT_TITLE,
+                post.dark_title_color | DEFAULT_DARK_TITLE
+            )
         )
         price_color = rx.cond(
             post.use_default_style,
             rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-            DEFAULT_LIGHT_PRICE # Fallback
+            rx.cond(
+                theme_to_apply == "light",
+                post.light_price_color | DEFAULT_LIGHT_PRICE,
+                post.dark_price_color | DEFAULT_DARK_PRICE
+            )
         )
         # --- 👆 FIN: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👆 ---
 

@@ -323,7 +323,6 @@ def post_preview(
     
     # ... (la función interna _preview_badge no cambia) ...
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        # ... (código idéntico)
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
@@ -353,17 +352,18 @@ def post_preview(
     card_bg_color = rx.cond(
         AppState.use_default_style,
         rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        DEFAULT_LIGHT_BG # Fallback (ya no hay custom colors)
+        # Si no es default, usa el color vivo (para el modal artístico)
+        AppState.live_card_bg_color 
     )
     title_color = rx.cond(
         AppState.use_default_style,
         rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        DEFAULT_LIGHT_TITLE # Fallback
+        AppState.live_title_color # Fallback
     )
     price_color = rx.cond(
         AppState.use_default_style,
         rx.cond(theme_to_apply == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        DEFAULT_LIGHT_PRICE # Fallback
+        AppState.live_price_color # Fallback
     )
     # --- 👆 FIN: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👆 ---
 
