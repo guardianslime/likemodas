@@ -264,13 +264,14 @@ def artist_edit_dialog() -> rx.Component:
                     rx.text("Invertir Tema de Tarjeta", size="3", color_scheme="violet"),
                     rx.spacer(),
                     rx.switch(
-                        is_checked=AppState.card_theme_invert, 
-                        on_change=AppState.set_card_theme_invert, 
+                        is_checked=AppState.card_theme_invert,  # <-- El atributo que ya no existe
+                        on_change=AppState.set_card_theme_invert, # <-- El setter que ya no existe
                         size="2",
                         color_scheme="violet"
                     ),
                     width="100%", align="center",
                 ),
+                # ---------------------------------------------
                 rx.text(
                     "Activa esto si tu producto se pierde con el fondo del tema.",
                     size="1", color_scheme="gray"
