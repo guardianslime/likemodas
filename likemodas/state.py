@@ -163,8 +163,10 @@ class ProductCardData(rx.Base):
     
     # --- ✨ INICIO: CAMPOS DE ESTILO CORREGIDOS Y COMPLETOS ✨ ---
     use_default_style: bool = True
-    
-    card_theme_invert: bool = False # <--- ¡ESTA ES LA LÍNEA QUE FALTABA!
+    # ++ AÑADE ESTAS DOS LÍNEAS ++
+    light_mode_appearance: str = "light"  # Valor por defecto 'light'
+    dark_mode_appearance: str = "dark"   # Valor por defecto 'dark'
+    # ++++++++++++++++++++++++++++++
     
     # (Los campos de color personalizados aún están aquí, 
     # puedes borrarlos si ya no los usas en el "Modal Artista")
@@ -567,7 +569,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_light_mode_appearance: str = "light"
     edit_dark_mode_appearance: str = "dark"
 
-
+    light_mode_appearance: str = "light"
+    dark_mode_appearance: str = "dark"
+    
     # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---
 
     def set_card_theme_invert(self, value: bool):
@@ -3281,6 +3285,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     moda_completa_tooltip_text=moda_completa_text,
                     envio_combinado_tooltip_text=combinado_text,
                     use_default_style=p.use_default_style,
+                    # ++ AÑADE ESTAS DOS LÍNEAS ++
+                    light_mode_appearance=p.light_mode_appearance, # Lee el valor del modelo de BD
+                    dark_mode_appearance=p.dark_mode_appearance,   # Lee el valor del modelo de BD
+                    # ++++++++++++++++++++++++++++++
                     light_card_bg_color=p.light_card_bg_color,
                     light_title_color=p.light_title_color,
                     light_price_color=p.light_price_color,
@@ -3507,6 +3515,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     moda_completa_tooltip_text=moda_completa_text,
                     envio_combinado_tooltip_text=combinado_text,
                     use_default_style=p.use_default_style,
+                    # ++ AÑADE ESTAS DOS LÍNEAS ++
+                    light_mode_appearance=p.light_mode_appearance, # Lee el valor del modelo de BD
+                    dark_mode_appearance=p.dark_mode_appearance,   # Lee el valor del modelo de BD
+                    # ++++++++++++++++++++++++++++++
                     light_card_bg_color=p.light_card_bg_color,
                     light_title_color=p.light_title_color,
                     light_price_color=p.light_price_color,
@@ -8827,6 +8839,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         moda_completa_tooltip_text=moda_completa_text,
                         envio_combinado_tooltip_text=combinado_text,
                         use_default_style=p.use_default_style,
+                        # ++ AÑADE ESTAS DOS LÍNEAS ++
+                        light_mode_appearance=p.light_mode_appearance, # Lee el valor del modelo de BD
+                        dark_mode_appearance=p.dark_mode_appearance,   # Lee el valor del modelo de BD
+                        # ++++++++++++++++++++++++++++++
                         light_card_bg_color=p.light_card_bg_color,
                         light_title_color=p.light_title_color,
                         light_price_color=p.light_price_color,
