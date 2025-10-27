@@ -122,17 +122,20 @@ def edit_post_dialog() -> rx.Component:
         rx.cond(
             ~AppState.use_default_style,
             rx.vstack(
-                rx.divider(),
+                rx.divider(margin_top="1em"),
                 # Switch 2: Invertir tema
                 rx.hstack(
                     rx.text("Invertir Tema de Tarjeta", size="3", color_scheme="violet"),
                     rx.spacer(),
                     rx.switch(
+                        is_checked=AppState.card_theme_invert,  # <-- ESTA LÍNEA CAUSA EL ERROR
+                        on_change=AppState.set_card_theme_invert, # <-- ESTA LÍNEA TAMBIÉN
                         size="2",
                         color_scheme="violet"
                     ),
                     width="100%", align="center",
                 ),
+                # -----------------------------------------------------------
                 rx.text(
                     "Activa esto si tu producto se pierde con el fondo del tema.",
                     size="1", color_scheme="gray"
@@ -259,7 +262,7 @@ def artist_edit_dialog() -> rx.Component:
                 rx.button("Guardar Personalización", on_click=AppState.save_current_theme_customization, width="100%", margin_top="0.5em"),
                 # --- FIN Color Pickers ---
 
-                # --- EL BLOQUE rx.hstack CON EL rx.switch para 'card_theme_invert' HA SIDO ELIMINADO ---
+                # --- El bloque rx.hstack con el rx.switch para 'card_theme_invert' HA SIDO ELIMINADO de aquí ---
 
                 spacing="3", width="100%", margin_top="1em"
             ),
@@ -300,7 +303,7 @@ def artist_edit_dialog() -> rx.Component:
                 # Columna Izquierda: Paneles de Edición
                 rx.scroll_area(
                     rx.vstack(
-                        personalizar_tarjeta_panel, # Panel corregido
+                        personalizar_tarjeta_panel, # Panel corregido (ya no tiene el switch)
                         ajustar_imagen_panel,
                         spacing="4",
                         width="350px",
@@ -321,10 +324,6 @@ def artist_edit_dialog() -> rx.Component:
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
                     ),
-                    # -- DUPLICADO REMOVIDO --
-                    # personalizar_tarjeta_panel, # <-- Se eliminó la duplicación
-                    # ajustar_imagen_panel,      # <-- Se eliminó la duplicación
-                    # -------------------------
                     rx.button(
                         "Guardar Cambios Artísticos",
                         on_click=AppState.save_artist_customization,
@@ -337,15 +336,15 @@ def artist_edit_dialog() -> rx.Component:
                     width="350px", # Ancho fijo para el contenido centrado
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
-                columns={"initial": "1", "md": "auto 350px"}, # Ajusta el layout a dos columnas
-                spacing="6", # Añade espacio entre columnas
+                columns={"initial": "1", "md": "auto 350px"}, # Layout de dos columnas
+                spacing="6", # Espacio entre columnas
                 width="100%",
                 padding_top="1em",
             ),
             style={"max_width": "900px", "width": "95%", "max_height": "90vh"}, # Ajusta max_width
         ),
-        open=AppState.show_artist_modal, # Controlado por la nueva variable de estado
-        on_open_change=AppState.set_show_artist_modal, # Controlado por el nuevo setter
+        open=AppState.show_artist_modal,
+        on_open_change=AppState.set_show_artist_modal,
     )
 
 
