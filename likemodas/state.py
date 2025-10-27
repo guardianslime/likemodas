@@ -555,6 +555,120 @@ class AppState(reflex_local_auth.LocalAuthState):
         # El 'yield from' es por si la función original necesita ceder eventos.
         yield from self.open_product_detail_modal(post_id)
 
+    # --- INICIO: Nuevas variables para el Modal de Edición Artística ---
+    
+    # Controla la visibilidad del nuevo modal
+    show_artist_modal: bool = False
+
+    # --- FIN: Nuevas variables ---
+
+
+    # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---
+
+    @rx.event
+    def open_artist_modal(self, post_id: int):
+        """
+        Abre el modal de Edición Artística.
+        Carga solo los datos necesarios para la previsualización y los estilos.
+        """
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        if not owner_id:
+            return rx.toast.error("No se pudo verificar la identidad del usuario.")
+
+        with rx.session() as session:
+            db_post = session.get(BlogPostModel, post_id)
+            if not db_post or db_post.userinfo_id != owner_id:
+                return rx.toast.error("No tienes permiso para editar esta publicación.")
+
+            # 1. Guardar el ID para saber qué post guardar
+            self.post_to_edit_id = db_post.id
+            
+            # 2. Cargar datos MÍNIMOS para la previsualización
+            self.edit_post_title = db_post.title
+            self.edit_price_str = str(db_post.price or 0.0)
+            
+            main_image = ""
+            if db_post.variants and db_post.variants[0].get("image_urls"):
+                main_image = db_post.variants[0]["image_urls"][0]
+            self.edit_main_image_url_for_preview = main_image
+
+            # Cargar flags de envío para los badges de la preview
+            self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
+            self.edit_is_moda_completa = db_post.is_moda_completa_eligible
+            self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
+            self.edit_combines_shipping = db_post.combines_shipping
+            self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
+            self.edit_is_imported = db_post.is_imported
+
+            # 3. Cargar los estilos de tarjeta e imagen
+            self._load_card_styles_from_db(db_post)
+            self._load_image_styles_from_db(db_post)
+            
+            # 4. Abrir el modal
+            self.show_artist_modal = True
+
+    def set_show_artist_modal(self, state: bool):
+        """Controla la apertura/cierre del modal artístico y limpia el estado."""
+        self.show_artist_modal = state
+        if not state:
+            # Limpia todo al cerrar
+            self.post_to_edit_id = None
+            self._clear_card_styles()
+            self._clear_image_styles()
+            self.edit_post_title = ""
+            self.edit_price_str = ""
+            self.edit_main_image_url_for_preview = ""
+            self.edit_shipping_cost_str = ""
+            self.edit_is_moda_completa = True
+            self.edit_free_shipping_threshold_str = "200000"
+            self.edit_combines_shipping = False
+            self.edit_shipping_combination_limit_str = "3"
+            self.edit_is_imported = False
+
+    @rx.event
+    def save_artist_customization(self):
+        """Guarda solo los cambios visuales (estilos y ajuste de imagen)."""
+        if not self.authenticated_user_info or self.post_to_edit_id is None:
+            return rx.toast.error("Error de sesión. No se pudo guardar.")
+        
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        if not owner_id:
+            return rx.toast.error("No se pudo verificar la identidad del usuario.")
+
+        with rx.session() as session:
+            post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
+            if not post_to_update or post_to_update.userinfo_id != owner_id:
+                return rx.toast.error("No tienes permiso para guardar esta publicación.")
+
+            # Guardar estilos de tarjeta
+            post_to_update.use_default_style = self.use_default_style
+            post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
+            post_to_update.light_title_color = self.light_theme_colors.get("title")
+            post_to_update.light_price_color = self.light_theme_colors.get("price")
+            post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
+            post_to_update.dark_title_color = self.dark_theme_colors.get("title")
+            post_to_update.dark_price_color = self.dark_theme_colors.get("price")
+            
+            # Guardar estilos de imagen
+            post_to_update.image_styles = {
+                "zoom": self.preview_zoom,
+                "rotation": self.preview_rotation,
+                "offsetX": self.preview_offset_x,
+                "offsetY": self.preview_offset_y
+            }
+            
+            # Marcar como modificado
+            post_to_update.last_modified_by_id = self.authenticated_user_info.id
+            
+            session.add(post_to_update)
+            session.commit()
+        
+        yield self.set_show_artist_modal(False)
+        yield AppState.load_mis_publicaciones # Recarga la lista para ver los cambios de auditoría
+        yield rx.toast.success("Estilo artístico guardado.")
+    
+    # --- FIN: Nuevos manejadores ---
+
     @rx.event
     def handle_registration_email(self, form_data: dict):
         self.success = False
