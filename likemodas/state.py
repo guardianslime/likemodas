@@ -4432,10 +4432,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def generate_edit_variants_for_group(self, group_index: int):
         """Genera las variantes finales (con stock) para un grupo de EDICIÓN."""
         
-        # --- 👇 CORRECCIÓN CLAVE 👇 ---
-        # yield self.update_edit_group_attributes() # <--- INCORRECTO
-        yield AppState.update_edit_group_attributes   # <--- CORRECTO
-        # --- 👆 FIN 👆 ---
+        # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
+        # yield self.update_edit_group_attributes() # <--- LÍNEA INCORRECTA
+        yield AppState.update_edit_group_attributes   # <--- LÍNEA CORREGIDA
+        # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
         
         if not (0 <= group_index < len(self.edit_variant_groups)):
             return rx.toast.error("Grupo no válido.")
@@ -4640,10 +4640,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not (0 <= group_index < len(self.variant_groups)):
             return rx.toast.error("Grupo no válido.")
 
-        # --- 👇 CORRECCIÓN CLAVE 👇 ---
-        # yield self.update_group_attributes() # <--- INCORRECTO
-        yield AppState.update_group_attributes   # <--- CORRECTO
-        # --- 👆 FIN 👆 ---
+        # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
+        # yield self.update_group_attributes() # <--- LÍNEA INCORRECTA
+        yield AppState.update_group_attributes   # <--- LÍNEA CORREGIDA
+        # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
 
         group = self.variant_groups[group_index]
         group_attrs = group.attributes
@@ -6142,20 +6142,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VERSIÓN CORREGIDA] Carga las publicaciones,
         manejando el estado is_loading correctamente.
         """
-        self.is_loading = True # <--- PONE EL SPINNER
+        self.is_loading = True # <--- AÑADIDO: Pone el spinner
         yield
 
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             self.mis_publicaciones_list = []
             self._raw_mis_publicaciones_list = []
-            self.is_loading = False # <--- QUITA EL SPINNER (en caso de error)
+            self.is_loading = False # <--- AÑADIDO: Quita el spinner (en caso de error)
             return
 
         base_url = get_config().deploy_url
 
         with rx.session() as session:
-            # ... (Toda la lógica de consulta y bucle for se mantiene igual) ...
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
@@ -6214,8 +6213,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             self.mis_publicaciones_list = admin_posts
             self._raw_mis_publicaciones_list = admin_posts
-        
-        self.is_loading = False # <--- QUITA EL SPINNER (al finalizar)
+
+        self.is_loading = False # <--- AÑADIDO: Quita el spinner (al finalizar)
 
 
     @rx.event
