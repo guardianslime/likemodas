@@ -18,19 +18,14 @@ from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_di
 from ..utils.formatting import format_to_cop
 
 # --- Definición del componente Moveable ---
-# (Componente Moveable y _preview_badge se mantienen igual)
+# (Componente Moveable se mantiene igual)
 class Moveable(NoSSRComponent):
     library = "react-moveable"
     tag = "Moveable"
     target: rx.Var[str]
-    draggable: rx.Var[bool] = True
-    resizable: rx.Var[bool] = True
-    rotatable: rx.Var[bool] = True
-    snappable: rx.Var[bool] = True
-    keep_ratio: rx.Var[bool] = False
-    on_drag_end: rx.EventHandler[lambda e: [e]]
-    on_resize_end: rx.EventHandler[lambda e: [e]]
-    on_rotate_end: rx.EventHandler[lambda e: [e]]
+    draggable: rx.Var[bool] = True; resizable: rx.Var[bool] = True; rotatable: rx.Var[bool] = True
+    snappable: rx.Var[bool] = True; keep_ratio: rx.Var[bool] = False
+    on_drag_end: rx.EventHandler[lambda e: [e]]; on_resize_end: rx.EventHandler[lambda e: [e]]; on_rotate_end: rx.EventHandler[lambda e: [e]]
     def _get_custom_code(self) -> str: return """
 const onDragEnd = (e, on_drag_end) => { if (on_drag_end) { on_drag_end({transform: e.lastEvent.transform}); } return e; }
 const onResizeEnd = (e, on_resize_end) => { if (on_resize_end) { on_resize_end({transform: e.lastEvent.transform}); } return e; }
@@ -38,23 +33,18 @@ const onRotateEnd = (e, on_rotate_end) => { if (on_rotate_end) { on_rotate_end({
 """
 moveable = Moveable.create
 
+# (Función _preview_badge se mantiene igual)
 def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
     light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
     dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
     colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
     return rx.box( rx.text(text_content, size="2", weight="medium"), bg=colors["bg"], color=colors["text"], padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap", )
 
-# --- ✨ PASO 1: Modifica la función auxiliar ✨ ---
-# Ahora acepta la variable de color (que ya es Var[str]) directamente
+# (Función get_theme_color_safe se mantiene igual)
 def get_theme_color_safe(color_var: rx.Var[str], default_color: str) -> rx.Var[str]:
-    """
-    Función auxiliar simplificada: Si color_var no está vacío, lo devuelve,
-    si no, devuelve el color por defecto.
-    """
     return rx.cond(color_var != "", color_var, default_color)
-# --- ✨ FIN PASO 1 ✨ ---
 
-
+# --- ✨ PASO 1: Modifica la firma de post_preview ✨ ---
 def post_preview(
     title: rx.Var[str],
     price_cop: rx.Var[str],
@@ -65,6 +55,10 @@ def post_preview(
     moda_completa_tooltip_text: rx.Var[str],
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
+    # --- Nuevos parámetros ---
+    light_theme_colors_prop: rx.Var[Dict[str, str]], # Pasa el diccionario light
+    dark_theme_colors_prop: rx.Var[Dict[str, str]],  # Pasa el diccionario dark
+    # --- Fin nuevos parámetros ---
     is_artistic_preview: bool = False
 ) -> rx.Component:
 
@@ -75,7 +69,7 @@ def post_preview(
         AppState.edit_dark_mode_appearance
     )
 
-    # --- ✨ PASO 2: Modifica las llamadas a la función auxiliar ✨ ---
+    # --- ✨ PASO 2: Usa los parámetros _prop en la lógica de color ✨ ---
     card_bg_color = rx.cond(
         AppState.use_default_style,
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
@@ -84,9 +78,9 @@ def post_preview(
             AppState.live_card_bg_color,
             rx.cond(
                 explicit_appearance == "light",
-                # Accede al string ANTES de llamar a la función
-                get_theme_color_safe(AppState.light_theme_colors["bg"], DEFAULT_LIGHT_BG),
-                get_theme_color_safe(AppState.dark_theme_colors["bg"], DEFAULT_DARK_BG)
+                # Usa el diccionario pasado como prop
+                get_theme_color_safe(light_theme_colors_prop["bg"], DEFAULT_LIGHT_BG),
+                get_theme_color_safe(dark_theme_colors_prop["bg"], DEFAULT_DARK_BG)
             )
         )
     )
@@ -99,9 +93,9 @@ def post_preview(
             AppState.live_title_color,
             rx.cond(
                 explicit_appearance == "light",
-                # Accede al string ANTES de llamar a la función
-                get_theme_color_safe(AppState.light_theme_colors["title"], DEFAULT_LIGHT_TITLE),
-                get_theme_color_safe(AppState.dark_theme_colors["title"], DEFAULT_DARK_TITLE)
+                # Usa el diccionario pasado como prop
+                get_theme_color_safe(light_theme_colors_prop["title"], DEFAULT_LIGHT_TITLE),
+                get_theme_color_safe(dark_theme_colors_prop["title"], DEFAULT_DARK_TITLE)
             )
         )
     )
@@ -114,15 +108,15 @@ def post_preview(
             AppState.live_price_color,
             rx.cond(
                 explicit_appearance == "light",
-                # Accede al string ANTES de llamar a la función
-                get_theme_color_safe(AppState.light_theme_colors["price"], DEFAULT_LIGHT_PRICE),
-                get_theme_color_safe(AppState.dark_theme_colors["price"], DEFAULT_DARK_PRICE)
+                # Usa el diccionario pasado como prop
+                get_theme_color_safe(light_theme_colors_prop["price"], DEFAULT_LIGHT_PRICE),
+                get_theme_color_safe(dark_theme_colors_prop["price"], DEFAULT_DARK_PRICE)
             )
         )
     )
     # --- ✨ FIN PASO 2 ✨ ---
 
-    # --- La estructura de la tarjeta rx.box(...) permanece igual ---
+    # --- La estructura rx.box(...) permanece igual ---
     return rx.box(
         rx.vstack(
              rx.box( # Contenedor de la imagen
@@ -439,65 +433,28 @@ def blog_post_add_form() -> rx.Component:
 # --- Componente principal de la página de añadir ---
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
-    # Panel de edición de imagen (sin cambios)
+    # (image_editor_panel y first_image_url se mantienen igual)
     image_editor_panel = rx.vstack(
         rx.divider(margin_y="1em"),
-        rx.hstack(
-            rx.text("Ajustar Imagen", weight="bold", size="4"),
-            rx.spacer(),
-            rx.tooltip(
-                rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_image_styles, variant="soft", size="1"),
-                content="Resetear ajustes de imagen"
-            ),
-            width="100%", align="center",
-        ),
-        rx.vstack(
-            rx.text("Zoom", size="2"),
-            rx.slider(value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, min=0.5, max=3, step=0.05),
-            spacing="1", align_items="stretch", width="100%"
-        ),
-        rx.vstack(
-            rx.text("Rotación", size="2"),
-            rx.slider(value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, min=-45, max=45, step=1),
-            spacing="1", align_items="stretch", width="100%"
-        ),
-        rx.vstack(
-            rx.text("Posición Horizontal (X)", size="2"),
-            rx.slider(value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, min=-100, max=100, step=1),
-            spacing="1", align_items="stretch", width="100%"
-        ),
-        rx.vstack(
-            rx.text("Posición Vertical (Y)", size="2"),
-            rx.slider(value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, min=-100, max=100, step=1),
-            spacing="1", align_items="stretch", width="100%"
-        ),
-        spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
-        border_radius="md", margin_top="1.5em", align_items="stretch",
-        width="290px",
+        rx.hstack( rx.text("Ajustar Imagen", weight="bold", size="4"), rx.spacer(), rx.tooltip( rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_image_styles, variant="soft", size="1"), content="Resetear ajustes de imagen"), width="100%", align="center", ),
+        rx.vstack( rx.text("Zoom", size="2"), rx.slider(value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, min=0.5, max=3, step=0.05), spacing="1", align_items="stretch", width="100%" ),
+        rx.vstack( rx.text("Rotación", size="2"), rx.slider(value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, min=-45, max=45, step=1), spacing="1", align_items="stretch", width="100%" ),
+        rx.vstack( rx.text("Posición Horizontal (X)", size="2"), rx.slider(value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%" ),
+        rx.vstack( rx.text("Posición Vertical (Y)", size="2"), rx.slider(value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%" ),
+        spacing="3", padding="1em", border="1px dashed var(--gray-a6)", border_radius="md", margin_top="1.5em", align_items="stretch", width="290px",
     )
+    first_image_url = rx.cond( (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0), AppState.variant_groups[0].image_urls[0], rx.cond( AppState.uploaded_images.length() > 0, AppState.uploaded_images[0], "" ) )
 
-    # Lógica para obtener la URL de la primera imagen (sin cambios)
-    first_image_url = rx.cond(
-        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
-        AppState.variant_groups[0].image_urls[0],
-        rx.cond(
-            AppState.uploaded_images.length() > 0,
-            AppState.uploaded_images[0],
-            ""
-        )
-    )
-
-    # Estructura principal de la página (sin cambios)
     return rx.grid(
         rx.vstack(
             rx.heading("Crear Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em", color_scheme="gray", font_weight="medium"),
-            blog_post_add_form(), # El formulario que definimos arriba
+            blog_post_add_form(),
             width="100%", spacing="4", align_items="center",
-            padding_left={"lg": "15em"}, padding_x=["1em", "2em"], # Ajusta el padding si es necesario
+            padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
         ),
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            # Llamada a post_preview (sin cambios)
+            # --- ✨ PASO 3: Modifica la llamada a post_preview aquí ✨ ---
             post_preview(
                 title=AppState.title,
                 price_cop=AppState.price_cop_preview,
@@ -508,18 +465,18 @@ def blog_post_add_content() -> rx.Component:
                 moda_completa_tooltip_text=AppState.moda_completa_tooltip_text_preview,
                 combines_shipping=AppState.combines_shipping,
                 envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
-                is_artistic_preview=False # Importante: indica que es la preview normal
+                # --- Pasa los diccionarios de estado ---
+                light_theme_colors_prop=AppState.light_theme_colors,
+                dark_theme_colors_prop=AppState.dark_theme_colors,
+                # --- Fin ---
+                is_artistic_preview=False
             ),
-            image_editor_panel, # Panel de edición de imagen
+            # --- ✨ FIN PASO 3 ✨ ---
+            image_editor_panel,
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
             on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
         ),
-        columns={"initial": "1", "lg": "auto auto"}, # Layout responsivo
-        justify="center",
-        align="start",
-        gap="3em",
-        width="100%",
-        max_width="1800px",
-        padding_y="2em",
-        padding_x=["1em", "2em"],
+        columns={"initial": "1", "lg": "auto auto"},
+        justify="center", align="start", gap="3em", width="100%",
+        max_width="1800px", padding_y="2em", padding_x=["1em", "2em"],
     )
