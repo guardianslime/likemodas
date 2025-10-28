@@ -18,8 +18,8 @@ from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_di
 from ..utils.formatting import format_to_cop
 
 # --- Definición del componente Moveable ---
+# (Componente Moveable y _preview_badge se mantienen igual)
 class Moveable(NoSSRComponent):
-    """Componente Reflex que envuelve la librería React-Moveable."""
     library = "react-moveable"
     tag = "Moveable"
     target: rx.Var[str]
@@ -31,44 +31,30 @@ class Moveable(NoSSRComponent):
     on_drag_end: rx.EventHandler[lambda e: [e]]
     on_resize_end: rx.EventHandler[lambda e: [e]]
     on_rotate_end: rx.EventHandler[lambda e: [e]]
-    def _get_custom_code(self) -> str:
-        return """
-const onDragEnd = (e, on_drag_end) => {
-    if (on_drag_end) { on_drag_end({transform: e.lastEvent.transform}); }
-    return e;
-}
-const onResizeEnd = (e, on_resize_end) => {
-    if (on_resize_end) { on_resize_end({transform: e.lastEvent.transform}); }
-    return e;
-}
-const onRotateEnd = (e, on_rotate_end) => {
-    if (on_rotate_end) { on_rotate_end({transform: e.lastEvent.transform}); }
-    return e;
-}
+    def _get_custom_code(self) -> str: return """
+const onDragEnd = (e, on_drag_end) => { if (on_drag_end) { on_drag_end({transform: e.lastEvent.transform}); } return e; }
+const onResizeEnd = (e, on_resize_end) => { if (on_resize_end) { on_resize_end({transform: e.lastEvent.transform}); } return e; }
+const onRotateEnd = (e, on_rotate_end) => { if (on_rotate_end) { on_rotate_end({transform: e.lastEvent.transform}); } return e; }
 """
 moveable = Moveable.create
 
-# --- Función auxiliar movida fuera de post_preview ---
-def get_theme_color(theme_colors_var: rx.Var[Dict[str, str]], key: str, default_color: str) -> rx.Var[str]:
-    """
-    Función auxiliar para obtener un color de tema de forma segura,
-    usando rx.cond externamente.
-    """
-    color_value = theme_colors_var[key]
-    return rx.cond(color_value != "", color_value, default_color)
-
-# --- Función auxiliar _preview_badge ---
 def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
     light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
     dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
     colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
-    return rx.box(
-        rx.text(text_content, size="2", weight="medium"),
-        bg=colors["bg"], color=colors["text"], padding="1px 10px",
-        border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
-    )
+    return rx.box( rx.text(text_content, size="2", weight="medium"), bg=colors["bg"], color=colors["text"], padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap", )
 
-# --- Componente post_preview CORREGIDO (v11) ---
+# --- ✨ PASO 1: Modifica la función auxiliar ✨ ---
+# Ahora acepta la variable de color (que ya es Var[str]) directamente
+def get_theme_color_safe(color_var: rx.Var[str], default_color: str) -> rx.Var[str]:
+    """
+    Función auxiliar simplificada: Si color_var no está vacío, lo devuelve,
+    si no, devuelve el color por defecto.
+    """
+    return rx.cond(color_var != "", color_var, default_color)
+# --- ✨ FIN PASO 1 ✨ ---
+
+
 def post_preview(
     title: rx.Var[str],
     price_cop: rx.Var[str],
@@ -89,6 +75,7 @@ def post_preview(
         AppState.edit_dark_mode_appearance
     )
 
+    # --- ✨ PASO 2: Modifica las llamadas a la función auxiliar ✨ ---
     card_bg_color = rx.cond(
         AppState.use_default_style,
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
@@ -97,8 +84,9 @@ def post_preview(
             AppState.live_card_bg_color,
             rx.cond(
                 explicit_appearance == "light",
-                get_theme_color(AppState.light_theme_colors, "bg", DEFAULT_LIGHT_BG),
-                get_theme_color(AppState.dark_theme_colors, "bg", DEFAULT_DARK_BG)
+                # Accede al string ANTES de llamar a la función
+                get_theme_color_safe(AppState.light_theme_colors["bg"], DEFAULT_LIGHT_BG),
+                get_theme_color_safe(AppState.dark_theme_colors["bg"], DEFAULT_DARK_BG)
             )
         )
     )
@@ -111,8 +99,9 @@ def post_preview(
             AppState.live_title_color,
             rx.cond(
                 explicit_appearance == "light",
-                get_theme_color(AppState.light_theme_colors, "title", DEFAULT_LIGHT_TITLE),
-                get_theme_color(AppState.dark_theme_colors, "title", DEFAULT_DARK_TITLE)
+                # Accede al string ANTES de llamar a la función
+                get_theme_color_safe(AppState.light_theme_colors["title"], DEFAULT_LIGHT_TITLE),
+                get_theme_color_safe(AppState.dark_theme_colors["title"], DEFAULT_DARK_TITLE)
             )
         )
     )
@@ -125,12 +114,15 @@ def post_preview(
             AppState.live_price_color,
             rx.cond(
                 explicit_appearance == "light",
-                get_theme_color(AppState.light_theme_colors, "price", DEFAULT_LIGHT_PRICE),
-                get_theme_color(AppState.dark_theme_colors, "price", DEFAULT_DARK_PRICE)
+                # Accede al string ANTES de llamar a la función
+                get_theme_color_safe(AppState.light_theme_colors["price"], DEFAULT_LIGHT_PRICE),
+                get_theme_color_safe(AppState.dark_theme_colors["price"], DEFAULT_DARK_PRICE)
             )
         )
     )
+    # --- ✨ FIN PASO 2 ✨ ---
 
+    # --- La estructura de la tarjeta rx.box(...) permanece igual ---
     return rx.box(
         rx.vstack(
              rx.box( # Contenedor de la imagen
