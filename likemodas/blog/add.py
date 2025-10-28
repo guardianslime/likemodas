@@ -347,9 +347,9 @@ def post_preview(
 
     # --- La función interna _preview_badge NO cambia ---
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        # ... (código interno sin cambios) ...
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+        # Usa el modo de previsualización para los colores del badge
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
@@ -357,55 +357,49 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR DEFINITIVA Y CORRECTA 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V3 - CORREGIDA 👇 ---
 
     # 1. Determina el tema que el PREVIEW está simulando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
-    # 2. Determina cómo DEBERÍA verse la tarjeta según las configuraciones del editor
-    card_should_appear_as = rx.cond(
-        AppState.use_default_style, # Si usa default, la apariencia coincide con el preview
-        preview_site_theme,
-        # Si NO usa default, usa la configuración explícita para el modo del preview
-        rx.cond(
-            preview_site_theme == "light",
-            AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
-            AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
-        )
+    # 2. Determina la apariencia explícita deseada si use_default_style es False
+    explicit_appearance = rx.cond(
+        preview_site_theme == "light",
+        AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
+        AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
     )
 
-    # 3. Asigna colores basados EXCLUSIVAMENTE en 'card_should_appear_as'
-    #    y si se están usando los colores personalizados GUARDADOS o los DEFAULTS.
+    # 3. Asigna colores FINALES
     card_bg_color = rx.cond(
         AppState.use_default_style,
-         # Si usa default, usa el default correspondiente a CÓMO DEBERÍA VERSE
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, usa los colores GUARDADOS correspondientes a CÓMO DEBERÍA VERSE
+        # Si usa default, los colores de la tarjeta coinciden con el PREVIEW THEME
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        # Si NO usa default, los colores de la tarjeta se basan en la APARIENCIA EXPLÍCITA seleccionada
         rx.cond(
-            card_should_appear_as == "light",
+            explicit_appearance == "light",
             AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG, # Usa el guardado claro o fallback
             AppState.dark_theme_colors.get("bg") | DEFAULT_DARK_BG   # Usa el guardado oscuro o fallback
         )
     )
     title_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
         rx.cond(
-            card_should_appear_as == "light",
+            explicit_appearance == "light",
             AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
             AppState.dark_theme_colors.get("title") | DEFAULT_DARK_TITLE
         )
     )
     price_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
         rx.cond(
-            card_should_appear_as == "light",
+            explicit_appearance == "light",
             AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
             AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
         )
     )
-    # --- 👆 FIN: LÓGICA DE COLOR DEFINITIVA Y CORRECTA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR FINAL V3 - CORREGIDA 👆 ---
 
     return rx.box(
         rx.vstack(
@@ -428,24 +422,25 @@ def post_preview(
                  position="relative", width="100%", height="260px",
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 # El fondo de la imagen siempre usa el modo de previsualización (preview_site_theme)
+                 # El fondo DETRÁS de la imagen SÍ usa el modo de previsualización
                  bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
              ),
-             rx.vstack( # Contenedor de la información
+             rx.vstack( # Contenedor de la información (Texto, precio, badges)
                 rx.text( # Título
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    color=title_color, # Aplicado
+                    color=title_color, # COLOR DE TARJETA APLICADO
                     style=TITLE_CLAMP_STYLE
                 ),
                 star_rating_display_safe(0, 0, size=24), # Estrellas
                 rx.text( # Precio
                     price_cop, size="5", weight="medium",
-                    color=price_color # Aplicado
+                    color=price_color # COLOR DE TARJETA APLICADO
                 ),
                 rx.spacer(),
                 rx.vstack( # Badges de envío
                     rx.grid(
+                        # El _preview_badge usa el preview_site_theme internamente (correcto)
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
                             is_moda_completa,
@@ -459,12 +454,13 @@ def post_preview(
                     ),
                     spacing="1", align_items="start", width="100%",
                 ),
+                # Color del texto por defecto dentro de esta sección se adaptará al fondo de la tarjeta
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=card_bg_color, # Aplicado al contenedor principal de la tarjeta
+        bg=card_bg_color, # COLOR DE TARJETA APLICADO AL FONDO PRINCIPAL
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
