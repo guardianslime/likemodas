@@ -101,81 +101,27 @@ def admin_filter_bar() -> rx.Component:
 
 def edit_post_dialog() -> rx.Component:
     """
-    [CORREGIDO] El modal de edición principal, con panel de estilo simplificado.
+    [CORREGIDO] El modal de edición, ahora pasa los diccionarios de colores a post_preview.
     """
-
-    # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
+    # (El panel 'personalizar_tarjeta_panel' simplificado se mantiene igual)
     personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
-        rx.hstack(
-            rx.text("Personalizar Tarjeta", weight="bold", size="4"),
-            rx.spacer(),
-            rx.tooltip(
-                rx.icon_button(
-                    rx.icon("rotate-ccw", size=14),
-                    on_click=AppState.reset_card_styles_to_default,
-                    variant="ghost", color_scheme="gray", size="1", type="button",
-                ),
-                content="Restablecer estilos"
-            ),
-            justify="between", width="100%", align_items="center",
-        ),
-        rx.hstack(
-            rx.text("Usar estilo predeterminado", size="3"),
-            rx.spacer(),
-            rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
-            width="100%", align="center",
-        ),
-        rx.cond(
-            ~AppState.use_default_style,
-            rx.vstack(
-                rx.divider(margin_top="1em"),
-                rx.text("Apariencia en Modo Claro:", size="3"),
-                rx.segmented_control.root(
-                    rx.segmented_control.item("Claro", value="light"),
-                    rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.edit_light_mode_appearance,
-                    on_change=AppState.set_edit_light_mode_appearance,
-                    width="100%", color_scheme="violet",
-                ),
-                rx.divider(margin_top="1em"),
-                rx.text("Apariencia en Modo Oscuro:", size="3"),
-                rx.segmented_control.root(
-                    rx.segmented_control.item("Claro", value="light"),
-                    rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.edit_dark_mode_appearance,
-                    on_change=AppState.set_edit_dark_mode_appearance,
-                    width="100%", color_scheme="violet",
-                ),
-                spacing="3", width="100%", margin_top="1em"
-            ),
-        ),
-        rx.divider(margin_top="1em"),
-        rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
-        rx.segmented_control.root(
-            rx.segmented_control.item("Modo Claro", value="light"),
-            rx.segmented_control.item("Modo Oscuro", value="dark"),
-            on_change=AppState.toggle_preview_mode,
-            value=AppState.card_theme_mode,
-            width="100%",
-        ),
-        spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
-        border_radius="md", margin_top="1.5em", align_items="stretch",
-        width="290px",
+        rx.hstack( rx.text("Personalizar Tarjeta", weight="bold", size="4"), rx.spacer(), rx.tooltip( rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_card_styles_to_default, variant="ghost", color_scheme="gray", size="1", type="button", ), content="Restablecer estilos"), justify="between", width="100%", align_items="center", ),
+        rx.hstack( rx.text("Usar estilo predeterminado", size="3"), rx.spacer(), rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"), width="100%", align="center", ),
+        rx.cond( ~AppState.use_default_style, rx.vstack( rx.divider(margin_top="1em"), rx.text("Apariencia en Modo Claro:", size="3"), rx.segmented_control.root( rx.segmented_control.item("Claro", value="light"), rx.segmented_control.item("Oscuro", value="dark"), value=AppState.edit_light_mode_appearance, on_change=AppState.set_edit_light_mode_appearance, width="100%", color_scheme="violet", ), rx.divider(margin_top="1em"), rx.text("Apariencia en Modo Oscuro:", size="3"), rx.segmented_control.root( rx.segmented_control.item("Claro", value="light"), rx.segmented_control.item("Oscuro", value="dark"), value=AppState.edit_dark_mode_appearance, on_change=AppState.set_edit_dark_mode_appearance, width="100%", color_scheme="violet", ), spacing="3", width="100%", margin_top="1em" ), ),
+        rx.divider(margin_top="1em"), rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"), rx.segmented_control.root( rx.segmented_control.item("Modo Claro", value="light"), rx.segmented_control.item("Modo Oscuro", value="dark"), on_change=AppState.toggle_preview_mode, value=AppState.card_theme_mode, width="100%", ),
+        spacing="3", padding="1em", border="1px dashed var(--gray-a6)", border_radius="md", margin_top="1.5em", align_items="stretch", width="290px",
     )
-    # --- 👆 FIN DEL PANEL SIMPLIFICADO 👆 ---
 
     return rx.dialog.root(
         rx.dialog.content(
-            rx.dialog.close(
-                rx.icon_button(rx.icon(tag="x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "0.8rem", "right": "0.8rem", "z_index": "100"}),
-            ),
+            rx.dialog.close( rx.icon_button(rx.icon(tag="x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "0.8rem", "right": "0.8rem", "z_index": "100"}), ),
             rx.dialog.title("Editar Publicación"),
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
             rx.grid(
-                blog_post_edit_form(), # El formulario de edición
+                blog_post_edit_form(), # El formulario
                 rx.vstack(
-                    # La previsualización normal (no artística)
+                    # --- ✨ PASO 4: Modifica la llamada a post_preview aquí ✨ ---
                     post_preview(
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
@@ -186,17 +132,20 @@ def edit_post_dialog() -> rx.Component:
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        is_artistic_preview=False # Importante: indica que es la preview normal
+                        # --- Pasa los diccionarios de estado ---
+                        light_theme_colors_prop=AppState.light_theme_colors,
+                        dark_theme_colors_prop=AppState.dark_theme_colors,
+                        # --- Fin ---
+                        is_artistic_preview=False
                     ),
-                    personalizar_tarjeta_panel, # El panel simplificado que acabamos de definir
-                    spacing="4", position="sticky", top="0", width="350px", # Ajusta el width si es necesario
-                    # Sincroniza el modo de preview con el modo de color del navegador al montar
+                    # --- ✨ FIN PASO 4 ✨ ---
+                    personalizar_tarjeta_panel,
+                    spacing="4", position="sticky", top="0", width="350px",
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
-                columns={"initial": "1", "lg": "auto 350px"}, # Ajusta las columnas si es necesario
+                columns={"initial": "1", "lg": "auto 350px"},
                 spacing="6", width="100%", padding_top="1em",
             ),
-            # Estilos del modal principal
             style={"max_width": "1400px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
         ),
         open=AppState.is_editing_post,
