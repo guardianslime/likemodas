@@ -417,7 +417,7 @@ def public_qr_scanner_modal() -> rx.Component:
 
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN CORREGIDA] Lightbox con lógica de fondo consistente.
+    [VERSIÓN CORREGIDA] Lightbox con verificación para evitar AttributeError.
     """
     # El componente 'controls' no necesita cambios
     controls = rx.box(
@@ -459,32 +459,30 @@ def lightbox_modal() -> rx.Component:
                     width="100%", style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%", height="100%",
-                # --- ✨ INICIO DE LA LÓGICA DE FONDO CORREGIDA ✨ ---
+                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                # Se añade una condición externa para verificar si AppState.product_in_modal existe
                 bg=rx.cond(
-                    # Si el producto existe en el modal...
                     AppState.product_in_modal,
+                    # Si existe, se aplica la lógica de fondo basada en la configuración
                     rx.cond(
-                        # 1. ¿Cuál es el tema actual del sitio?
-                        rx.color_mode_cond("light", "dark") == "light", # ¿El sitio está en modo claro?
-                            # Sitio en modo claro:
-                            # 2. ¿Cómo DEBERÍA verse la tarjeta en modo claro según la configuración?
+                        rx.color_mode_cond("light", "dark") == "light", # ¿Tema del sitio claro?
+                            # Sitio claro: ¿Cómo debe verse la tarjeta?
                             rx.cond(AppState.product_in_modal.light_mode_appearance == "light",
-                                    # Tarjeta quiere verse CLARA: Usa el fondo claro del lightbox configurado
+                                    # Tarjeta clara: Usa el fondo claro del lightbox
                                     rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
-                                    # Tarjeta quiere verse OSCURA: Usa el fondo oscuro del lightbox configurado
+                                    # Tarjeta oscura: Usa el fondo oscuro del lightbox
                                     rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black")),
-                            # Sitio en modo oscuro:
-                            # 2. ¿Cómo DEBERÍA verse la tarjeta en modo oscuro según la configuración?
+                            # Sitio oscuro: ¿Cómo debe verse la tarjeta?
                             rx.cond(AppState.product_in_modal.dark_mode_appearance == "light",
-                                    # Tarjeta quiere verse CLARA: Usa el fondo claro del lightbox configurado
+                                    # Tarjeta clara: Usa el fondo claro del lightbox
                                     rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
-                                    # Tarjeta quiere verse OSCURA: Usa el fondo oscuro del lightbox configurado
+                                    # Tarjeta oscura: Usa el fondo oscuro del lightbox
                                     rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black"))
                     ),
-                    # Valor por defecto si product_in_modal es None
-                    rx.color_mode_cond("white", "black") # Fondo predeterminado basado en el tema
+                    # Si AppState.product_in_modal es None (no cargado aún), usa un fondo predeterminado
+                    rx.color_mode_cond("white", "black")
                 ),
-                # --- ✨ FIN DE LA LÓGICA DE FONDO CORREGIDA ✨ ---
+                # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
             ),
             # Estilos del content no cambian
             style={
