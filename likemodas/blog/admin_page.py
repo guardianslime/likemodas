@@ -6,9 +6,10 @@ from .. import navigation
 from ..state import AppState, AdminPostRowData, AdminVariantData
 from ..ui.qr_display import qr_code_display
 from .forms import blog_post_edit_form
-from ..blog.add import post_preview  # <--- ASEGÚRATE DE AÑADIR ESTA LÍNEA
-from .add import post_preview  # Importamos la previsualización
+from ..blog.add import post_preview # Importamos la previsualización
 from rx_color_picker.color_picker import color_picker
+# Importa BlogPostModel
+from ..models import BlogPostModel # Añadido para asegurar que existe
 
 def admin_filter_bar() -> rx.Component:
     """Una barra de filtros integrada para la página 'Mis Publicaciones'."""
@@ -81,7 +82,7 @@ def admin_filter_bar() -> rx.Component:
                         margin_top="1.5em" # Alinea con los inputs
                     ),
                     flex_grow=1,
-                    align="end",
+                    align="end", # Intenta alinear el botón al final
                 ),
                 spacing="4",
                 direction={"initial": "column", "md": "row"}, # Se apila en móvil
@@ -101,27 +102,87 @@ def admin_filter_bar() -> rx.Component:
 
 def edit_post_dialog() -> rx.Component:
     """
-    [CORREGIDO] El modal de edición, ahora pasa los diccionarios de colores a post_preview.
+    [MODIFICADO] El modal de edición, ahora con previsualización
+    pero con un panel de estilo SIMPLIFICADO.
     """
-    # (El panel 'personalizar_tarjeta_panel' simplificado se mantiene igual)
     personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
-        rx.hstack( rx.text("Personalizar Tarjeta", weight="bold", size="4"), rx.spacer(), rx.tooltip( rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_card_styles_to_default, variant="ghost", color_scheme="gray", size="1", type="button", ), content="Restablecer estilos"), justify="between", width="100%", align_items="center", ),
-        rx.hstack( rx.text("Usar estilo predeterminado", size="3"), rx.spacer(), rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"), width="100%", align="center", ),
-        rx.cond( ~AppState.use_default_style, rx.vstack( rx.divider(margin_top="1em"), rx.text("Apariencia en Modo Claro:", size="3"), rx.segmented_control.root( rx.segmented_control.item("Claro", value="light"), rx.segmented_control.item("Oscuro", value="dark"), value=AppState.edit_light_mode_appearance, on_change=AppState.set_edit_light_mode_appearance, width="100%", color_scheme="violet", ), rx.divider(margin_top="1em"), rx.text("Apariencia en Modo Oscuro:", size="3"), rx.segmented_control.root( rx.segmented_control.item("Claro", value="light"), rx.segmented_control.item("Oscuro", value="dark"), value=AppState.edit_dark_mode_appearance, on_change=AppState.set_edit_dark_mode_appearance, width="100%", color_scheme="violet", ), spacing="3", width="100%", margin_top="1em" ), ),
-        rx.divider(margin_top="1em"), rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"), rx.segmented_control.root( rx.segmented_control.item("Modo Claro", value="light"), rx.segmented_control.item("Modo Oscuro", value="dark"), on_change=AppState.toggle_preview_mode, value=AppState.card_theme_mode, width="100%", ),
-        spacing="3", padding="1em", border="1px dashed var(--gray-a6)", border_radius="md", margin_top="1.5em", align_items="stretch", width="290px",
+        rx.hstack(
+            rx.text("Personalizar Tarjeta", weight="bold", size="4"),
+            rx.spacer(),
+            rx.tooltip(
+                rx.icon_button(
+                    rx.icon("rotate-ccw", size=14), # Icono de reset
+                    on_click=AppState.reset_card_styles_to_default, # Llama al nuevo handler
+                    variant="ghost", # Estilo sutil
+                    color_scheme="gray",
+                    size="1",
+                    type="button", # Importante para no interferir con forms
+                ),
+                content="Restablecer estilos predeterminados"
+            ),
+            justify="between", # Alinea título a la izq, botón a la der
+            width="100%",
+            align_items="center", # Alinea verticalmente
+        ),
+        rx.hstack(
+            rx.text("Usar estilo predeterminado", size="3"),
+            rx.spacer(),
+            rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
+            width="100%", align="center",
+        ),
+        rx.cond(
+            ~AppState.use_default_style,
+            rx.vstack(
+                rx.divider(margin_top="1em"), # Separador añadido
+                rx.text("Apariencia en Modo Claro:", size="3"),
+                rx.segmented_control.root(
+                    rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Oscuro", value="dark"),
+                    value=AppState.edit_light_mode_appearance, # Usa la variable correcta
+                    on_change=AppState.set_edit_light_mode_appearance, # Usa el setter correcto
+                    width="100%",
+                    color_scheme="violet",
+                ),
+
+                rx.divider(margin_top="1em"), # Separador añadido
+                rx.text("Apariencia en Modo Oscuro:", size="3"),
+                rx.segmented_control.root(
+                    rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Oscuro", value="dark"),
+                    value=AppState.edit_dark_mode_appearance, # Usa la variable correcta
+                    on_change=AppState.set_edit_dark_mode_appearance, # Usa el setter correcto
+                    width="100%",
+                    color_scheme="violet",
+                ),
+                spacing="3", width="100%", margin_top="1em" # Ajusta el margen si es necesario
+            ),
+        ),
+        rx.divider(margin_top="1em"),
+        rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
+        rx.segmented_control.root(
+            rx.segmented_control.item("Modo Claro", value="light"),
+            rx.segmented_control.item("Modo Oscuro", value="dark"),
+            on_change=AppState.toggle_preview_mode,
+            value=AppState.card_theme_mode,
+            width="100%",
+        ),
+        spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
+        border_radius="md", margin_top="1.5em", align_items="stretch",
+        width="290px",
     )
 
     return rx.dialog.root(
         rx.dialog.content(
-            rx.dialog.close( rx.icon_button(rx.icon(tag="x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "0.8rem", "right": "0.8rem", "z_index": "100"}), ),
+            rx.dialog.close(
+                rx.icon_button(rx.icon(tag="x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "0.8rem", "right": "0.8rem", "z_index": "100"}),
+            ),
             rx.dialog.title("Editar Publicación"),
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
             rx.grid(
                 blog_post_edit_form(), # El formulario
                 rx.vstack(
-                    # --- ✨ PASO 4: Modifica la llamada a post_preview aquí ✨ ---
+                    # Llamada a post_preview REVERTIDA (sin _prop)
                     post_preview(
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
@@ -132,19 +193,19 @@ def edit_post_dialog() -> rx.Component:
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        # --- Pasa los diccionarios de estado ---
-                        light_theme_colors_prop=AppState.light_theme_colors,
-                        dark_theme_colors_prop=AppState.dark_theme_colors,
-                        # --- Fin ---
                         is_artistic_preview=False
                     ),
-                    # --- ✨ FIN PASO 4 ✨ ---
-                    personalizar_tarjeta_panel,
-                    spacing="4", position="sticky", top="0", width="350px",
+                    personalizar_tarjeta_panel, # Panel simplificado
+                    spacing="4",
+                    position="sticky",
+                    top="0",
+                    width="350px", # Ajusta el ancho si es necesario
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
-                columns={"initial": "1", "lg": "auto 350px"},
-                spacing="6", width="100%", padding_top="1em",
+                columns={"initial": "1", "lg": "auto 350px"}, # Ajusta las columnas si es necesario
+                spacing="6",
+                width="100%",
+                padding_top="1em",
             ),
             style={"max_width": "1400px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
         ),
@@ -158,11 +219,8 @@ def artist_edit_dialog() -> rx.Component:
     Personalizar Tarjeta (con colores) y Ajustar Imagen.
     CORREGIDO: Se eliminó la referencia a 'card_theme_invert'.
     """
-
-    # --- Panel de personalización COMPLETO (con colores) ---
     personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
-        # --- AÑADE ESTE HStack ---
         rx.hstack(
             rx.text("Personalizar Tarjeta", weight="bold", size="4"),
             rx.spacer(),
@@ -181,8 +239,7 @@ def artist_edit_dialog() -> rx.Component:
             width="100%",
             align_items="center",
         ),
-        # -------------------------
-        rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"), # Esta línea ya existía
+        rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"),
         rx.hstack(
             rx.text("Usar estilo predeterminado", size="3"),
             rx.spacer(),
@@ -199,7 +256,7 @@ def artist_edit_dialog() -> rx.Component:
                     value=AppState.card_theme_mode,
                     width="100%",
                 ),
-                # --- Color Pickers ---
+                # Color Pickers
                 rx.popover.root(
                     rx.popover.trigger(rx.button(rx.hstack(rx.text("Fondo"), rx.spacer(), rx.box(bg=AppState.live_card_bg_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")),
                     rx.popover.content(color_picker(value=AppState.live_card_bg_color, on_change=AppState.set_live_card_bg_color, variant="classic", size="sm"), padding="0.5em"),
@@ -213,10 +270,6 @@ def artist_edit_dialog() -> rx.Component:
                     rx.popover.content(color_picker(value=AppState.live_price_color, on_change=AppState.set_live_price_color, variant="classic", size="sm"), padding="0.5em"),
                 ),
                 rx.button("Guardar Personalización", on_click=AppState.save_current_theme_customization, width="100%", margin_top="0.5em"),
-                # --- FIN Color Pickers ---
-
-                # --- El bloque rx.hstack con el rx.switch para 'card_theme_invert' HA SIDO ELIMINADO de aquí ---
-
                 spacing="3", width="100%", margin_top="1em"
             ),
         ),
@@ -225,7 +278,6 @@ def artist_edit_dialog() -> rx.Component:
         width="290px",
     )
 
-    # --- Panel de Ajustar Imagen (sin cambios) ---
     ajustar_imagen_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack(
@@ -241,7 +293,7 @@ def artist_edit_dialog() -> rx.Component:
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
-    )
+    ) 
 
     return rx.dialog.root(
         rx.dialog.content(
@@ -256,17 +308,18 @@ def artist_edit_dialog() -> rx.Component:
                 # Columna Izquierda: Paneles de Edición
                 rx.scroll_area(
                     rx.vstack(
-                        personalizar_tarjeta_panel, # Panel corregido (ya no tiene el switch)
+                        personalizar_tarjeta_panel, # Panel corregido
                         ajustar_imagen_panel,
                         spacing="4",
                         width="350px",
                         on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                     ),
                     type="auto", scrollbars="vertical", max_height="70vh"
-                ),
+                 ),
                 # Columna Derecha: Previsualización
                 rx.vstack(
-                    post_preview( # Llamada con el nuevo parámetro
+                    # Llamada a post_preview con is_artistic_preview=True
+                    post_preview(
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
                         first_image_url=AppState.edit_main_image_url_for_preview,
@@ -276,9 +329,10 @@ def artist_edit_dialog() -> rx.Component:
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        # +++ AÑADE ESTA LÍNEA +++
-                        is_artistic_preview=True
-                        # ++++++++++++++++++++++
+                        # Pasa los diccionarios de estado
+                        light_theme_colors_prop=AppState.light_theme_colors,
+                        dark_theme_colors_prop=AppState.dark_theme_colors,
+                        is_artistic_preview=True # Indica que es la preview artística
                     ),
                     rx.button(
                         "Guardar Cambios Artísticos",
@@ -302,7 +356,6 @@ def artist_edit_dialog() -> rx.Component:
         open=AppState.show_artist_modal,
         on_open_change=AppState.set_show_artist_modal,
     )
-
 
 def qr_display_modal() -> rx.Component:
     """El diálogo modal que muestra los códigos QR para cada variante."""
@@ -356,7 +409,7 @@ def qr_display_modal() -> rx.Component:
                 rx.flex(
                     rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
                     spacing="3", margin_top="1em", justify="end",
-                ),
+                 ),
                 align_items="stretch", spacing="4", style=printable_area_style,
             ),
             style={"max_width": "720px"},
@@ -379,7 +432,7 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
             rx.hstack(
                 rx.switch(is_checked=post.publish_active, on_change=lambda checked: AppState.toggle_publish_status(post.id)),
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
-                spacing="2", align="center",
+                 align="center",
             )
         ),
         rx.table.cell(
@@ -388,29 +441,25 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
                 rx.cond(post.creator_name, rx.text(f"Creado por: {post.creator_name}", size="1", color_scheme="gray")),
                 rx.cond(post.last_modified_by_name, rx.text(f"Modificado por: {post.last_modified_by_name}", size="1", color_scheme="gray")),
                 align_items="start", spacing="0"
-            )
+             )
         ),
         rx.table.cell(post.price_cop),
         rx.table.cell(
             rx.hstack(
                 rx.button("Editar", on_click=lambda: AppState.start_editing_post(post.id), variant="outline", size="2"),
-                
-                # --- 👇 AÑADIR ESTE BOTÓN 👇 ---
                 rx.tooltip(
                     rx.icon_button(
                         rx.icon(tag="palette", size=16), # Icono de paleta
-                        on_click=lambda: AppState.open_artist_modal(post.id), 
-                        variant="soft", 
+                        on_click=lambda: AppState.open_artist_modal(post.id),
+                        variant="soft",
                         color_scheme="gray",
                         size="2"
                     ),
                     content="Edición Artística (Estilos)"
                 ),
-                # --- 👆 FIN DEL AÑADIDO 👆 ---
-                
                 rx.alert_dialog.root(
                     rx.alert_dialog.trigger(rx.button("Eliminar", color_scheme="red", variant="soft", size="2")),
-                    rx.alert_dialog.content(
+                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
                         rx.alert_dialog.description(f"¿Seguro que quieres eliminar '{post.title}'?"),
                         rx.flex(
@@ -427,7 +476,7 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
             rx.icon_button(rx.icon("qr-code"), on_click=AppState.open_qr_modal(post.id), variant="soft", size="2")
         ),
         align="center",
-    )
+    ) 
 
 def mobile_post_card(post: AdminPostRowData) -> rx.Component:
     """Componente de tarjeta optimizado para la vista móvil, con auditoría e imagen corregida."""
@@ -443,7 +492,7 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                 rx.spacer(),
                 rx.icon_button(rx.icon("qr-code"), on_click=AppState.open_qr_modal(post.id)),
                 align="center", width="100%",
-            ),
+             ),
             rx.divider(margin_y="0.75em"),
             rx.vstack(
                 rx.cond(post.creator_name, rx.text(f"Creado por: {post.creator_name}", size="1", color_scheme="gray", width="100%", text_align="left")),
@@ -457,50 +506,46 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                 rx.switch(is_checked=post.publish_active, on_change=lambda checked: AppState.toggle_publish_status(post.id)),
                 align="center", justify="end", spacing="3", width="100%",
             ),
-            # --- 👇 MODIFICAR ESTE hstack 👇 ---
             rx.hstack(
                 rx.button("Editar", on_click=AppState.start_editing_post(post.id), width="100%", size="2", variant="outline"),
-                
-                # --- 👇 AÑADIR ESTE BOTÓN 👇 ---
                 rx.button(
                     "Estilo", # Usamos texto por espacio
-                    rx.icon(tag="palette", size=16), 
-                    on_click=AppState.open_artist_modal(post.id), 
-                    width="100%", 
-                    size="2", 
+                    rx.icon(tag="palette", size=16),
+                    on_click=AppState.open_artist_modal(post.id),
+                    width="100%",
+                    size="2",
                     variant="soft",
                     color_scheme="gray"
                 ),
-                # --- 👆 FIN DEL AÑADIDO 👆 ---
-                
                 rx.alert_dialog.root(
                     rx.alert_dialog.trigger(rx.button("Eliminar", color_scheme="red", width="100%", size="2", variant="soft")),
                     rx.alert_dialog.content(
-                        # ... (contenido del alert_dialog) ...
-                    ),
+                         rx.alert_dialog.title("Confirmar Eliminación"),
+                         rx.alert_dialog.description(f"¿Seguro que quieres eliminar '{post.title}'?"),
+                         rx.flex( rx.alert_dialog.cancel(rx.button("Cancelar")), rx.alert_dialog.action(rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))), spacing="3", margin_top="1em", justify="end", ),
+                     ),
                 ),
                 spacing="2", # Ajustar espaciado
-                width="100%", 
+                width="100%",
                 margin_top="0.5em",
             ),
-            # --- 👆 FIN DE LA MODIFICACIÓN 👆 ---
             spacing="2", width="100%",
         )
-    )
+    ) 
 
 @require_panel_access
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' que ahora usa la lista de estado explícita."""
     desktop_view = rx.box(
         rx.table.root(
-            rx.table.header(
+             rx.table.header(
                 rx.table.row(
                     rx.table.column_header_cell("Imagen"),
                     rx.table.column_header_cell("Estado"),
                     rx.table.column_header_cell("Publicación"),
                     rx.table.column_header_cell("Precio"),
                     rx.table.column_header_cell("Acciones"),
-                    rx.table.column_header_cell("QR"),
+                     rx.table.column_header_cell("QR"),
                 )
             ),
             rx.table.body(rx.foreach(AppState.mis_publicaciones_list, desktop_post_row)),
@@ -521,13 +566,13 @@ def blog_admin_page() -> rx.Component:
     return rx.center(
         rx.container(
             rx.vstack(
-                # Fila del Título y Botón (sin cambios)
+                # Fila del Título y Botón
                 rx.flex(
                     rx.heading("Mis Publicaciones", size={"initial": "8", "md": "7"}),
                     rx.spacer(),
                     rx.button(
-                        "Crear Nueva Publicación", 
-                        on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE), 
+                        "Crear Nueva Publicación",
+                        on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE),
                         color_scheme="violet",
                         width={"initial": "100%", "md": "auto"},
                     ),
@@ -537,16 +582,11 @@ def blog_admin_page() -> rx.Component:
                     width="100%",
                 ),
                 rx.divider(margin_y="1.5em"),
-                
-                # --- 👇 INCLUIR LA NUEVA BARRA DE FILTROS AQUÍ 👇 ---
-                admin_filter_bar(),
-                # --- 👆 FIN DE LA INCLUSIÓN 👆 ---
-                
+                admin_filter_bar(), # Barra de filtros
                 # Mensaje de carga o tabla de resultados
                 rx.cond(
-                    AppState.is_loading, # (Si tienes una variable de carga para esto, úsala)
+                    AppState.is_loading,
                     rx.center(rx.spinner(), height="30vh"),
-                    # Muestra la tabla si hay publicaciones, o un mensaje si no
                     rx.cond(
                         AppState.mis_publicaciones_list,
                         rx.fragment(desktop_view, mobile_view),
@@ -561,13 +601,11 @@ def blog_admin_page() -> rx.Component:
                         )
                     )
                 ),
-                
                 # Modales
                 edit_post_dialog(), # El modal de datos
                 qr_display_modal(),
-                artist_edit_dialog(), # <--- AÑADE EL NUEVO MODAL AQUÍ
-                
-                spacing="5", 
+                artist_edit_dialog(), # Modal de edición artística
+                spacing="5",
                 width="100%",
             ),
             max_width="1400px",

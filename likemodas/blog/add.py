@@ -10,7 +10,7 @@ from likemodas.data.product_options import LISTA_TALLAS_ROPA
 from ..state import (
     DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE,
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE,
-    AppState, VariantGroupDTO # Añadido VariantGroupDTO
+    AppState, VariantGroupDTO, VariantFormData # Añadido VariantGroupDTO y VariantFormData
 )
 from ..auth.admin_auth import require_panel_access
 # Importa otros componentes UI necesarios
@@ -18,33 +18,56 @@ from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_di
 from ..utils.formatting import format_to_cop
 
 # --- Definición del componente Moveable ---
-# (Componente Moveable se mantiene igual)
 class Moveable(NoSSRComponent):
+    """Componente Reflex que envuelve la librería React-Moveable."""
     library = "react-moveable"
     tag = "Moveable"
     target: rx.Var[str]
-    draggable: rx.Var[bool] = True; resizable: rx.Var[bool] = True; rotatable: rx.Var[bool] = True
-    snappable: rx.Var[bool] = True; keep_ratio: rx.Var[bool] = False
-    on_drag_end: rx.EventHandler[lambda e: [e]]; on_resize_end: rx.EventHandler[lambda e: [e]]; on_rotate_end: rx.EventHandler[lambda e: [e]]
-    def _get_custom_code(self) -> str: return """
-const onDragEnd = (e, on_drag_end) => { if (on_drag_end) { on_drag_end({transform: e.lastEvent.transform}); } return e; }
-const onResizeEnd = (e, on_resize_end) => { if (on_resize_end) { on_resize_end({transform: e.lastEvent.transform}); } return e; }
-const onRotateEnd = (e, on_rotate_end) => { if (on_rotate_end) { on_rotate_end({transform: e.lastEvent.transform}); } return e; }
+    draggable: rx.Var[bool] = True
+    resizable: rx.Var[bool] = True
+    rotatable: rx.Var[bool] = True
+    snappable: rx.Var[bool] = True
+    keep_ratio: rx.Var[bool] = False
+    on_drag_end: rx.EventHandler[lambda e: [e]]
+    on_resize_end: rx.EventHandler[lambda e: [e]]
+    on_rotate_end: rx.EventHandler[lambda e: [e]]
+    def _get_custom_code(self) -> str:
+        return """
+const onDragEnd = (e, on_drag_end) => {
+    if (on_drag_end) { on_drag_end({transform: e.lastEvent.transform}); }
+    return e;
+}
+const onResizeEnd = (e, on_resize_end) => {
+    if (on_resize_end) { on_resize_end({transform: e.lastEvent.transform}); }
+    return e;
+}
+const onRotateEnd = (e, on_rotate_end) => {
+    if (on_rotate_end) { on_rotate_end({transform: e.lastEvent.transform}); }
+    return e;
+}
 """
 moveable = Moveable.create
 
-# (Función _preview_badge se mantiene igual)
+# --- Función auxiliar movida fuera de post_preview ---
+def get_theme_color_safe(color_var: rx.Var[str], default_color: str) -> rx.Var[str]:
+    """
+    Función auxiliar simplificada: Si color_var no está vacío, lo devuelve,
+    si no, devuelve el color por defecto.
+    """
+    return rx.cond(color_var != "", color_var, default_color)
+
+# --- Función auxiliar _preview_badge ---
 def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
     light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
     dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
     colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
-    return rx.box( rx.text(text_content, size="2", weight="medium"), bg=colors["bg"], color=colors["text"], padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap", )
+    return rx.box(
+        rx.text(text_content, size="2", weight="medium"),
+        bg=colors["bg"], color=colors["text"], padding="1px 10px",
+        border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
+    )
 
-# (Función get_theme_color_safe se mantiene igual)
-def get_theme_color_safe(color_var: rx.Var[str], default_color: str) -> rx.Var[str]:
-    return rx.cond(color_var != "", color_var, default_color)
-
-# --- ✨ PASO 1: Modifica la firma de post_preview ✨ ---
+# --- Componente post_preview CORREGIDO (v12) ---
 def post_preview(
     title: rx.Var[str],
     price_cop: rx.Var[str],
@@ -55,10 +78,6 @@ def post_preview(
     moda_completa_tooltip_text: rx.Var[str],
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
-    # --- Nuevos parámetros ---
-    light_theme_colors_prop: rx.Var[Dict[str, str]], # Pasa el diccionario light
-    dark_theme_colors_prop: rx.Var[Dict[str, str]],  # Pasa el diccionario dark
-    # --- Fin nuevos parámetros ---
     is_artistic_preview: bool = False
 ) -> rx.Component:
 
@@ -69,7 +88,6 @@ def post_preview(
         AppState.edit_dark_mode_appearance
     )
 
-    # --- ✨ PASO 2: Usa los parámetros _prop en la lógica de color ✨ ---
     card_bg_color = rx.cond(
         AppState.use_default_style,
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
@@ -78,9 +96,8 @@ def post_preview(
             AppState.live_card_bg_color,
             rx.cond(
                 explicit_appearance == "light",
-                # Usa el diccionario pasado como prop
-                get_theme_color_safe(light_theme_colors_prop["bg"], DEFAULT_LIGHT_BG),
-                get_theme_color_safe(dark_theme_colors_prop["bg"], DEFAULT_DARK_BG)
+                get_theme_color_safe(AppState.light_theme_colors["bg"], DEFAULT_LIGHT_BG),
+                get_theme_color_safe(AppState.dark_theme_colors["bg"], DEFAULT_DARK_BG)
             )
         )
     )
@@ -93,9 +110,8 @@ def post_preview(
             AppState.live_title_color,
             rx.cond(
                 explicit_appearance == "light",
-                # Usa el diccionario pasado como prop
-                get_theme_color_safe(light_theme_colors_prop["title"], DEFAULT_LIGHT_TITLE),
-                get_theme_color_safe(dark_theme_colors_prop["title"], DEFAULT_DARK_TITLE)
+                get_theme_color_safe(AppState.light_theme_colors["title"], DEFAULT_LIGHT_TITLE),
+                get_theme_color_safe(AppState.dark_theme_colors["title"], DEFAULT_DARK_TITLE)
             )
         )
     )
@@ -108,15 +124,12 @@ def post_preview(
             AppState.live_price_color,
             rx.cond(
                 explicit_appearance == "light",
-                # Usa el diccionario pasado como prop
-                get_theme_color_safe(light_theme_colors_prop["price"], DEFAULT_LIGHT_PRICE),
-                get_theme_color_safe(dark_theme_colors_prop["price"], DEFAULT_DARK_PRICE)
+                get_theme_color_safe(AppState.light_theme_colors["price"], DEFAULT_LIGHT_PRICE),
+                get_theme_color_safe(AppState.dark_theme_colors["price"], DEFAULT_DARK_PRICE)
             )
         )
     )
-    # --- ✨ FIN PASO 2 ✨ ---
 
-    # --- La estructura rx.box(...) permanece igual ---
     return rx.box(
         rx.vstack(
              rx.box( # Contenedor de la imagen
@@ -433,7 +446,7 @@ def blog_post_add_form() -> rx.Component:
 # --- Componente principal de la página de añadir ---
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
-    # (image_editor_panel y first_image_url se mantienen igual)
+    # (image_editor_panel se mantiene igual)
     image_editor_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack( rx.text("Ajustar Imagen", weight="bold", size="4"), rx.spacer(), rx.tooltip( rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_image_styles, variant="soft", size="1"), content="Resetear ajustes de imagen"), width="100%", align="center", ),
@@ -443,6 +456,7 @@ def blog_post_add_content() -> rx.Component:
         rx.vstack( rx.text("Posición Vertical (Y)", size="2"), rx.slider(value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, min=-100, max=100, step=1), spacing="1", align_items="stretch", width="100%" ),
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)", border_radius="md", margin_top="1.5em", align_items="stretch", width="290px",
     )
+    # (first_image_url se mantiene igual)
     first_image_url = rx.cond( (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0), AppState.variant_groups[0].image_urls[0], rx.cond( AppState.uploaded_images.length() > 0, AppState.uploaded_images[0], "" ) )
 
     return rx.grid(
@@ -454,7 +468,7 @@ def blog_post_add_content() -> rx.Component:
         ),
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            # --- ✨ PASO 3: Modifica la llamada a post_preview aquí ✨ ---
+            # --- Llamada a post_preview REVERTIDA (sin _prop) ---
             post_preview(
                 title=AppState.title,
                 price_cop=AppState.price_cop_preview,
@@ -465,13 +479,9 @@ def blog_post_add_content() -> rx.Component:
                 moda_completa_tooltip_text=AppState.moda_completa_tooltip_text_preview,
                 combines_shipping=AppState.combines_shipping,
                 envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
-                # --- Pasa los diccionarios de estado ---
-                light_theme_colors_prop=AppState.light_theme_colors,
-                dark_theme_colors_prop=AppState.dark_theme_colors,
-                # --- Fin ---
                 is_artistic_preview=False
             ),
-            # --- ✨ FIN PASO 3 ✨ ---
+            # --- FIN ---
             image_editor_panel,
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
             on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
