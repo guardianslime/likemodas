@@ -358,33 +358,46 @@ def post_preview(
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
     """
-    [VERSIÓN FINAL SIMPLIFICADA]
-    Muestra la previsualización de la tarjeta de producto, usando directamente
-    los colores 'live_' del estado que reflejan el modo de previsualización
-    y las personalizaciones aplicadas.
+    [VERSIÓN FINAL CORREGIDA v2]
+    Muestra la previsualización de la tarjeta de producto, asegurando que TODOS
+    sus elementos (fondo imagen, badges) respeten la apariencia seleccionada.
     """
 
+    # --- INICIO: Determinar la apariencia objetivo DENTRO de la función ---
+    # Replicamos la lógica de _update_live_colors para saber cómo debe verse la tarjeta
+    is_light_preview = AppState.card_theme_mode == "light"
+    card_target_appearance = rx.cond(
+        AppState.use_default_style,
+        rx.cond(is_light_preview, "light", "dark"), # Si default=ON, apariencia = modo preview
+        # Si default=OFF, apariencia = selección del usuario para el modo preview
+        rx.cond(is_light_preview, AppState.edit_light_mode_appearance, AppState.edit_dark_mode_appearance)
+    )
+    # --- FIN ---
+
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        """Función interna para renderizar los badges de envío."""
+        """
+        [CORREGIDO] Renderiza los badges usando la apariencia objetivo de la tarjeta.
+        """
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
-        # El color del badge depende del modo de PREVISUALIZACIÓN actual
-        colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        # --- CORRECCIÓN CLAVE AQUÍ ---
+        # Usa card_target_appearance en lugar de AppState.card_theme_mode
+        colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        # --- FIN CORRECCIÓN ---
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"], color=colors["text"], padding="1px 10px",
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- LÓGICA DE COLOR SIMPLIFICADA ---
-    # Los colores de la tarjeta (fondo, título, precio) dependen directamente
-    # de las variables 'live_' del estado, que ya reflejan el modo de previsualización
-    # y si se está usando el estilo por defecto o uno personalizado.
+    # Colores principales (ya corregidos, dependen de las variables 'live_')
     card_bg_color = AppState.live_card_bg_color
     title_color = AppState.live_title_color
     price_color = AppState.live_price_color
-    # El fondo DETRÁS de la imagen sí depende directamente del modo de PREVISUALIZACIÓN
-    image_bg = rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3))
+
+    # --- Fondo DETRÁS de la imagen CORREGIDO ---
+    # Ahora depende de la apariencia objetivo de la tarjeta
+    image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
     # --- FIN ---
 
     return rx.box(
@@ -394,16 +407,14 @@ def post_preview(
                  rx.image(
                     src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
                     width="100%", height="260px", object_fit="contain",
-                    # Transformación (zoom, rotación) aplicada directamente desde el estado
-                    transform=rx.cond(
+                    transform=rx.cond( # Transformación (zoom, rotación)
                         AppState.is_hydrated,
                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
                         "scale(1)"
                     ),
                     transition="transform 0.2s ease-out",
                  ),
-                 # Badge de Origen (Importado/Nacional)
-                 rx.badge(
+                 rx.badge( # Badge de Origen
                     rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
@@ -411,27 +422,23 @@ def post_preview(
                  position="relative", width="100%", height="260px",
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 bg=image_bg, # Fondo detrás de la imagen
+                 bg=image_bg, # <-- Fondo de imagen corregido
              ),
              # --- Contenedor de la información ---
              rx.vstack(
-                # Título del producto
-                rx.text(
+                rx.text( # Título
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    color=title_color, # Color 'live' aplicado
-                    style=TITLE_CLAMP_STYLE # Estilo para limitar a 2 líneas
+                    color=title_color, # Color 'live'
+                    style=TITLE_CLAMP_STYLE
                 ),
-                # Estrellas (siempre vacías en la previsualización)
-                star_rating_display_safe(0, 0, size=24),
-                # Precio del producto
-                rx.text(
+                star_rating_display_safe(0, 0, size=24), # Estrellas
+                rx.text( # Precio
                     price_cop, size="5", weight="medium",
-                    color=price_color # Color 'live' aplicado
+                    color=price_color # Color 'live'
                 ),
                 rx.spacer(),
-                # Badges de envío
-                rx.vstack(
+                rx.vstack( # Badges de envío (usando _preview_badge corregido)
                     rx.grid(
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
@@ -446,18 +453,15 @@ def post_preview(
                     ),
                     spacing="1", align_items="start", width="100%",
                 ),
-                # Estilos del contenedor de información
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
         ),
-        # Estilos generales de la tarjeta
         width="290px", height="480px",
-        bg=card_bg_color, # Fondo 'live' aplicado
+        bg=card_bg_color, # Fondo 'live'
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
-
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
     image_editor_panel = rx.vstack(
