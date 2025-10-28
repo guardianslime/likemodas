@@ -2534,9 +2534,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def submit_and_publish_manual(self):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Manejador para crear y publicar un nuevo producto. Ahora guarda correctamente
-        las configuraciones de apariencia light/dark mode y el fondo del lightbox.
+        [VERSIÓN FINAL CORREGIDA v2]
+        Manejador para crear y publicar un nuevo producto. Se corrige SyntaxError
+        y la asignación incorrecta de modos de apariencia al crear.
         """
         owner_id = None
         creator_id_to_save = None
@@ -2593,10 +2593,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": str(uuid.uuid4()),
-                     # Lee el valor temporal seleccionado en la UI para guardarlo
-                    "lightbox_bg": self.edit_temp_lightbox_bg # Asumimos que edit_temp_lightbox_bg aplica aquí también
-                    "lightbox_bg_light": self.edit_temp_lightbox_bg_light,
-                    "lightbox_bg_dark": self.edit_temp_lightbox_bg_dark
+                    # --- COMENTARIO ELIMINADO ---
+                    "lightbox_bg": self.edit_temp_lightbox_bg # Lee el valor temporal (puede que necesites una variable separada para 'crear' vs 'editar' si son diferentes)
+                    # --- FIN COMENTARIO ELIMINADO ---
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -2633,9 +2632,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
                 # --- GUARDADO DE ESTILO CORREGIDO ---
-                # (Se eliminó card_theme_invert)
-                light_mode_appearance=self.edit_light_mode_appearance, # Guarda la configuración
-                dark_mode_appearance=self.edit_dark_mode_appearance,   # Guarda la configuración
+                light_mode_appearance="light", # <-- Usa valor predeterminado
+                dark_mode_appearance="dark",   # <-- Usa valor predeterminado
                 # ------------------------------------
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
