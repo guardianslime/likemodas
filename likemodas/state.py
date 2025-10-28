@@ -5402,6 +5402,39 @@ class AppState(reflex_local_auth.LocalAuthState):
     _internal_variant_data_index: int = 0
     modal_selected_variant_index: int = 0 # Este ahora será nuestro ÍNDICE VISUAL
 
+    @rx.var
+    def lightbox_background_color(self) -> str:
+        """
+        Calcula de forma segura el color de fondo para el lightbox,
+        basándose en la configuración del producto y el tema actual.
+        """
+        # Primero, verifica si hay un producto cargado en el modal
+        if not self.product_in_modal:
+            # Si no hay producto, devuelve un fondo predeterminado basado en el tema
+            return rx.color_mode_cond("white", "black")
+
+        # Si hay producto, aplica la lógica completa
+        is_site_light_mode = rx.color_mode_cond("light", "dark") == "light"
+
+        if is_site_light_mode:
+            # Sitio en modo claro
+            card_should_appear_as = self.product_in_modal.light_mode_appearance
+            if card_should_appear_as == "light":
+                # Tarjeta clara: Usa fondo claro configurado
+                return "white" if self.product_in_modal.lightbox_bg_light == "white" else "black"
+            else: # Tarjeta oscura
+                # Tarjeta oscura: Usa fondo oscuro configurado
+                return "white" if self.product_in_modal.lightbox_bg_dark == "white" else "black"
+        else:
+            # Sitio en modo oscuro
+            card_should_appear_as = self.product_in_modal.dark_mode_appearance
+            if card_should_appear_as == "light":
+                # Tarjeta clara: Usa fondo claro configurado
+                return "white" if self.product_in_modal.lightbox_bg_light == "white" else "black"
+            else: # Tarjeta oscura
+                # Tarjeta oscura: Usa fondo oscuro configurado
+                return "white" if self.product_in_modal.lightbox_bg_dark == "white" else "black"
+
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     def set_modal_variant_index(self, visual_index: int):
         """

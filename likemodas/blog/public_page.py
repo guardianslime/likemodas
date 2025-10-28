@@ -417,7 +417,7 @@ def public_qr_scanner_modal() -> rx.Component:
 
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN CORREGIDA] Lightbox con verificación para evitar AttributeError.
+    [VERSIÓN SIMPLIFICADA] Lightbox que usa una variable computada para el fondo.
     """
     # El componente 'controls' no necesita cambios
     controls = rx.box(
@@ -459,30 +459,10 @@ def lightbox_modal() -> rx.Component:
                     width="100%", style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%", height="100%",
-                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-                # Se añade una condición externa para verificar si AppState.product_in_modal existe
-                bg=rx.cond(
-                    AppState.product_in_modal,
-                    # Si existe, se aplica la lógica de fondo basada en la configuración
-                    rx.cond(
-                        rx.color_mode_cond("light", "dark") == "light", # ¿Tema del sitio claro?
-                            # Sitio claro: ¿Cómo debe verse la tarjeta?
-                            rx.cond(AppState.product_in_modal.light_mode_appearance == "light",
-                                    # Tarjeta clara: Usa el fondo claro del lightbox
-                                    rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
-                                    # Tarjeta oscura: Usa el fondo oscuro del lightbox
-                                    rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black")),
-                            # Sitio oscuro: ¿Cómo debe verse la tarjeta?
-                            rx.cond(AppState.product_in_modal.dark_mode_appearance == "light",
-                                    # Tarjeta clara: Usa el fondo claro del lightbox
-                                    rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
-                                    # Tarjeta oscura: Usa el fondo oscuro del lightbox
-                                    rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black"))
-                    ),
-                    # Si AppState.product_in_modal es None (no cargado aún), usa un fondo predeterminado
-                    rx.color_mode_cond("white", "black")
-                ),
-                # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+                # --- ✨ SIMPLIFICACIÓN CLAVE AQUÍ ✨ ---
+                # Ahora solo usamos la variable computada del estado
+                bg=AppState.lightbox_background_color,
+                # --- ✨ FIN ✨ ---
             ),
             # Estilos del content no cambian
             style={
