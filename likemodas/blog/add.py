@@ -353,56 +353,55 @@ def post_preview(
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
-            bg=colors["bg"],
-            color=colors["text"],
-            padding="1px 10px",
-            border_radius="var(--radius-full)",
-            font_size="0.8em",
-            white_space="nowrap",
+            bg=colors["bg"], color=colors["text"], padding="1px 10px",
+            border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR REVERTIDA Y CORREGIDA PARA PICKERS 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA PARA REFLEJAR APARIENCIA 👇 ---
 
     # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
     # 2. Determina cómo DEBERÍA verse la tarjeta según las configuraciones del editor
-    #    (Esto ayuda a decidir qué colores DEFAULT usar si use_default_style es True)
     card_should_appear_as = rx.cond(
-        AppState.use_default_style,
+        AppState.use_default_style, # Si usa default, la apariencia coincide con el preview
         preview_site_theme,
+        # Si NO usa default, usa la configuración explícita para el modo del preview
         rx.cond(
             preview_site_theme == "light",
-            AppState.edit_light_mode_appearance,
-            AppState.edit_dark_mode_appearance
+            AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
+            AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
         )
     )
 
-    # 3. Asigna colores: Usa defaults si está activado, SI NO, USA LOS COLORES 'LIVE'
+    # 3. Asigna colores: Usa defaults si está activado, SI NO,
+    #    USA LOS DEFAULTS CORRESPONDIENTES A LA APARIENCIA SELECCIONADA.
+    #    (Los colores 'live_' solo los usaremos en el modal artístico)
     card_bg_color = rx.cond(
         AppState.use_default_style,
+        # Si usa default, aplica el color default según cómo debería verse
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # SIEMPRE usa el color 'live' cuando no es default para que los pickers funcionen
-        AppState.live_card_bg_color # <-- REVERTIDO A ESTO
+        # Si NO usa default, aplica el color default según cómo debería verse
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
     )
     title_color = rx.cond(
         AppState.use_default_style,
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        AppState.live_title_color # <-- REVERTIDO A ESTO
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
     )
     price_color = rx.cond(
         AppState.use_default_style,
         rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        AppState.live_price_color # <-- REVERTIDO A ESTO
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
     )
-    # --- 👆 FIN: LÓGICA DE COLOR REVERTIDA Y CORREGIDA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA 👆 ---
 
     return rx.box(
         rx.vstack(
-             rx.box(
+             rx.box( # Contenedor de la imagen
                  rx.image(
-                    src=rx.get_upload_url(first_image_url),
-                    fallback="/image_off.png",
+                    # ... props imagen ...
+                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
@@ -410,30 +409,32 @@ def post_preview(
                         "scale(1)"
                     ),
                     transition="transform 0.2s ease-out",
-                ),
-                rx.badge(
+                 ),
+                 # ... badge ...
+                 rx.badge(
                     rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
-                position="relative", width="100%", height="260px",
-                overflow="hidden",
-                border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                # El fondo de la imagen siempre usa el modo de previsualización
-                bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
+                 position="relative", width="100%", height="260px",
+                 overflow="hidden",
+                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
+                 bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)), # Fondo imagen usa PREVIEW theme
              ),
-             rx.vstack(
-                rx.text(
+             rx.vstack( # Contenedor de la información
+                rx.text( # Título
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
                     color=title_color, # Aplicado
                     style=TITLE_CLAMP_STYLE
                 ),
+                # ... estrellas ...
                 star_rating_display_safe(0, 0, size=24),
-                rx.text(
+                rx.text( # Precio
                     price_cop, size="5", weight="medium",
                     color=price_color # Aplicado
                 ),
+                # ... (resto vstack info y badges de envío) ...
                 rx.spacer(),
                 rx.vstack(
                     rx.grid(
@@ -455,7 +456,7 @@ def post_preview(
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=card_bg_color, # Aplicado
+        bg=card_bg_color, # Aplicado al contenedor principal
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
