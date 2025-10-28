@@ -187,21 +187,20 @@ def edit_post_dialog() -> rx.Component:
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
 
             rx.grid(
-                blog_post_edit_form(), 
-
+                blog_post_edit_form(),
                 rx.vstack(
-                    post_preview( # Llamada normal, is_artistic_preview será False
+                    post_preview( # <-- LLAMADA NORMAL (is_artistic_preview=False)
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
                         first_image_url=AppState.edit_main_image_url_for_preview,
-                        is_imported=AppState.edit_is_imported,
+                        is_imported=AppState.edit_is_imported, 
                         shipping_cost_badge_text=AppState.edit_shipping_cost_badge_text_preview,
                         is_moda_completa=AppState.edit_is_moda_completa,
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
-                        envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
+                        envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview, 
                     ),
-                    personalizar_tarjeta_panel,
+                    personalizar_tarjeta_panel, # <--- Usa el panel simplificado
                     # --- 🚫 ELIMINADA la llamada a 'ajustar_imagen_panel' 🚫 ---
                     spacing="4", 
                     position="sticky", 

@@ -343,9 +343,9 @@ def post_preview(
     moda_completa_tooltip_text: rx.Var[str],
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
-    # +++ NUEVO PARÁMETRO +++
+    # +++ AÑADE ESTE PARÁMETRO +++
     is_artistic_preview: bool = False
-    # ++++++++++++++++++++++
+    # ++++++++++++++++++++++++++
 ) -> rx.Component:
 
     # --- La función interna _preview_badge NO cambia ---
@@ -359,43 +359,54 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V5 - CONTEXTUAL 👇 ---
-
-    # 1. Determina el tema que el PREVIEW está simulando (light o dark)
-    # --- 👇 INICIO: LÓGICA DE COLOR V6 - SIMPLIFICADA 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V9 - CONTEXTUAL 👇 ---
 
     # 1. Determina el tema que el PREVIEW está simulando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
-    # 2. Determina la apariencia explícita que la tarjeta DEBERÍA tener en este preview
-    #    (Solo relevante si use_default_style es False)
+    # 2. Determina la apariencia explícita que la tarjeta DEBERÍA tener
     explicit_appearance = rx.cond(
         preview_site_theme == "light",
         AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
         AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
     )
 
-    # 3. Asigna colores FINALES
+    # 3. Asigna colores FINALES basados en el contexto (Artístico vs. Principal)
     card_bg_color = rx.cond(
         AppState.use_default_style,
-        # Si usa default, los colores de la tarjeta coinciden con el PREVIEW THEME
+        # Default ON: Usa default colors basados en el PREVIEW THEME
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, los colores DEFAULTS de la tarjeta se basan EXCLUSIVAMENTE en la APARIENCIA EXPLÍCITA seleccionada
-        rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG) # Aplica default claro u oscuro según la apariencia
+        # Default OFF: Depende del contexto
+        rx.cond(
+            is_artistic_preview,
+            # Contexto Artístico: Usa LIVE colors para reacción instantánea al picker
+            AppState.live_card_bg_color,
+            # Contexto Principal: Usa DEFAULT colors basados en la APARIENCIA EXPLÍCITA seleccionada
+            rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+        )
     )
+    
     title_color = rx.cond(
         AppState.use_default_style,
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE) # Aplica default claro u oscuro según la apariencia
+        rx.cond(
+            is_artistic_preview,
+            AppState.live_title_color,
+            rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+        )
     )
+    
     price_color = rx.cond(
         AppState.use_default_style,
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE) # Aplica default claro u oscuro según la apariencia
+        rx.cond(
+            is_artistic_preview,
+            AppState.live_price_color,
+            rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+        )
     )
-    # --- 👆 FIN: LÓGICA DE COLOR V6 - SIMPLIFICADA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR FINAL V9 - CONTEXTUAL 👆 ---
 
-    # El resto de la función (return rx.box(...)) NO cambia
     return rx.box(
         rx.vstack(
              rx.box( # Contenedor de la imagen
