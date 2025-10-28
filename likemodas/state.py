@@ -5405,35 +5405,37 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_background_color(self) -> str:
         """
+        [VERSIÓN CORREGIDA PARA EXPORTACIÓN]
         Calcula de forma segura el color de fondo para el lightbox,
-        basándose en la configuración del producto y el tema actual.
+        usando rx.cond anidado para devolver siempre un tipo compatible.
         """
-        # Primero, verifica si hay un producto cargado en el modal
-        if not self.product_in_modal:
-            # Si no hay producto, devuelve un fondo predeterminado basado en el tema
-            return rx.color_mode_cond("white", "black")
-
-        # Si hay producto, aplica la lógica completa
-        is_site_light_mode = rx.color_mode_cond("light", "dark") == "light"
-
-        if is_site_light_mode:
-            # Sitio en modo claro
-            card_should_appear_as = self.product_in_modal.light_mode_appearance
-            if card_should_appear_as == "light":
-                # Tarjeta clara: Usa fondo claro configurado
-                return "white" if self.product_in_modal.lightbox_bg_light == "white" else "black"
-            else: # Tarjeta oscura
-                # Tarjeta oscura: Usa fondo oscuro configurado
-                return "white" if self.product_in_modal.lightbox_bg_dark == "white" else "black"
-        else:
-            # Sitio en modo oscuro
-            card_should_appear_as = self.product_in_modal.dark_mode_appearance
-            if card_should_appear_as == "light":
-                # Tarjeta clara: Usa fondo claro configurado
-                return "white" if self.product_in_modal.lightbox_bg_light == "white" else "black"
-            else: # Tarjeta oscura
-                # Tarjeta oscura: Usa fondo oscuro configurado
-                return "white" if self.product_in_modal.lightbox_bg_dark == "white" else "black"
+        # Condición principal: ¿Existe el producto en el modal?
+        return rx.cond(
+            self.product_in_modal,
+            # Si SÍ existe el producto:
+            rx.cond(
+                # ¿Está el sitio en modo claro?
+                rx.color_mode_cond("light", "dark") == "light",
+                # Sitio en modo CLARO:
+                rx.cond(
+                    self.product_in_modal.light_mode_appearance == "light",
+                    # Tarjeta CLARA: Usa el fondo claro configurado
+                    rx.cond(self.product_in_modal.lightbox_bg_light == "white", "white", "black"),
+                    # Tarjeta OSCURA: Usa el fondo oscuro configurado
+                    rx.cond(self.product_in_modal.lightbox_bg_dark == "white", "white", "black")
+                ),
+                # Sitio en modo OSCURO:
+                rx.cond(
+                    self.product_in_modal.dark_mode_appearance == "light",
+                    # Tarjeta CLARA: Usa el fondo claro configurado
+                    rx.cond(self.product_in_modal.lightbox_bg_light == "white", "white", "black"),
+                    # Tarjeta OSCURA: Usa el fondo oscuro configurado
+                    rx.cond(self.product_in_modal.lightbox_bg_dark == "white", "white", "black")
+                )
+            ),
+            # Si NO existe el producto (valor por defecto):
+            rx.color_mode_cond("white", "black") # Fondo predeterminado basado en el tema
+        )
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     def set_modal_variant_index(self, visual_index: int):
