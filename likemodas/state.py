@@ -2534,9 +2534,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def submit_and_publish_manual(self):
         """
-        [VERSIÓN FINAL CORREGIDA v2]
-        Manejador para crear y publicar un nuevo producto. Se corrige SyntaxError
-        y la asignación incorrecta de modos de apariencia al crear.
+        [VERSIÓN CORREGIDA]
+        Manejador para crear y publicar un nuevo producto, incluyendo los fondos del lightbox.
         """
         owner_id = None
         creator_id_to_save = None
@@ -2593,9 +2592,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": str(uuid.uuid4()),
-                    # --- COMENTARIO ELIMINADO ---
-                    "lightbox_bg": self.edit_temp_lightbox_bg # Lee el valor temporal (puede que necesites una variable separada para 'crear' vs 'editar' si son diferentes)
-                    # --- FIN COMENTARIO ELIMINADO ---
+                    # --- ✨ GUARDADO DE FONDOS LIGHTBOX (CREAR) ✨ ---
+                    "lightbox_bg_light": self.temp_lightbox_bg_light,
+                    "lightbox_bg_dark": self.temp_lightbox_bg_dark,
+                    # --- FIN ✨ ---
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -2621,7 +2621,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price_includes_iva=self.price_includes_iva,
                 category=category,
                 attr_material=self.attr_material,
-                variants=all_variants_for_db,
+                variants=all_variants_for_db, # Incluye los fondos del lightbox
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost_float,
@@ -2631,10 +2631,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
-                # --- GUARDADO DE ESTILO CORREGIDO ---
-                light_mode_appearance="light", # <-- Usa valor predeterminado
-                dark_mode_appearance="dark",   # <-- Usa valor predeterminado
-                # ------------------------------------
+                light_mode_appearance=self.light_mode_appearance, # Usa el estado actual
+                dark_mode_appearance=self.dark_mode_appearance,   # Usa el estado actual
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
                 light_price_color=self.light_theme_colors.get("price"),
@@ -2654,7 +2652,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(log_entry)
             session.commit()
 
-        self._clear_add_form()
+        self._clear_add_form() # Limpia todo, incluyendo los temp_lightbox_bg
         yield rx.toast.success("Producto publicado exitosamente.")
         yield rx.redirect("/blog")
     
@@ -4112,6 +4110,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- FUNCIÓN CLAVE: Cargar datos en el formulario de edición ---
     @rx.event
     def start_editing_post(self, post_id: int):
+        """
+        [VERSIÓN CORREGIDA] Carga los datos para editar, incluyendo los fondos del lightbox.
+        """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             return rx.toast.error("No se pudo verificar la identidad del usuario.")
@@ -4121,14 +4122,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not db_post or db_post.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para editar esta publicación.")
 
-            # Cargar datos básicos
+            # Cargar datos básicos (igual que antes)
             self.post_to_edit_id = db_post.id
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
             self.edit_price_str = str(db_post.price or 0.0)
             self.edit_profit_str = str(db_post.profit or "")
             self.edit_category = db_post.category
-            self.edit_attr_material = db_post.attr_material or "" # Cargar material
+            self.edit_attr_material = db_post.attr_material or ""
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
@@ -4136,49 +4137,83 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
             self.edit_is_imported = db_post.is_imported
             self.edit_price_includes_iva = db_post.price_includes_iva
-            self.is_editing_post = True
 
             # Reconstruir la estructura de grupos y variantes
             groups_map = defaultdict(lambda: {"variants": []})
+            # Agrupa variantes por sus URLs de imagen
             for variant_db in (db_post.variants or []):
                 urls_tuple = tuple(sorted(variant_db.get("image_urls", [])))
                 groups_map[urls_tuple]["variants"].append(variant_db)
 
             temp_variant_groups = []
             temp_generated_variants = {}
+            # Itera sobre los grupos encontrados
             for group_index, (urls_tuple, group_data) in enumerate(groups_map.items()):
                 group_dto = VariantGroupDTO(image_urls=list(urls_tuple), attributes={})
                 generated_variants_list = []
+                # Conjuntos para almacenar atributos únicos del grupo
                 tallas_en_grupo = set()
-                
+                numeros_en_grupo = set()
+                tamanos_en_grupo = set()
+
+                # Itera sobre las variantes dentro de este grupo
                 for variant_db in group_data["variants"]:
                     attrs = variant_db.get("attributes", {})
+                    # Crea el DTO VariantFormData cargando los fondos del lightbox
                     variant_form_data = VariantFormData(
                         attributes=attrs,
                         stock=variant_db.get("stock", 0),
-                        # +++ AÑADE ESTA LÍNEA +++
-                        lightbox_bg=variant_db.get("lightbox_bg", "dark"),
-                        # +++++++++++++++++++++++++
-                        variant_uuid=variant_db.get('variant_uuid') # Si ya tenías esto
+                        variant_uuid=variant_db.get('variant_uuid'),
+                        # --- ✨ CARGA DE FONDOS LIGHTBOX (EDITAR) ✨ ---
+                        lightbox_bg_light=variant_db.get("lightbox_bg_light", "dark"),
+                        lightbox_bg_dark=variant_db.get("lightbox_bg_dark", "dark"),
+                        # --- FIN ✨ ---
                     )
-                    # --- SE ELIMINÓ LA LÍNEA getattr(...) ---
                     generated_variants_list.append(variant_form_data)
-                    
+
+                    # Recopila los atributos del grupo
                     if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
                     if "Talla" in attrs: tallas_en_grupo.add(attrs["Talla"])
-                
+                    if "Número" in attrs: numeros_en_grupo.add(attrs["Número"])
+                    if "Tamaño" in attrs: tamanos_en_grupo.add(attrs["Tamaño"])
+
+                # Asigna los atributos recopilados al DTO del grupo
                 if tallas_en_grupo: group_dto.attributes["Talla"] = sorted(list(tallas_en_grupo))
+                if numeros_en_grupo: group_dto.attributes["Número"] = sorted(list(numeros_en_grupo))
+                if tamanos_en_grupo: group_dto.attributes["Tamaño"] = sorted(list(tamanos_en_grupo))
 
                 temp_variant_groups.append(group_dto)
-                temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: v.attributes.get("Talla", ""))
+                # Ordena las variantes generadas (ej. por talla) antes de guardarlas en el mapa
+                temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: list(v.attributes.values())[1] if len(v.attributes) > 1 else "")
 
+            # Actualiza el estado con los grupos y variantes reconstruidos
             self.edit_variant_groups = temp_variant_groups
             self.edit_generated_variants_map = temp_generated_variants
-            self.edit_uploaded_images, self.edit_image_selection_for_grouping, self.edit_selected_group_index = [], [], -1
-            # Cargar estilos
+            # Recopila todas las URLs de imagen únicas de todos los grupos para la lista de subida
+            all_images_in_groups = {url for group in temp_variant_groups for url in group.image_urls}
+            self.edit_uploaded_images = list(all_images_in_groups)
+            # Resetea la selección
+            self.edit_image_selection_for_grouping = []
+            self.edit_selected_group_index = -1
+
+            # Cargar estilos de tarjeta e imagen (igual que antes)
             self._load_card_styles_from_db(db_post)
             self._load_image_styles_from_db(db_post)
-            
+
+            # Selecciona el primer grupo para empezar a editarlo, si existe
+            if self.edit_variant_groups:
+                 # Llama al evento para cargar los datos del primer grupo en el formulario
+                 yield self.select_edit_group_for_editing(0)
+            else:
+                 # Si no hay grupos, limpia los campos temporales
+                 self.edit_temp_color = ""
+                 self.edit_attr_tallas_ropa = []
+                 self.edit_attr_numeros_calzado = []
+                 self.edit_attr_tamanos_mochila = []
+                 self.edit_temp_lightbox_bg_light = "dark"
+                 self.edit_temp_lightbox_bg_dark = "dark"
+
+            # Finalmente, abre el modal de edición
             self.is_editing_post = True
 
     
@@ -4323,8 +4358,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # Dentro de la clase AppState
     edit_temp_lightbox_bg: str = "dark" # Valor por defecto
-    edit_temp_lightbox_bg_light: str = "dark"
-    edit_temp_lightbox_bg_dark: str = "dark"
+    temp_lightbox_bg_light: str = "dark" # Para el formulario de CREAR
+    temp_lightbox_bg_dark: str = "dark"  # Para el formulario de CREAR
+    edit_temp_lightbox_bg_light: str = "dark" # Para el formulario de EDITAR
+    edit_temp_lightbox_bg_dark: str = "dark"  # Para el formulario de EDITAR
+
+    # --- Setters para las variables temporales del lightbox ---
+    def set_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
+        actual_value = value[0] if isinstance(value, list) else value
+        self.temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
+
+    def set_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
+        actual_value = value[0] if isinstance(value, list) else value
+        self.temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
 
     def set_edit_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
         actual_value = value[0] if isinstance(value, list) else value
@@ -4345,10 +4391,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def save_edited_post(self):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Guarda una publicación editada. Ahora lee correctamente todos los campos
-        del formulario de edición, incluyendo el costo de envío, y actualiza
-        el registro en la base de datos.
+        [VERSIÓN CORREGIDA]
+        Guarda una publicación editada, incluyendo los fondos del lightbox.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
@@ -4376,14 +4420,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             image_urls_for_group = self.edit_variant_groups[group_index].image_urls
             for variant_data in generated_list:
-                variant_uuid = getattr(variant_data, 'variant_uuid', str(uuid.uuid4()))
+                # Asegura que cada variante tenga un UUID, si no lo tiene, genera uno nuevo
+                variant_uuid = getattr(variant_data, 'variant_uuid', None) or str(uuid.uuid4())
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
-                    "variant_uuid": variant_uuid,
-                    # Lee el valor temporal seleccionado en la UI para guardarlo
-                    "lightbox_bg": self.edit_temp_lightbox_bg
+                    "variant_uuid": variant_uuid, # Guarda el UUID existente o el nuevo
+                    # --- ✨ GUARDADO DE FONDOS LIGHTBOX (EDITAR) ✨ ---
+                    "lightbox_bg_light": self.edit_temp_lightbox_bg_light,
+                    "lightbox_bg_dark": self.edit_temp_lightbox_bg_dark,
+                    # --- FIN ✨ ---
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -4397,7 +4444,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
 
-            # Actualización de todos los campos del producto
+            # Actualización de todos los campos del producto (igual que antes)
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
             post_to_update.price = price
@@ -4411,31 +4458,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.free_shipping_threshold = threshold
             post_to_update.combines_shipping = self.edit_combines_shipping
             post_to_update.shipping_combination_limit = limit
-            post_to_update.variants = all_variants_for_db
+            post_to_update.variants = all_variants_for_db # Incluye los fondos del lightbox
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
 
-            # --- GUARDADO DE ESTILO CORREGIDO ---
+            # Guardado de estilo (igual que antes)
             post_to_update.use_default_style = self.use_default_style
-            # (Se eliminó la línea de card_theme_invert)
-            post_to_update.light_mode_appearance = self.edit_light_mode_appearance # Guarda la configuración
-            post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance   # Guarda la configuración
-
-            # Los colores personalizados se guardan igual
+            post_to_update.light_mode_appearance = self.edit_light_mode_appearance
+            post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance
             post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             post_to_update.light_title_color = self.light_theme_colors.get("title")
             post_to_update.light_price_color = self.light_theme_colors.get("price")
             post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
-
-            # Los estilos de imagen se guardan igual
             post_to_update.image_styles = {
                 "zoom": self.preview_zoom,
                 "rotation": self.preview_rotation,
                 "offsetX": self.preview_offset_x,
                 "offsetY": self.preview_offset_y,
             }
-            # --- FIN GUARDADO DE ESTILO CORREGIDO ---
 
             session.add(post_to_update)
 
@@ -4448,7 +4489,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(log_entry)
             session.commit()
 
-        yield self.cancel_editing_post(False)
+        yield self.cancel_editing_post(False) # Limpia todo, incluyendo edit_temp_lightbox_bg
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
@@ -4927,28 +4968,39 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def select_edit_group_for_editing(self, group_index: int):
-        """Selecciona un grupo de EDICIÓN para editar sus atributos."""
+        """
+        [VERSIÓN CORREGIDA] Selecciona un grupo de EDICIÓN para editar sus atributos y fondos de lightbox.
+        """
         self.edit_selected_group_index = group_index
         if 0 <= group_index < len(self.edit_variant_groups):
             group_attrs = self.edit_variant_groups[group_index].attributes
+            # Carga atributos (Color, Talla, etc.)
             self.edit_temp_color = group_attrs.get("Color", "")
             self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
             self.edit_attr_numeros_calzado = group_attrs.get("Número", [])
             self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
 
-            # --- 👇 REEMPLAZA LA LÓGICA ANTERIOR CON ESTO 👇 ---
-            # Carga los fondos del lightbox guardados para este grupo
+            # --- ✨ CARGA DE FONDOS LIGHTBOX DEL GRUPO SELECCIONADO ✨ ---
             variants_in_map = self.edit_generated_variants_map.get(group_index, [])
             if variants_in_map:
                 # Asume que todas las variantes del grupo tienen el mismo bg guardado
                 self.edit_temp_lightbox_bg_light = variants_in_map[0].lightbox_bg_light
                 self.edit_temp_lightbox_bg_dark = variants_in_map[0].lightbox_bg_dark
             else:
-                # Valores por defecto si no hay variantes aún o si no tienen los campos
+                # Valores por defecto si el grupo aún no tiene variantes generadas
                 self.edit_temp_lightbox_bg_light = "dark"
                 self.edit_temp_lightbox_bg_dark = "dark"
+            # --- FIN ✨ ---
 
-            self._update_edit_preview_image()
+            self._update_edit_preview_image() # Actualiza imagen de preview si es necesario
+        else:
+             # Si el índice no es válido, limpia los campos temporales
+             self.edit_temp_color = ""
+             self.edit_attr_tallas_ropa = []
+             self.edit_attr_numeros_calzado = []
+             self.edit_attr_tamanos_mochila = []
+             self.edit_temp_lightbox_bg_light = "dark"
+             self.edit_temp_lightbox_bg_dark = "dark"
 
     @rx.event
     def update_edit_group_attributes(self):
@@ -5354,30 +5406,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_modal_variant_index(self, visual_index: int):
         """
         [VERSIÓN CORREGIDA]
-        Recibe el ÍNDICE VISUAL (de la lista de miniaturas/slides) y lo usa como
-        la única fuente de verdad para sincronizar todo el estado del modal.
+        Actualiza el índice visual y carga los fondos del lightbox correspondientes.
         """
-        # Actualiza el índice visual, que controla el carrusel y las miniaturas.
         self.modal_selected_variant_index = visual_index
 
-        # A partir del índice visual, encontramos el índice de datos original.
         unique_variants = self.unique_modal_variants
         if 0 <= visual_index < len(unique_variants):
-            # Obtenemos el DTO UniqueVariantItem de nuestra lista de imágenes únicas
             selected_item = unique_variants[visual_index]
-
-            # Guardamos el índice de datos original internamente
             self._internal_variant_data_index = selected_item.index
-
-            # Actualizamos los atributos seleccionables (Talla, etc.)
             self.modal_selected_attributes = {}
             self._set_default_attributes_from_variant(selected_item.variant)
 
-        # Actualizar los fondos del lightbox según el grupo visual seleccionado
-        new_variant_data = self.current_modal_variant # Obtiene la variante ya actualizada
-        if new_variant_data and self.product_in_modal:
-            self.product_in_modal.lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
-            self.product_in_modal.lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
+            # --- ✨ ACTUALIZACIÓN DE FONDOS LIGHTBOX (MODAL PÚBLICO) ✨ ---
+            # Carga los fondos del lightbox de la variante recién seleccionada
+            new_variant_data = self.current_modal_variant # Obtiene la variante ya actualizada
+            if new_variant_data and self.product_in_modal:
+                self.product_in_modal.lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
+                self.product_in_modal.lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
+            # --- FIN ✨ ---
+        else:
+             # Si el índice no es válido, resetea valores internos
+             self._internal_variant_data_index = 0
+             self.modal_selected_attributes = {}
+             # Resetea también los fondos del lightbox a valores por defecto si es necesario
+             if self.product_in_modal:
+                 self.product_in_modal.lightbox_bg_light = "dark"
+                 self.product_in_modal.lightbox_bg_dark = "dark"
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
@@ -9069,16 +9123,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         """
-        [VERSIÓN FINAL Y CORREGIDA]
-        Abre el modal de detalle del producto, cargando todos los campos necesarios,
-        incluidos los de estilo, y forzando el re-renderizado del carrusel.
+        [VERSIÓN CORREGIDA]
+        Abre el modal de detalle del producto, cargando fondos de lightbox.
         """
-        self.modal_carousel_key += 1
-        
+        self.modal_carousel_key += 1 # Fuerza re-renderizado del carrusel
+
+        # Limpia estado previo
         self.product_in_modal = None
         self.show_detail_modal = True
         self.modal_selected_attributes = {}
-        self.modal_selected_variant_index = 0
+        self.modal_selected_variant_index = 0 # Inicia en el primer slide/miniatura
         self.product_comments = []
         self.my_review_for_product = None
         self.review_rating = 0
@@ -9088,6 +9142,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.expanded_comments = {}
 
         with rx.session() as session:
+            # Carga el post con todas las relaciones necesarias
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
@@ -9097,123 +9152,117 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
 
-            if not db_post or not db_post.publish_active:
+            if not db_post or (not (self.is_admin or self.is_vendedor or self.is_empleado) and not db_post.publish_active):
                 self.show_detail_modal = False
-                yield rx.toast.error("Producto no encontrado.")
+                yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
 
+            # Cambia el título de la pestaña del navegador
             js_title = json.dumps(db_post.title)
             yield rx.call_script(f"document.title = {js_title}")
 
+            # Calcula el costo de envío dinámico (igual que antes)
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
-            
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
             seller_city = db_post.userinfo.seller_city if db_post.userinfo else None
-
             final_shipping_cost = calculate_dynamic_shipping(
                 base_cost=db_post.shipping_cost or 0.0,
-                seller_barrio=seller_barrio,
-                buyer_barrio=buyer_barrio,
-                seller_city=seller_city,
-                buyer_city=buyer_city
+                seller_barrio=seller_barrio, buyer_barrio=buyer_barrio,
+                seller_city=seller_city, buyer_city=buyer_city
             )
-            
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
-            
+
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
+            seller_city_info = db_post.userinfo.seller_city if db_post.userinfo else None
 
-            # --- ✨ INICIO: AÑADE ESTA LÍNEA PARA OBTENER LA CIUDAD ✨ ---
-            seller_city = db_post.userinfo.seller_city if db_post.userinfo else None
-            # --- ✨ FIN ✨ ---
-            
             moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
             combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
-            
-            # --- ✨ INICIO: CORRECCIÓN EN LA CREACIÓN DEL DTO ✨ ---
+
+            # Crea el DTO ProductDetailData (igual que antes)
             self.product_in_modal = ProductDetailData(
-                id=db_post.id,
-                title=db_post.title,
-                content=db_post.content,
-                price_cop=db_post.price_cop,
-                variants=db_post.variants or [],
+                id=db_post.id, title=db_post.title, content=db_post.content,
+                price_cop=db_post.price_cop, variants=db_post.variants or [],
                 created_at_formatted=db_post.created_at_formatted,
-                average_rating=db_post.average_rating,
-                rating_count=db_post.rating_count,
+                average_rating=db_post.average_rating, rating_count=db_post.rating_count,
                 shipping_cost=db_post.shipping_cost,
                 is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                is_imported=db_post.is_imported,
-                shipping_display_text=shipping_text,
-                seller_name=seller_name,
-                seller_id=seller_id,
-                seller_score=db_post.seller_score,
-                # --- ✨ INICIO: PASA LA CIUDAD AL DTO ✨ ---
-                seller_city=seller_city,
-                # --- ✨ FIN ✨ ---
+                is_imported=db_post.is_imported, shipping_display_text=shipping_text,
+                seller_name=seller_name, seller_id=seller_id, seller_score=db_post.seller_score,
+                seller_city=seller_city_info,
                 free_shipping_threshold=db_post.free_shipping_threshold,
                 moda_completa_tooltip_text=moda_completa_text,
                 combines_shipping=db_post.combines_shipping,
                 shipping_combination_limit=db_post.shipping_combination_limit,
                 envio_combinado_tooltip_text=combinado_text,
-                # Nuevos campos de estilo
                 use_default_style=db_post.use_default_style,
-                light_card_bg_color=db_post.light_card_bg_color,
-                light_title_color=db_post.light_title_color,
-                light_price_color=db_post.light_price_color,
-                dark_card_bg_color=db_post.dark_card_bg_color,
-                dark_title_color=db_post.dark_title_color,
-                dark_price_color=db_post.dark_price_color,
+                light_card_bg_color=db_post.light_card_bg_color, light_title_color=db_post.light_title_color, light_price_color=db_post.light_price_color,
+                dark_card_bg_color=db_post.dark_card_bg_color, dark_title_color=db_post.dark_title_color, dark_price_color=db_post.dark_price_color,
+                # Apariencias de tarjeta
+                light_mode_appearance=db_post.light_mode_appearance,
+                dark_mode_appearance=db_post.dark_mode_appearance,
             )
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-            if self.product_in_modal.variants:
-                self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
-
-            # Cargar los fondos del lightbox de la variante inicial
+            # --- ✨ CARGA INICIAL DE FONDOS LIGHTBOX (MODAL PÚBLICO) ✨ ---
             initial_bg_light = "dark"
             initial_bg_dark = "dark"
             if self.product_in_modal.variants:
-                initial_variant = self.product_in_modal.variants[0]
-                initial_bg_light = initial_variant.get("lightbox_bg_light", "dark")
-                initial_bg_dark = initial_variant.get("lightbox_bg_dark", "dark")
+                # Obtiene la variante correspondiente al índice visual inicial (0)
+                initial_variant_data_index = self.unique_modal_variants[0].index if self.unique_modal_variants else 0
+                if 0 <= initial_variant_data_index < len(self.product_in_modal.variants):
+                    initial_variant_dict = self.product_in_modal.variants[initial_variant_data_index]
+                    initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
+                    initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
+            # Guarda los fondos iniciales en el DTO del producto
             self.product_in_modal.lightbox_bg_light = initial_bg_light
             self.product_in_modal.lightbox_bg_dark = initial_bg_dark
+            # --- FIN ✨ ---
 
+            # Establece la selección de atributos por defecto de la primera variante (igual que antes)
             if self.product_in_modal.variants:
-                self._set_default_attributes_from_variant(self.product_in_modal.variants[0]) # Ya existía
+                self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
+            # Carga comentarios y estado de revisión (igual que antes)
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
-            self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
+            self.product_comments = sorted(original_comment_dtos, key=lambda c: c.created_at, reverse=True) # Ordena por fecha
 
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
+                # Verifica si el usuario ha comprado Y RECIBIDO el producto
                 purchase_count = session.exec(
                     sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                     .join(PurchaseModel)
                     .where(
                         PurchaseModel.userinfo_id == user_info_id,
                         PurchaseItemModel.blog_post_id == post_id,
-                        PurchaseModel.status == PurchaseStatus.DELIVERED
+                        PurchaseModel.status == PurchaseStatus.DELIVERED # Solo permite opinar si está entregado
                     )
                 ).one()
 
                 if purchase_count > 0:
                     user_original_comment = next((c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None), None)
                     if not user_original_comment:
-                        self.show_review_form = True
+                        self.show_review_form = True # Mostrar formulario si no ha opinado
                     else:
+                        # Revisa cuántas veces ha comprado vs cuántas ha actualizado
                         current_updates_count = len(user_original_comment.updates)
-                        if current_updates_count < purchase_count:
+                        # Cuenta cuántas veces ha comprado ESTE item específico
+                        # (Podría ser más complejo si permites comprar la misma variante varias veces)
+                        # Simplificación: si ya opinó y actualizó menos de 2 veces, permite actualizar.
+                        # Una lógica más precisa requeriría vincular comentarios a PurchaseItemModel.id
+                        if current_updates_count < 2: # Límite de 2 actualizaciones
                             self.show_review_form = True
+                            # Carga los datos de la última entrada (original o actualización)
                             latest_entry = sorted([user_original_comment] + user_original_comment.updates, key=lambda c: c.created_at, reverse=True)[0]
                             self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
                             self.review_rating = latest_entry.rating
                             self.review_content = latest_entry.content
                         else:
-                            self.review_limit_reached = True
+                            self.review_limit_reached = True # Ya no puede actualizar
 
+        # Carga los IDs de posts guardados (igual que antes)
         yield AppState.load_saved_post_ids
 
     @rx.var

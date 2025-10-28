@@ -417,39 +417,21 @@ def public_qr_scanner_modal() -> rx.Component:
 
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA] Lightbox con lógica de fondo corregida para usar los nuevos campos de estilo.
+    [VERSIÓN CORREGIDA] Lightbox con lógica de fondo consistente.
     """
+    # El componente 'controls' no necesita cambios
     controls = rx.box(
         rx.hstack(
-            rx.icon_button(
-                rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")),
-                on_click=AppState.toggle_lightbox_lock,
-                variant="ghost", color_scheme="gray", size="2",
-            ),
-            rx.icon_button(
-                rx.icon("zoom-out"),
-                on_click=AppState.zoom_out,
-                variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]
-            ),
-            rx.icon_button(
-                rx.icon("zoom-in"),
-                on_click=AppState.zoom_in,
-                variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]
-            ),
-            rx.dialog.close(
-                rx.icon_button(rx.icon("x"), variant="ghost", color_scheme="gray", size="2")
-            ),
+            rx.icon_button(rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")), on_click=AppState.toggle_lightbox_lock, variant="ghost", color_scheme="gray", size="2"),
+            rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]),
+            rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]),
+            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="ghost", color_scheme="gray", size="2")),
             spacing="2",
         ),
-        padding_x="0.5rem",
-        padding_y="0.3rem",
+        padding_x="0.5rem", padding_y="0.3rem",
         bg=rx.color_mode_cond("rgba(255, 255, 255, 0.6)", "rgba(0, 0, 0, 0.4)"),
-        border_radius="full",
-        position="absolute",
-        top="1.5rem",
-        right="1.5rem",
-        z_index="1500",
-        style={"backdrop_filter": "blur(8px)"},
+        border_radius="full", position="absolute", top="1.5rem", right="1.5rem",
+        z_index="1500", style={"backdrop_filter": "blur(8px)"},
     )
 
     return rx.dialog.root(
@@ -458,49 +440,57 @@ def lightbox_modal() -> rx.Component:
             rx.center(
                 carousel(
                     rx.foreach(
-                        AppState.modal_image_urls, # Usa la lista de imágenes del grupo actual
+                        AppState.modal_image_urls,
                         lambda image_url, index:
                             rx.box(
                                 rx.image(
-                                    src=rx.get_upload_url(image_url),
-                                    alt=AppState.product_in_modal.title,
-                                    max_height="90vh",
-                                    max_width="90vw",
-                                    object_fit="contain",
-                                    transition="transform 0.2s ease-out",
-                                    transform=f"scale({AppState.lightbox_zoom_level})",
+                                    src=rx.get_upload_url(image_url), alt=AppState.product_in_modal.title,
+                                    max_height="90vh", max_width="90vw", object_fit="contain",
+                                    transition="transform 0.2s ease-out", transform=f"scale({AppState.lightbox_zoom_level})",
                                 ),
-                                overflow="auto",
-                                height="100%",
-                                width="100%",
-                                display="flex",
-                                align_items="center",
-                                justify_content="center",
+                                overflow="auto", height="100%", width="100%", display="flex",
+                                align_items="center", justify_content="center",
                             ),
                     ),
                     selected_item=AppState.lightbox_start_index,
-                    swipeable=~AppState.is_lightbox_locked,
-                    show_arrows=~AppState.is_lightbox_locked,
+                    swipeable=~AppState.is_lightbox_locked, show_arrows=~AppState.is_lightbox_locked,
                     show_indicators=False, show_thumbs=False, show_status=False,
                     infinite_loop=True, use_keyboard_arrows=True,
-                    width="100%",
-                    style={"& .thumbs-wrapper": {"display": "none"}},
+                    width="100%", style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
-                width="100%",
-                height="100%",
-                # --- MODIFICACIÓN AQUÍ ---
-                bg=rx.color_mode_cond(
-                    # Si el sitio está en modo CLARO, usa el valor guardado para LUZ
-                    rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
-                    # Si el sitio está en modo OSCURO, usa el valor guardado para OSCURIDAD
-                    rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black")
-                )
-                # --- FIN MODIFICACIÓN ---
+                width="100%", height="100%",
+                # --- ✨ INICIO DE LA LÓGICA DE FONDO CORREGIDA ✨ ---
+                bg=rx.cond(
+                    # Si el producto existe en el modal...
+                    AppState.product_in_modal,
+                    rx.cond(
+                        # 1. ¿Cuál es el tema actual del sitio?
+                        rx.color_mode_cond("light", "dark") == "light", # ¿El sitio está en modo claro?
+                            # Sitio en modo claro:
+                            # 2. ¿Cómo DEBERÍA verse la tarjeta en modo claro según la configuración?
+                            rx.cond(AppState.product_in_modal.light_mode_appearance == "light",
+                                    # Tarjeta quiere verse CLARA: Usa el fondo claro del lightbox configurado
+                                    rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
+                                    # Tarjeta quiere verse OSCURA: Usa el fondo oscuro del lightbox configurado
+                                    rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black")),
+                            # Sitio en modo oscuro:
+                            # 2. ¿Cómo DEBERÍA verse la tarjeta en modo oscuro según la configuración?
+                            rx.cond(AppState.product_in_modal.dark_mode_appearance == "light",
+                                    # Tarjeta quiere verse CLARA: Usa el fondo claro del lightbox configurado
+                                    rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
+                                    # Tarjeta quiere verse OSCURA: Usa el fondo oscuro del lightbox configurado
+                                    rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black"))
+                    ),
+                    # Valor por defecto si product_in_modal es None
+                    rx.color_mode_cond("white", "black") # Fondo predeterminado basado en el tema
+                ),
+                # --- ✨ FIN DE LA LÓGICA DE FONDO CORREGIDA ✨ ---
             ),
-            style={ # Estilos del content (sin cambios)
+            # Estilos del content no cambian
+            style={
                 "position": "fixed", "inset": "0", "width": "auto", "height": "auto",
                 "max_width": "none", "padding": "0", "margin": "0", "border_radius": "0",
-                "background_color": "rgba(0, 0, 0, 0.5)", # Fondo semi-transparente exterior
+                "background_color": "rgba(0, 0, 0, 0.5)",
                 "backdrop_filter": "blur(4px)",
             },
         ),

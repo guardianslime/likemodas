@@ -421,6 +421,31 @@ def blog_post_edit_form() -> rx.Component:
                         rx.button("Guardar Atributos", on_click=AppState.update_edit_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
                         spacing="3", align_items="stretch",
                     ),
+                    # --- ✨ INICIO: AÑADE ESTOS DOS NUEVOS VSTACKS AQUÍ ✨ ---
+                    rx.vstack(
+                        rx.text("Fondo Lightbox (Sitio Claro)", weight="medium"),
+                        rx.segmented_control.root(
+                            rx.segmented_control.item("Oscuro", value="dark"),
+                            rx.segmented_control.item("Blanco", value="white"),
+                            value=AppState.edit_temp_lightbox_bg_light, # Usa 'edit_temp_' para EDITAR
+                            on_change=AppState.set_edit_temp_lightbox_bg_light,
+                            color_scheme="gray", size="1",
+                        ),
+                        spacing="2", align_items="stretch",
+                    ),
+                    rx.vstack(
+                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium"),
+                        rx.segmented_control.root(
+                            rx.segmented_control.item("Oscuro", value="dark"),
+                            rx.segmented_control.item("Blanco", value="white"),
+                            value=AppState.edit_temp_lightbox_bg_dark, # Usa 'edit_temp_' para EDITAR
+                            on_change=AppState.set_edit_temp_lightbox_bg_dark,
+                            color_scheme="gray", size="1",
+                        ),
+                        spacing="2", align_items="stretch",
+                    ),
+                    # --- ✨ FIN ✨ ---
+                    # Columna de Variantes y Stock (contenido existente)
                     rx.vstack(
                          rx.text("Variantes y Stock", weight="medium"),
                         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_edit_variants_for_group(AppState.edit_selected_group_index), type="button"),
