@@ -356,15 +356,15 @@ def post_preview(
     moda_completa_tooltip_text: rx.Var[str],
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
-    # +++ AÑADE ESTE PARÁMETRO +++
-    is_artistic_preview: bool = False
-    # ++++++++++++++++++++++++++
+    is_artistic_preview: bool = False # Parámetro para diferenciar contextos
 ) -> rx.Component:
 
     # --- La función interna _preview_badge NO cambia ---
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # ... (código de _preview_badge sin cambios) ...
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+        # Usa AppState.card_theme_mode para determinar el tema simulado
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
@@ -372,54 +372,84 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V9 - CONTEXTUAL 👇 ---
+
+    # --- LÓGICA DE COLOR CORREGIDA (v10) ---
 
     # 1. Determina el tema que el PREVIEW está simulando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
-    # 2. Determina la apariencia explícita que la tarjeta DEBERÍA tener
+    # 2. Determina la apariencia explícita que la tarjeta DEBERÍA tener ("light" o "dark")
+    #    basado en el tema simulado y las configuraciones guardadas para EDITAR.
     explicit_appearance = rx.cond(
         preview_site_theme == "light",
         AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
         AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
     )
 
-    # 3. Asigna colores FINALES basados en el contexto (Artístico vs. Principal)
+    # 3. Asigna colores FINALES
     card_bg_color = rx.cond(
         AppState.use_default_style,
-        # Default ON: Usa default colors basados en el PREVIEW THEME
+        # Si Default está ON: Usa colores predeterminados basados en el TEMA SIMULADO.
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Default OFF: Depende del contexto
+        # Si Default está OFF:
         rx.cond(
             is_artistic_preview,
-            # Contexto Artístico: Usa LIVE colors para reacción instantánea al picker
+            # Contexto Artístico: Usa colores VIVOS del picker.
             AppState.live_card_bg_color,
-            # Contexto Principal: Usa DEFAULT colors basados en la APARIENCIA EXPLÍCITA seleccionada
-            rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+            # Contexto Edición Principal (NO artístico): Usa colores GUARDADOS o predeterminados
+            # basados en la APARIENCIA EXPLÍCITA que debería tener.
+            rx.cond(
+                explicit_appearance == "light",
+                # Debería verse CLARA: Usa el color claro GUARDADO, o el PREDETERMINADO claro si no hay guardado.
+                AppState.light_theme_colors["bg"].cond(AppState.light_theme_colors["bg"] != "", AppState.light_theme_colors["bg"], DEFAULT_LIGHT_BG),
+                # Debería verse OSCURA: Usa el color oscuro GUARDADO, o el PREDETERMINADO oscuro si no hay guardado.
+                AppState.dark_theme_colors["bg"].cond(AppState.dark_theme_colors["bg"] != "", AppState.dark_theme_colors["bg"], DEFAULT_DARK_BG)
+            )
         )
     )
-    
+
     title_color = rx.cond(
         AppState.use_default_style,
+        # Default ON: Usa predeterminados basados en TEMA SIMULADO.
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        # Default OFF:
         rx.cond(
             is_artistic_preview,
+            # Artístico: Usa colores VIVOS.
             AppState.live_title_color,
-            rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+            # Edición Principal: Usa GUARDADOS o predeterminados basados en APARIENCIA EXPLÍCITA.
+            rx.cond(
+                explicit_appearance == "light",
+                # Clara: Usa título claro GUARDADO o PREDETERMINADO claro.
+                AppState.light_theme_colors["title"].cond(AppState.light_theme_colors["title"] != "", AppState.light_theme_colors["title"], DEFAULT_LIGHT_TITLE),
+                # Oscura: Usa título oscuro GUARDADO o PREDETERMINADO oscuro.
+                AppState.dark_theme_colors["title"].cond(AppState.dark_theme_colors["title"] != "", AppState.dark_theme_colors["title"], DEFAULT_DARK_TITLE)
+            )
         )
     )
-    
+
     price_color = rx.cond(
         AppState.use_default_style,
+        # Default ON: Usa predeterminados basados en TEMA SIMULADO.
         rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        # Default OFF:
         rx.cond(
             is_artistic_preview,
+            # Artístico: Usa colores VIVOS.
             AppState.live_price_color,
-            rx.cond(explicit_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+            # Edición Principal: Usa GUARDADOS o predeterminados basados en APARIENCIA EXPLÍCITA.
+            rx.cond(
+                explicit_appearance == "light",
+                # Clara: Usa precio claro GUARDADO o PREDETERMINADO claro.
+                AppState.light_theme_colors["price"].cond(AppState.light_theme_colors["price"] != "", AppState.light_theme_colors["price"], DEFAULT_LIGHT_PRICE),
+                # Oscura: Usa precio oscuro GUARDADO o PREDETERMINADO oscuro.
+                AppState.dark_theme_colors["price"].cond(AppState.dark_theme_colors["price"] != "", AppState.dark_theme_colors["price"], DEFAULT_DARK_PRICE)
+            )
         )
     )
-    # --- 👆 FIN: LÓGICA DE COLOR FINAL V9 - CONTEXTUAL 👆 ---
+    # --- FIN LÓGICA DE COLOR CORREGIDA (v10) ---
 
+    # --- El resto de la función (estructura de la tarjeta) no cambia ---
     return rx.box(
         rx.vstack(
              rx.box( # Contenedor de la imagen
@@ -427,7 +457,7 @@ def post_preview(
                     src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
-                        AppState.is_hydrated,
+                        AppState.is_hydrated, # Asegura que se aplique solo después de hidratar
                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
                         "scale(1)"
                     ),
@@ -441,45 +471,38 @@ def post_preview(
                  position="relative", width="100%", height="260px",
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 # El fondo DETRÁS de la imagen SÍ usa el modo de previsualización
+                 # El fondo DETRÁS de la imagen SÍ usa el modo de previsualización simulado
                  bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
              ),
-             rx.vstack( # Contenedor de la información (Texto, precio, badges)
-                rx.text( # Título
+             rx.vstack( # Contenedor de la información
+                 rx.text( # Título
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    color=title_color, # COLOR DE TARJETA APLICADO
+                    color=title_color, # COLOR CORREGIDO APLICADO
                     style=TITLE_CLAMP_STYLE
                 ),
-                star_rating_display_safe(0, 0, size=24), # Estrellas
+                star_rating_display_safe(0, 0, size=24), # Estrellas (sin cambios)
                 rx.text( # Precio
                     price_cop, size="5", weight="medium",
-                    color=price_color # COLOR DE TARJETA APLICADO
+                    color=price_color # COLOR CORREGIDO APLICADO
                 ),
                 rx.spacer(),
                 rx.vstack( # Badges de envío
                     rx.grid(
-                        # El _preview_badge usa el preview_site_theme internamente (correcto)
+                        # El _preview_badge usa el preview_site_theme (correcto)
                         _preview_badge(shipping_cost_badge_text, "gray"),
-                        rx.cond(
-                            is_moda_completa,
-                            rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
-                        ),
+                        rx.cond(is_moda_completa, rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text)),
                         columns="auto auto", spacing="2", align="center", justify="start", width="100%",
                     ),
-                    rx.cond(
-                        combines_shipping,
-                        rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text),
-                    ),
+                    rx.cond(combines_shipping, rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text)),
                     spacing="1", align_items="start", width="100%",
                 ),
-                # Color del texto por defecto dentro de esta sección se adaptará al fondo de la tarjeta
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
-            ),
+             ),
             spacing="0", align_items="stretch", height="100%",
         ),
-        width="290px", height="480px",
-        bg=card_bg_color, # COLOR DE TARJETA APLICADO AL FONDO PRINCIPAL
+        width="290px", height="480px", # Dimensiones fijas
+        bg=card_bg_color, # COLOR CORREGIDO APLICADO AL FONDO PRINCIPAL
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
