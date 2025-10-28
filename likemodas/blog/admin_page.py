@@ -110,7 +110,6 @@ def edit_post_dialog() -> rx.Component:
         rx.divider(margin_y="1em"),
         # --- MODIFICACIÓN AQUÍ: Añadir HStack con botón ---
         rx.hstack(
-            rx.text("Personalizar Tarjeta", weight="bold", size="4"),
             rx.spacer(),
             rx.tooltip(
                 rx.icon_button(
@@ -231,8 +230,27 @@ def artist_edit_dialog() -> rx.Component:
     # --- Panel de personalización COMPLETO (con colores) ---
     personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
-        rx.text("Personalizar Tarjeta", weight="bold", size="4"),
-        rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"),
+        # --- AÑADE ESTE HStack ---
+        rx.hstack(
+            rx.text("Personalizar Tarjeta", weight="bold", size="4"),
+            rx.spacer(),
+            rx.tooltip(
+                rx.icon_button(
+                    rx.icon("rotate-ccw", size=14), # Icono de reset
+                    on_click=AppState.reset_card_styles_to_default, # Llama al handler
+                    variant="ghost",
+                    color_scheme="gray",
+                    size="1",
+                    type="button",
+                ),
+                content="Restablecer estilos predeterminados"
+            ),
+            justify="between",
+            width="100%",
+            align_items="center",
+        ),
+        # -------------------------
+        rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"), # Esta línea ya existía
         rx.hstack(
             rx.text("Usar estilo predeterminado", size="3"),
             rx.spacer(),

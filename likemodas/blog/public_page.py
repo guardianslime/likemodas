@@ -489,10 +489,11 @@ def lightbox_modal() -> rx.Component:
                 width="100%",
                 height="100%",
                 # --- MODIFICACIÓN AQUÍ ---
-                bg=rx.cond(
-                    AppState.product_in_modal.lightbox_bg == "white",
-                    "white", # Fondo blanco si se seleccionó
-                    "black"  # Fondo negro (o un gris oscuro si prefieres) por defecto
+                bg=rx.color_mode_cond(
+                    # Si el sitio está en modo CLARO, usa el valor guardado para LUZ
+                    rx.cond(AppState.product_in_modal.lightbox_bg_light == "white", "white", "black"),
+                    # Si el sitio está en modo OSCURO, usa el valor guardado para OSCURIDAD
+                    rx.cond(AppState.product_in_modal.lightbox_bg_dark == "white", "white", "black")
                 )
                 # --- FIN MODIFICACIÓN ---
             ),

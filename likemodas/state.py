@@ -218,10 +218,10 @@ class ProductDetailData(rx.Base):
     dark_card_bg_color: Optional[str] = None
     dark_title_color: Optional[str] = None
     dark_price_color: Optional[str] = None
-    # --- ✨ FIN ✨ ---
-
-    class Config:
-        orm_mode = True
+    lightbox_bg_light: str = "dark"
+    lightbox_bg_dark: str = "dark"
+    # ++++++++++++++++++++++++++++++
+    class Config: orm_mode = True
 
 # DTO para la tarjeta de historial del admin
 class AdminPurchaseCardData(rx.Base):
@@ -383,10 +383,10 @@ class VariantFormData(rx.Base):
     attributes: dict[str, str]
     stock: int = 10
     image_url: str = ""
-    # +++ AÑADE ESTA LÍNEA +++
-    lightbox_bg: str = "dark" # Valor por defecto
-    # +++++++++++++++++++++++++
-    # Puedes necesitar añadir 'variant_uuid' aquí también si lo usas
+    # +++ AÑADE ESTAS DOS LÍNEAS +++
+    lightbox_bg_light: str = "dark" # Fondo para lightbox en modo CLARO del sitio
+    lightbox_bg_dark: str = "dark"  # Fondo para lightbox en modo OSCURO del sitio
+    # ++++++++++++++++++++++++++++++
     variant_uuid: Optional[str] = None
 
 class UserProfileData(rx.Base):
@@ -2595,6 +2595,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "variant_uuid": str(uuid.uuid4()),
                      # Lee el valor temporal seleccionado en la UI para guardarlo
                     "lightbox_bg": self.edit_temp_lightbox_bg # Asumimos que edit_temp_lightbox_bg aplica aquí también
+                    "lightbox_bg_light": self.edit_temp_lightbox_bg_light,
+                    "lightbox_bg_dark": self.edit_temp_lightbox_bg_dark
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -4318,9 +4320,21 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_content = ""
             self.price_str = ""
             self.post_images_in_form = []
+            self.edit_temp_lightbox_bg_light = "dark"
+            self.edit_temp_lightbox_bg_dark = "dark"
 
     # Dentro de la clase AppState
     edit_temp_lightbox_bg: str = "dark" # Valor por defecto
+    edit_temp_lightbox_bg_light: str = "dark"
+    edit_temp_lightbox_bg_dark: str = "dark"
+
+    def set_edit_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
+        actual_value = value[0] if isinstance(value, list) else value
+        self.edit_temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
+
+    def set_edit_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
+        actual_value = value[0] if isinstance(value, list) else value
+        self.edit_temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
 
     # Dentro de la clase AppState
     def set_edit_temp_lightbox_bg(self, value: Union[str, list[str]]):
@@ -4925,16 +4939,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
 
             # --- 👇 REEMPLAZA LA LÓGICA ANTERIOR CON ESTO 👇 ---
-            # Carga el fondo del lightbox guardado para este grupo desde el mapa del editor
+            # Carga los fondos del lightbox guardados para este grupo
             variants_in_map = self.edit_generated_variants_map.get(group_index, [])
             if variants_in_map:
                 # Asume que todas las variantes del grupo tienen el mismo bg guardado
-                self.edit_temp_lightbox_bg = variants_in_map[0].lightbox_bg
+                self.edit_temp_lightbox_bg_light = variants_in_map[0].lightbox_bg_light
+                self.edit_temp_lightbox_bg_dark = variants_in_map[0].lightbox_bg_dark
             else:
-                self.edit_temp_lightbox_bg = "dark" # Valor por defecto si no hay variantes aún
-            # --- 👆 FIN DEL REEMPLAZO 👆 ---
+                # Valores por defecto si no hay variantes aún o si no tienen los campos
+                self.edit_temp_lightbox_bg_light = "dark"
+                self.edit_temp_lightbox_bg_dark = "dark"
 
-        self._update_edit_preview_image()
+            self._update_edit_preview_image()
 
     @rx.event
     def update_edit_group_attributes(self):
@@ -5359,11 +5375,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.modal_selected_attributes = {}
             self._set_default_attributes_from_variant(selected_item.variant)
 
-        # Actualizar el fondo del lightbox según el grupo visual seleccionado
+        # Actualizar los fondos del lightbox según el grupo visual seleccionado
         new_variant_data = self.current_modal_variant # Obtiene la variante ya actualizada
         if new_variant_data and self.product_in_modal:
-            self.product_in_modal.lightbox_bg = new_variant_data.get("lightbox_bg", "dark")
-        # +++++++++++++++++++++++++
+            self.product_in_modal.lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
+            self.product_in_modal.lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
@@ -6140,6 +6156,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.variant_groups = []
         self.generated_variants_map = {}
         self.selected_group_index = -1
+        self.edit_temp_lightbox_bg_light = "dark"
+        self.edit_temp_lightbox_bg_dark = "dark"
         self.temp_color = ""
         self.temp_talla = ""
         self.temp_numero = ""
@@ -9154,15 +9172,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # Cargar el fondo del lightbox de la variante inicial
-            initial_lightbox_bg = "dark"
+            # Cargar los fondos del lightbox de la variante inicial
+            initial_bg_light = "dark"
+            initial_bg_dark = "dark"
             if self.product_in_modal.variants:
                 initial_variant = self.product_in_modal.variants[0]
-                initial_lightbox_bg = initial_variant.get("lightbox_bg", "dark")
-            self.product_in_modal.lightbox_bg = initial_lightbox_bg
+                initial_bg_light = initial_variant.get("lightbox_bg_light", "dark")
+                initial_bg_dark = initial_variant.get("lightbox_bg_dark", "dark")
+            self.product_in_modal.lightbox_bg_light = initial_bg_light
+            self.product_in_modal.lightbox_bg_dark = initial_bg_dark
 
             if self.product_in_modal.variants:
-                self._set_default_attributes_from_variant(self.product_in_modal.variants[0]) # (Esta línea ya existía)
+                self._set_default_attributes_from_variant(self.product_in_modal.variants[0]) # Ya existía
 
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]

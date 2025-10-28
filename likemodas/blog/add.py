@@ -152,22 +152,31 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
                         spacing="3", align_items="stretch",
-                     ),
-                     # +++ AÑADE ESTE NUEVO VSTACK +++
+                    ),
+                    # +++ AÑADE ESTOS DOS NUEVOS VSTACKS +++
                     rx.vstack(
-                        rx.text("Fondo Lightbox", weight="medium"),
+                        rx.text("Fondo Lightbox (Sitio Claro)", weight="medium"),
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
                             rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.edit_temp_lightbox_bg,
-                            on_change=AppState.set_edit_temp_lightbox_bg,
-                            color_scheme="gray", # Opcional
-                            size="1",
+                            value=AppState.edit_temp_lightbox_bg_light,
+                            on_change=AppState.set_edit_temp_lightbox_bg_light,
+                            color_scheme="gray", size="1",
                         ),
-                        rx.text("Color de fondo al ver imagen en pantalla completa.", size="1", color_scheme="gray"),
                         spacing="2", align_items="stretch",
                     ),
-                    # +++++++++++++++++++++++++++++++
+                    rx.vstack(
+                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium"),
+                        rx.segmented_control.root(
+                            rx.segmented_control.item("Oscuro", value="dark"),
+                            rx.segmented_control.item("Blanco", value="white"),
+                            value=AppState.edit_temp_lightbox_bg_dark,
+                            on_change=AppState.set_edit_temp_lightbox_bg_dark,
+                            color_scheme="gray", size="1",
+                        ),
+                        spacing="2", align_items="stretch",
+                    ),
+                    # ++++++++++++++++++++++++++++++++++++++++
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
                         # Usar lambda si la función toma argumentos
@@ -192,7 +201,7 @@ def blog_post_add_form() -> rx.Component:
                                 max_height="200px", type="auto", scrollbars="vertical"
                             )
                         ),
-                         spacing="3", align_items="stretch",
+                        spacing="3", align_items="stretch",
                     ),
                     columns="2", spacing="4", width="100%"
                 ),
@@ -324,7 +333,6 @@ def blog_post_add_form() -> rx.Component:
     ) # --- 👆 FIN DEL rx.form y CORRECCIÓN ESTRUCTURAL 👆 ---
 
 # --- Componente para la previsualización de la tarjeta ---
-# --- Componente para la previsualización de la tarjeta ---
 def post_preview(
     title: rx.Var[str],
     price_cop: rx.Var[str],
@@ -339,6 +347,7 @@ def post_preview(
 
     # --- La función interna _preview_badge NO cambia ---
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # ... (código interno sin cambios) ...
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
@@ -352,43 +361,41 @@ def post_preview(
             white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA (VERSIÓN FINAL PARA PREVIEW) 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR REVERTIDA Y CORREGIDA PARA PICKERS 👇 ---
 
     # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
     # 2. Determina cómo DEBERÍA verse la tarjeta según las configuraciones del editor
+    #    (Esto ayuda a decidir qué colores DEFAULT usar si use_default_style es True)
     card_should_appear_as = rx.cond(
-        AppState.use_default_style, # Si usa default, la apariencia coincide con el preview
+        AppState.use_default_style,
         preview_site_theme,
-        # Si NO usa default, usa la configuración explícita para el modo del preview
         rx.cond(
             preview_site_theme == "light",
-            AppState.edit_light_mode_appearance, # Configuración para modo claro
-            AppState.edit_dark_mode_appearance  # Configuración para modo oscuro
+            AppState.edit_light_mode_appearance,
+            AppState.edit_dark_mode_appearance
         )
     )
 
-    # 3. Asigna colores basados ÚNICAMENTE en 'card_should_appear_as'
-    #    Ya no consideramos 'live_...' aquí, ya que esos son solo para el modal artístico.
+    # 3. Asigna colores: Usa defaults si está activado, SI NO, USA LOS COLORES 'LIVE'
     card_bg_color = rx.cond(
-        card_should_appear_as == "light",
-        # Si debe ser claro: Usa el color personalizado claro guardado O el default claro
-        AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG,
-        # Si debe ser oscuro: Usa el color personalizado oscuro guardado O el default oscuro
-        AppState.dark_theme_colors.get("bg") | DEFAULT_DARK_BG
+        AppState.use_default_style,
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        # SIEMPRE usa el color 'live' cuando no es default para que los pickers funcionen
+        AppState.live_card_bg_color # <-- REVERTIDO A ESTO
     )
     title_color = rx.cond(
-        card_should_appear_as == "light",
-        AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
-        AppState.dark_theme_colors.get("title") | DEFAULT_DARK_TITLE
+        AppState.use_default_style,
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        AppState.live_title_color # <-- REVERTIDO A ESTO
     )
     price_color = rx.cond(
-        card_should_appear_as == "light",
-        AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
-        AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
+        AppState.use_default_style,
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        AppState.live_price_color # <-- REVERTIDO A ESTO
     )
-    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA (VERSIÓN FINAL PARA PREVIEW) 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR REVERTIDA Y CORREGIDA 👆 ---
 
     return rx.box(
         rx.vstack(
