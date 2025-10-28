@@ -351,13 +351,14 @@ def post_preview(
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         # Usa el modo de previsualización para los colores del badge
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        # ... (resto de _preview_badge) ...
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"], color=colors["text"], padding="1px 10px",
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V4 - CORREGIDA Y SIMPLIFICADA 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR SIMPLIFICADA Y FINAL 👇 ---
 
     # 1. Determina el tema que el PREVIEW está simulando (light o dark)
     preview_site_theme = AppState.card_theme_mode
@@ -375,7 +376,7 @@ def post_preview(
     )
 
     # 3. Asigna colores DEFAULTS basados EXCLUSIVAMENTE en 'card_should_appear_as'
-    #    (Ignoramos use_default_style aquí porque si es False, queremos los defaults correspondientes a la apariencia)
+    #    Esta preview IGNORA los colores personalizados guardados.
     card_bg_color = rx.cond(
         card_should_appear_as == "light",
         DEFAULT_LIGHT_BG,  # Usa default claro si debe verse clara
@@ -391,7 +392,7 @@ def post_preview(
         DEFAULT_LIGHT_PRICE,
         DEFAULT_DARK_PRICE
     )
-    # --- 👆 FIN: LÓGICA DE COLOR FINAL V4 - CORREGIDA Y SIMPLIFICADA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR SIMPLIFICADA Y FINAL 👆 ---
 
     return rx.box(
         rx.vstack(
