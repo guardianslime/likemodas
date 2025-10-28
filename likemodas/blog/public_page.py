@@ -434,6 +434,9 @@ def lightbox_modal() -> rx.Component:
         z_index="1500", style={"backdrop_filter": "blur(8px)"},
     )
 
+    # --- ✨ Obtiene la tupla de configuración del estado ✨ ---
+    bg_settings = AppState.lightbox_background_settings
+
     return rx.dialog.root(
         rx.dialog.content(
             controls,
@@ -459,9 +462,12 @@ def lightbox_modal() -> rx.Component:
                     width="100%", style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%", height="100%",
-                # --- ✨ SIMPLIFICACIÓN CLAVE AQUÍ ✨ ---
-                # Ahora solo usamos la variable computada del estado
-                bg=AppState.lightbox_background_color,
+                # --- ✨ APLICA rx.color_mode_cond AQUÍ ✨ ---
+                # Usa los valores de la tupla devuelta por la variable computada
+                bg=rx.color_mode_cond(
+                    light=bg_settings[0], # El primer elemento es para el modo claro
+                    dark=bg_settings[1]   # El segundo elemento es para el modo oscuro
+                ),
                 # --- ✨ FIN ✨ ---
             ),
             # Estilos del content no cambian
