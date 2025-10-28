@@ -357,49 +357,41 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V3 - CORREGIDA 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR FINAL V4 - CORREGIDA Y SIMPLIFICADA 👇 ---
 
     # 1. Determina el tema que el PREVIEW está simulando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
-    # 2. Determina la apariencia explícita deseada si use_default_style es False
-    explicit_appearance = rx.cond(
-        preview_site_theme == "light",
-        AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
-        AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
+    # 2. Determina la apariencia explícita que la tarjeta DEBERÍA tener en este preview
+    card_should_appear_as = rx.cond(
+        AppState.use_default_style, # Si usa default, la apariencia coincide con el preview
+        preview_site_theme,
+        # Si NO usa default, usa la configuración explícita para el modo del preview
+        rx.cond(
+            preview_site_theme == "light",
+            AppState.edit_light_mode_appearance, # Configuración seleccionada para modo claro
+            AppState.edit_dark_mode_appearance  # Configuración seleccionada para modo oscuro
+        )
     )
 
-    # 3. Asigna colores FINALES
+    # 3. Asigna colores DEFAULTS basados EXCLUSIVAMENTE en 'card_should_appear_as'
+    #    (Ignoramos use_default_style aquí porque si es False, queremos los defaults correspondientes a la apariencia)
     card_bg_color = rx.cond(
-        AppState.use_default_style,
-        # Si usa default, los colores de la tarjeta coinciden con el PREVIEW THEME
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, los colores de la tarjeta se basan en la APARIENCIA EXPLÍCITA seleccionada
-        rx.cond(
-            explicit_appearance == "light",
-            AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG, # Usa el guardado claro o fallback
-            AppState.dark_theme_colors.get("bg") | DEFAULT_DARK_BG   # Usa el guardado oscuro o fallback
-        )
+        card_should_appear_as == "light",
+        DEFAULT_LIGHT_BG,  # Usa default claro si debe verse clara
+        DEFAULT_DARK_BG    # Usa default oscuro si debe verse oscura
     )
     title_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        rx.cond(
-            explicit_appearance == "light",
-            AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
-            AppState.dark_theme_colors.get("title") | DEFAULT_DARK_TITLE
-        )
+        card_should_appear_as == "light",
+        DEFAULT_LIGHT_TITLE,
+        DEFAULT_DARK_TITLE
     )
     price_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        rx.cond(
-            explicit_appearance == "light",
-            AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
-            AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
-        )
+        card_should_appear_as == "light",
+        DEFAULT_LIGHT_PRICE,
+        DEFAULT_DARK_PRICE
     )
-    # --- 👆 FIN: LÓGICA DE COLOR FINAL V3 - CORREGIDA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR FINAL V4 - CORREGIDA Y SIMPLIFICADA 👆 ---
 
     return rx.box(
         rx.vstack(
