@@ -3375,10 +3375,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- FUNCIÓN INTERNA MODIFICADA ---
     def _update_live_colors(self):
         """
-        [NUEVA FUNCIÓN INTERNA]
+        [VERSIÓN REFINADA]
         Calcula y actualiza las variables live_*_color basándose en
         use_default_style, card_theme_mode (preview mode), y las
-        edit_*_mode_appearance seleccionadas.
+        edit_*_mode_appearance seleccionadas. Prioriza los colores
+        personalizados guardados si existen.
         """
         is_light_preview = self.card_theme_mode == "light"
 
@@ -3388,18 +3389,28 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.live_title_color = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
             self.live_price_color = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
         else:
-            # Si NO se usa el default, determina cómo DEBERÍA verse la tarjeta
+            # Si NO se usa el default:
+            # 1. Determina cómo DEBERÍA verse la tarjeta según la selección de apariencia
             target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
 
-            # Aplica los colores default CORRESPONDIENTES a la apariencia objetivo
+            # 2. Selecciona el diccionario de colores guardados y los defaults correspondientes
+            #    a la APARIENCIA OBJETIVO.
             if target_appearance == "light":
-                self.live_card_bg_color = DEFAULT_LIGHT_BG
-                self.live_title_color = DEFAULT_LIGHT_TITLE
-                self.live_price_color = DEFAULT_LIGHT_PRICE
+                colors_to_try = self.light_theme_colors # Colores guardados para el tema claro
+                default_bg = DEFAULT_LIGHT_BG
+                default_title = DEFAULT_LIGHT_TITLE
+                default_price = DEFAULT_LIGHT_PRICE
             else: # target_appearance == "dark"
-                self.live_card_bg_color = DEFAULT_DARK_BG
-                self.live_title_color = DEFAULT_DARK_TITLE
-                self.live_price_color = DEFAULT_DARK_PRICE
+                colors_to_try = self.dark_theme_colors # Colores guardados para el tema oscuro
+                default_bg = DEFAULT_DARK_BG
+                default_title = DEFAULT_DARK_TITLE
+                default_price = DEFAULT_DARK_PRICE
+
+            # 3. Aplica los colores: Intenta usar el color guardado, si no existe, usa el default correspondiente.
+            #    Esto evita mezclar colores de temas distintos.
+            self.live_card_bg_color = colors_to_try.get("bg") or default_bg
+            self.live_title_color = colors_to_try.get("title") or default_title
+            self.live_price_color = colors_to_try.get("price") or default_price
 
     # --- SETTERS MODIFICADOS ---
     # (Llaman a _update_live_colors después de cambiar el valor)
