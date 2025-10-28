@@ -5434,35 +5434,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_background_settings(self) -> tuple[str, str]:
         """
-        [VERSIÓN CORREGIDA PARA EXPORTACIÓN V6 - DEVUELVE TUPLA]
-        Determina los colores de fondo ("white" o "black") que deberían usarse
-        para el lightbox en modo claro y oscuro del sitio, respectivamente,
-        basándose en la configuración del producto.
-        Devuelve una tupla: (fondo_para_modo_claro, fondo_para_modo_oscuro).
+        [VERSIÓN CORREGIDA PARA EXPORTACIÓN V7 - LÓGICA PYTHON PURA]
+        Determina los colores de fondo ("white" o "black") usando lógica Python
+        y devuelve una tupla de strings puros.
         """
         # --- Usa las variables _safe_* que ya verifican si product_in_modal existe ---
+        # --- y devuelven strings predeterminados seguros ---
+        light_appearance = self._safe_light_mode_appearance
+        dark_appearance = self._safe_dark_mode_appearance
+        lightbox_light_pref = self._safe_lightbox_bg_light
+        lightbox_dark_pref = self._safe_lightbox_bg_dark
 
-        # Determina qué fondo usar si el sitio está en MODO CLARO
-        light_mode_bg = rx.cond(
-            self._safe_light_mode_appearance == "light", # ¿Tarjeta quiere verse CLARA?
-            # Tarjeta CLARA: Usa fondo claro configurado
-            rx.cond(self._safe_lightbox_bg_light == "white", "white", "black"),
-            # Tarjeta OSCURA: Usa fondo oscuro configurado
-            rx.cond(self._safe_lightbox_bg_dark == "white", "white", "black")
-        )
+        # --- Lógica Python para determinar el fondo en MODO CLARO del sitio ---
+        light_mode_bg_string: str
+        if light_appearance == "light": # Tarjeta quiere verse CLARA
+            light_mode_bg_string = "white" if lightbox_light_pref == "white" else "black"
+        else: # Tarjeta quiere verse OSCURA
+            light_mode_bg_string = "white" if lightbox_dark_pref == "white" else "black"
 
-        # Determina qué fondo usar si el sitio está en MODO OSCURO
-        dark_mode_bg = rx.cond(
-            self._safe_dark_mode_appearance == "light", # ¿Tarjeta quiere verse CLARA?
-            # Tarjeta CLARA: Usa fondo claro configurado
-            rx.cond(self._safe_lightbox_bg_light == "white", "white", "black"),
-            # Tarjeta OSCURA: Usa fondo oscuro configurado
-            rx.cond(self._safe_lightbox_bg_dark == "white", "white", "black")
-        )
+        # --- Lógica Python para determinar el fondo en MODO OSCURO del sitio ---
+        dark_mode_bg_string: str
+        if dark_appearance == "light": # Tarjeta quiere verse CLARA
+            dark_mode_bg_string = "white" if lightbox_light_pref == "white" else "black"
+        else: # Tarjeta quiere verse OSCURA
+            dark_mode_bg_string = "white" if lightbox_dark_pref == "white" else "black"
 
-        # Devuelve ambos resultados como una tupla.
-        # Reflex manejará la evaluación de los rx.cond internos aquí.
-        return (light_mode_bg, dark_mode_bg)
+        # Devuelve una tupla que contiene solo strings de Python
+        return (light_mode_bg_string, dark_mode_bg_string)
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     def set_modal_variant_index(self, visual_index: int):
