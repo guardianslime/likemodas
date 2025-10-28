@@ -347,7 +347,6 @@ def post_preview(
 
     # --- La función interna _preview_badge NO cambia ---
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        # ... (código interno sin cambios) ...
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
@@ -357,7 +356,7 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR CORREGIDA PARA REFLEJAR APARIENCIA 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR FINAL Y CORRECTA PARA PREVIEW 👇 ---
 
     # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
     preview_site_theme = AppState.card_theme_mode
@@ -374,33 +373,42 @@ def post_preview(
         )
     )
 
-    # 3. Asigna colores: Usa defaults si está activado, SI NO,
-    #    USA LOS DEFAULTS CORRESPONDIENTES A LA APARIENCIA SELECCIONADA.
-    #    (Los colores 'live_' solo los usaremos en el modal artístico)
+    # 3. Asigna colores:
     card_bg_color = rx.cond(
         AppState.use_default_style,
-        # Si usa default, aplica el color default según cómo debería verse
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, aplica el color default según cómo debería verse
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+        # Si usa default, aplica el color default según el MODO DE PREVISUALIZACIÓN
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        # Si NO usa default, aplica los colores GUARDADOS según CÓMO DEBERÍA VERSE
+        rx.cond(
+            card_should_appear_as == "light",
+            AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG, # Usa el guardado claro o fallback
+            AppState.dark_theme_colors.get("bg") | DEFAULT_DARK_BG   # Usa el guardado oscuro o fallback
+        )
     )
     title_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        rx.cond(
+            card_should_appear_as == "light",
+            AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
+            AppState.dark_theme_colors.get("title") | DEFAULT_DARK_TITLE
+        )
     )
     price_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        rx.cond(
+            card_should_appear_as == "light",
+            AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
+            AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
+        )
     )
-    # --- 👆 FIN: LÓGICA DE COLOR CORREGIDA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR FINAL Y CORRECTA 👆 ---
 
     return rx.box(
         rx.vstack(
              rx.box( # Contenedor de la imagen
                  rx.image(
-                    # ... props imagen ...
                     src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
@@ -410,16 +418,16 @@ def post_preview(
                     ),
                     transition="transform 0.2s ease-out",
                  ),
-                 # ... badge ...
-                 rx.badge(
+                 rx.badge( # Badge Importado/Nacional
                     rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                ),
+                 ),
                  position="relative", width="100%", height="260px",
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)), # Fondo imagen usa PREVIEW theme
+                 # El fondo de la imagen siempre usa el modo de previsualización
+                 bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
              ),
              rx.vstack( # Contenedor de la información
                 rx.text( # Título
@@ -428,15 +436,13 @@ def post_preview(
                     color=title_color, # Aplicado
                     style=TITLE_CLAMP_STYLE
                 ),
-                # ... estrellas ...
-                star_rating_display_safe(0, 0, size=24),
+                star_rating_display_safe(0, 0, size=24), # Estrellas (siempre vacías en preview)
                 rx.text( # Precio
                     price_cop, size="5", weight="medium",
                     color=price_color # Aplicado
                 ),
-                # ... (resto vstack info y badges de envío) ...
                 rx.spacer(),
-                rx.vstack(
+                rx.vstack( # Badges de envío
                     rx.grid(
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
