@@ -186,7 +186,7 @@ def edit_post_dialog() -> rx.Component:
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        is_artistic_preview=False # Importante: indica que es la preview normal
+                        # LA LÍNEA is_artistic_preview=False SE ELIMINA
                     ),
                     personalizar_tarjeta_panel, # El panel simplificado que acabamos de definir
                     spacing="4", position="sticky", top="0", width="350px", # Ajusta el width si es necesario
@@ -317,7 +317,8 @@ def artist_edit_dialog() -> rx.Component:
                 ),
                 # Columna Derecha: Previsualización
                 rx.vstack(
-                    post_preview( # Llamada con el nuevo parámetro
+                    # La previsualización artística (SIN is_artistic_preview=True)
+                    post_preview( # Llamada SIN el parámetro
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
                         first_image_url=AppState.edit_main_image_url_for_preview,
@@ -327,11 +328,9 @@ def artist_edit_dialog() -> rx.Component:
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        # +++ AÑADE ESTA LÍNEA +++
-                        is_artistic_preview=True
-                        # ++++++++++++++++++++++
+                        # LA LÍNEA is_artistic_preview=True SE ELIMINA
                     ),
-                    rx.button(
+                    rx.button( # Botón de guardar cambios artísticos
                         "Guardar Cambios Artísticos",
                         on_click=AppState.save_artist_customization,
                         width="100%",

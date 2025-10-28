@@ -3402,18 +3402,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.live_price_color = self.light_price_color_input if is_light else self.dark_price_color_input
 
     def toggle_preview_mode(self, mode: str | list[str]):
-        """Cambia entre la previsualización del modo claro y oscuro."""
-        self.card_theme_mode = mode
-        if mode == "light":
-            # Carga los colores guardados para el modo claro en los pickers
-            self.live_card_bg_color = self.light_theme_colors.get("bg") or "#FFFFFF"
-            self.live_title_color = self.light_theme_colors.get("title") or "#1C1C1C"
-            self.live_price_color = self.light_theme_colors.get("price") or "#6F6F6F"
+        """
+        Cambia entre la previsualización del modo claro y oscuro, Y ACTUALIZA
+        los colores 'live_' que usa directamente el componente post_preview.
+        """
+        # Asegura que 'mode' sea un string
+        actual_mode = mode[0] if isinstance(mode, list) else mode
+        self.card_theme_mode = actual_mode # 'light' o 'dark'
+
+        # Ahora, basándonos en el modo de previsualización y si se usa el default,
+        # actualizamos las variables 'live_'
+        is_light_preview = actual_mode == "light"
+
+        if self.use_default_style:
+            self.live_card_bg_color = DEFAULT_LIGHT_BG if is_light_preview else DEFAULT_DARK_BG
+            self.live_title_color = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
+            self.live_price_color = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
         else:
-            # Carga los colores guardados para el modo oscuro en los pickers
-            self.live_card_bg_color = self.dark_theme_colors.get("bg") or "#1C1C1C"
-            self.live_title_color = self.dark_theme_colors.get("title") or "#F5F5F5"
-            self.live_price_color = self.dark_theme_colors.get("price") or "#A0A0A0"
+            # Usa los colores guardados para el tema correspondiente
+            theme_colors_to_use = self.light_theme_colors if is_light_preview else self.dark_theme_colors
+            default_bg = DEFAULT_LIGHT_BG if is_light_preview else DEFAULT_DARK_BG
+            default_title = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
+            default_price = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
+
+            self.live_card_bg_color = theme_colors_to_use.get("bg") or default_bg
+            self.live_title_color = theme_colors_to_use.get("title") or default_title
+            self.live_price_color = theme_colors_to_use.get("price") or default_price
 
     # Setters para los color pickers (ahora modifican los colores 'vivos')
     def set_live_card_bg_color(self, color: str):
@@ -3431,8 +3445,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Guarda la personalización del modo actualmente seleccionado."""
         # Al guardar, asumimos que el usuario ya no quiere el estilo predeterminado.
         self.use_default_style = False
-        
+
         if self.card_theme_mode == "light":
+            # Guarda los colores 'live' (del picker) en el diccionario del tema claro
             self.light_theme_colors = {
                 "bg": self.live_card_bg_color,
                 "title": self.live_title_color,
@@ -3440,6 +3455,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
             yield rx.toast.success("Estilo para MODO CLARO guardado.")
         else:
+            # Guarda los colores 'live' (del picker) en el diccionario del tema oscuro
             self.dark_theme_colors = {
                 "bg": self.live_card_bg_color,
                 "title": self.live_title_color,
@@ -3451,22 +3467,24 @@ class AppState(reflex_local_auth.LocalAuthState):
     def _clear_card_styles(self):
         """Limpia todos los estados de estilo al resetear el formulario."""
         self.use_default_style = True
-        self.card_theme_mode = "light"
-        # --- LA LÍNEA PROBLEMÁTICA HA SIDO ELIMINADA DE AQUÍ ---
+        self.card_theme_mode = "light" # Vuelve a preview claro
 
+        # Resetea colores 'live' a los defaults del modo claro
         self.live_card_bg_color = DEFAULT_LIGHT_BG
         self.live_title_color = DEFAULT_LIGHT_TITLE
         self.live_price_color = DEFAULT_LIGHT_PRICE
+
+        # Limpia los colores guardados
         self.light_theme_colors = {"bg": "", "title": "", "price": ""}
         self.dark_theme_colors = {"bg": "", "title": "", "price": ""}
-        # --- Asegúrate de que estas dos líneas estén presentes ---
-        self.edit_light_mode_appearance = "light" # Resetea a 'light'
-        self.edit_dark_mode_appearance = "dark"   # Resetea a 'dark'
+
+        # Resetea las selecciones de apariencia a los defaults
+        self.edit_light_mode_appearance = "light"
+        self.edit_dark_mode_appearance = "dark"
 
     def _load_card_styles_from_db(self, db_post: BlogPostModel):
         """Carga los estilos guardados desde un objeto de la base de datos."""
         self.use_default_style = db_post.use_default_style
-        # --- LA LÍNEA PROBLEMÁTICA HA SIDO ELIMINADA DE AQUÍ ---
 
         self.light_theme_colors = {
             "bg": db_post.light_card_bg_color or "",
@@ -3478,12 +3496,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             "title": db_post.dark_title_color or "",
             "price": db_post.dark_price_color or "",
         }
-        # --- Asegúrate de que estas dos líneas estén presentes ---
-        self.edit_light_mode_appearance = db_post.light_mode_appearance
-        self.edit_dark_mode_appearance = db_post.dark_mode_appearance
-        # -----------------------------------------------------
-        # Inicia la previsualización en modo claro por defecto
-        self.toggle_preview_mode("light")
+        self.edit_light_mode_appearance = db_post.light_mode_appearance # Carga apariencia modo claro
+        self.edit_dark_mode_appearance = db_post.dark_mode_appearance   # Carga apariencia modo oscuro
+
+        # Inicia la previsualización en modo claro por defecto Y ACTUALIZA LOS COLORES LIVE
+        self.toggle_preview_mode("light") # Llama a la función que ahora actualiza 'live_...'
 
     show_color_picker: bool = False
         
@@ -4214,7 +4231,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                  self.edit_temp_lightbox_bg_dark = "dark"
 
             # Finalmente, abre el modal de edición
-            self.is_editing_post = True
+            yield self.toggle_preview_mode(self.card_theme_mode)
+
+            self.is_editing_post = True # Abre el modal al final
 
     
     # --- ⚙️ INICIO: LÓGICA FALTANTE PARA GESTIONAR VARIANTES EN EL FORMULARIO DE EDICIÓN ⚙️ ---
@@ -4974,13 +4993,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_selected_group_index = group_index
         if 0 <= group_index < len(self.edit_variant_groups):
             group_attrs = self.edit_variant_groups[group_index].attributes
-            # Carga atributos (Color, Talla, etc.)
+            # Carga atributos (Color, Talla, etc.) - Igual que antes
             self.edit_temp_color = group_attrs.get("Color", "")
             self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
             self.edit_attr_numeros_calzado = group_attrs.get("Número", [])
             self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
 
-            # --- ✨ CARGA DE FONDOS LIGHTBOX DEL GRUPO SELECCIONADO ✨ ---
+            # --- ✨ CARGA DE FONDOS LIGHTBOX DEL GRUPO SELECCIONADO (EDITAR) ✨ ---
             variants_in_map = self.edit_generated_variants_map.get(group_index, [])
             if variants_in_map:
                 # Asume que todas las variantes del grupo tienen el mismo bg guardado
@@ -4992,9 +5011,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.edit_temp_lightbox_bg_dark = "dark"
             # --- FIN ✨ ---
 
-            self._update_edit_preview_image() # Actualiza imagen de preview si es necesario
+            self._update_edit_preview_image() # Actualiza imagen de preview
         else:
-             # Si el índice no es válido, limpia los campos temporales
+             # Limpia campos si el índice no es válido
              self.edit_temp_color = ""
              self.edit_attr_tallas_ropa = []
              self.edit_attr_numeros_calzado = []
@@ -5435,34 +5454,44 @@ class AppState(reflex_local_auth.LocalAuthState):
     def lightbox_background_settings(self) -> tuple[str, str]:
         """
         [VERSIÓN CORREGIDA PARA EXPORTACIÓN V7 - LÓGICA PYTHON PURA]
-        Determina los colores de fondo ("white" o "black") usando lógica Python
-        y devuelve una tupla de strings puros.
+        Determina los colores de fondo ("white" o "black") para el lightbox
+        usando las variables 'current_lightbox_bg...' y la apariencia deseada.
         """
-        # --- Usa las variables _safe_* que ya verifican si product_in_modal existe ---
-        # --- y devuelven strings predeterminados seguros ---
-        light_appearance = self._safe_light_mode_appearance
-        dark_appearance = self._safe_dark_mode_appearance
-        lightbox_light_pref = self._safe_lightbox_bg_light
-        lightbox_dark_pref = self._safe_lightbox_bg_dark
+        # Obtenemos cómo debería verse la tarjeta (clara u oscura)
+        light_appearance = self._safe_light_mode_appearance # ej: "light" o "dark"
+        dark_appearance = self._safe_dark_mode_appearance   # ej: "light" o "dark"
 
-        # --- Lógica Python para determinar el fondo en MODO CLARO del sitio ---
+        # Obtenemos la preferencia de fondo guardada para la variante actual
+        lightbox_pref_if_card_light = self.current_lightbox_bg_light # ej: "white" o "dark"
+        lightbox_pref_if_card_dark = self.current_lightbox_bg_dark   # ej: "white" o "dark"
+
+        # Lógica para MODO CLARO del sitio
         light_mode_bg_string: str
-        if light_appearance == "light": # Tarjeta quiere verse CLARA
-            light_mode_bg_string = "white" if lightbox_light_pref == "white" else "black"
-        else: # Tarjeta quiere verse OSCURA
-            light_mode_bg_string = "white" if lightbox_dark_pref == "white" else "black"
+        if light_appearance == "light": # Tarjeta quiere verse CLARA en modo claro del sitio
+            # Usa la preferencia para tarjetas claras
+            light_mode_bg_string = "white" if lightbox_pref_if_card_light == "white" else "black"
+        else: # Tarjeta quiere verse OSCURA en modo claro del sitio
+            # Usa la preferencia para tarjetas oscuras
+            light_mode_bg_string = "white" if lightbox_pref_if_card_dark == "white" else "black"
 
-        # --- Lógica Python para determinar el fondo en MODO OSCURO del sitio ---
+        # Lógica para MODO OSCURO del sitio
         dark_mode_bg_string: str
-        if dark_appearance == "light": # Tarjeta quiere verse CLARA
-            dark_mode_bg_string = "white" if lightbox_light_pref == "white" else "black"
-        else: # Tarjeta quiere verse OSCURA
-            dark_mode_bg_string = "white" if lightbox_dark_pref == "white" else "black"
+        if dark_appearance == "light": # Tarjeta quiere verse CLARA en modo oscuro del sitio
+            # Usa la preferencia para tarjetas claras
+            dark_mode_bg_string = "white" if lightbox_pref_if_card_light == "white" else "black"
+        else: # Tarjeta quiere verse OSCURA en modo oscuro del sitio
+            # Usa la preferencia para tarjetas oscuras
+            dark_mode_bg_string = "white" if lightbox_pref_if_card_dark == "white" else "black"
 
-        # Devuelve una tupla que contiene solo strings de Python
+        # Devuelve ("fondo_para_modo_claro", "fondo_para_modo_oscuro")
         return (light_mode_bg_string, dark_mode_bg_string)
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # --- NUEVAS VARIABLES para el fondo del lightbox actual ---
+    current_lightbox_bg_light: str = "dark" # Fondo para lightbox si la tarjeta debe verse CLARA
+    current_lightbox_bg_dark: str = "dark"  # Fondo para lightbox si la tarjeta debe verse OSCURA
+
+    # --- MÉTODO MODIFICADO: set_modal_variant_index ---
+    # (Este se llama cuando haces clic en una miniatura en el modal)
     def set_modal_variant_index(self, visual_index: int):
         """
         [VERSIÓN CORREGIDA]
@@ -5478,20 +5507,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._set_default_attributes_from_variant(selected_item.variant)
 
             # --- ✨ ACTUALIZACIÓN DE FONDOS LIGHTBOX (MODAL PÚBLICO) ✨ ---
-            # Carga los fondos del lightbox de la variante recién seleccionada
-            new_variant_data = self.current_modal_variant # Obtiene la variante ya actualizada
-            if new_variant_data and self.product_in_modal:
-                self.product_in_modal.lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
-                self.product_in_modal.lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
+            # Carga los fondos del lightbox DESDE LA VARIANTE seleccionada
+            new_variant_data = selected_item.variant # Usamos la variante directamente
+            if new_variant_data:
+                # Leemos la configuración guardada EN la variante
+                self.current_lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
+                self.current_lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
+            else:
+                 # Valores por defecto si algo falla
+                 self.current_lightbox_bg_light = "dark"
+                 self.current_lightbox_bg_dark = "dark"
             # --- FIN ✨ ---
         else:
              # Si el índice no es válido, resetea valores internos
              self._internal_variant_data_index = 0
              self.modal_selected_attributes = {}
-             # Resetea también los fondos del lightbox a valores por defecto si es necesario
-             if self.product_in_modal:
-                 self.product_in_modal.lightbox_bg_light = "dark"
-                 self.product_in_modal.lightbox_bg_dark = "dark"
+             # Resetea también los fondos del lightbox a valores por defecto
+             self.current_lightbox_bg_light = "dark"
+             self.current_lightbox_bg_dark = "dark"
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
@@ -9267,16 +9300,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             # --- ✨ CARGA INICIAL DE FONDOS LIGHTBOX (MODAL PÚBLICO) ✨ ---
             initial_bg_light = "dark"
             initial_bg_dark = "dark"
-            if self.product_in_modal.variants:
-                # Obtiene la variante correspondiente al índice visual inicial (0)
-                initial_variant_data_index = self.unique_modal_variants[0].index if self.unique_modal_variants else 0
-                if 0 <= initial_variant_data_index < len(self.product_in_modal.variants):
-                    initial_variant_dict = self.product_in_modal.variants[initial_variant_data_index]
-                    initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
-                    initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
-            # Guarda los fondos iniciales en el DTO del producto
-            self.product_in_modal.lightbox_bg_light = initial_bg_light
-            self.product_in_modal.lightbox_bg_dark = initial_bg_dark
+            # Obtenemos el índice REAL de la primera variante única (la que se mostrará primero)
+            first_unique_variant_item = self.unique_modal_variants[0] if self.unique_modal_variants else None
+            if first_unique_variant_item:
+                 # Accedemos a los datos de esa variante específica
+                 initial_variant_dict = first_unique_variant_item.variant
+                 initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
+                 initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
+
+            # Guarda los fondos iniciales en las NUEVAS variables de estado
+            self.current_lightbox_bg_light = initial_bg_light
+            self.current_lightbox_bg_dark = initial_bg_dark
             # --- FIN ✨ ---
 
             # Establece la selección de atributos por defecto de la primera variante (igual que antes)
