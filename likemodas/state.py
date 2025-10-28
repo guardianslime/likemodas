@@ -582,21 +582,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- Setter Modificado ---
     def set_edit_light_mode_appearance(self, value: Union[str, list[str]]):
-        """Actualiza la apariencia seleccionada para el modo claro en el editor."""
-        # Comprobación de seguridad: si inesperadamente llega una lista, toma el primer elemento.
-        actual_value = value
-        if isinstance(value, list):
-            actual_value = value[0] if value else "light" # Usa 'light' si la lista está vacía
-        self.edit_light_mode_appearance = actual_value
+        actual_value = value[0] if isinstance(value, list) else value
+        self.edit_light_mode_appearance = actual_value if actual_value in ["light", "dark"] else "light"
+        self._update_live_colors() # Actualiza los colores live
 
-    # --- Setter Modificado ---
     def set_edit_dark_mode_appearance(self, value: Union[str, list[str]]):
-        """Actualiza la apariencia seleccionada para el modo oscuro en el editor."""
-        # Comprobación de seguridad: si inesperadamente llega una lista, toma el primer elemento.
-        actual_value = value
-        if isinstance(value, list):
-            actual_value = value[0] if value else "dark" # Usa 'dark' si la lista está vacía
-        self.edit_dark_mode_appearance = actual_value
+        actual_value = value[0] if isinstance(value, list) else value
+        self.edit_dark_mode_appearance = actual_value if actual_value in ["light", "dark"] else "dark"
+        self._update_live_colors() # Actualiza los colores live
     
     # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---
 
@@ -3379,10 +3372,40 @@ class AppState(reflex_local_auth.LocalAuthState):
     dark_theme_colors: dict = {"bg": "", "title": "", "price": ""}
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
 
-    # --- ✨ 3. REEMPLAZA LAS FUNCIONES DE MANEJO DE ESTILO CON ESTAS ✨ ---
+    # --- FUNCIÓN INTERNA MODIFICADA ---
+    def _update_live_colors(self):
+        """
+        [NUEVA FUNCIÓN INTERNA]
+        Calcula y actualiza las variables live_*_color basándose en
+        use_default_style, card_theme_mode (preview mode), y las
+        edit_*_mode_appearance seleccionadas.
+        """
+        is_light_preview = self.card_theme_mode == "light"
+
+        if self.use_default_style:
+            # Si se usa el default, simplemente aplica los colores default según el modo preview
+            self.live_card_bg_color = DEFAULT_LIGHT_BG if is_light_preview else DEFAULT_DARK_BG
+            self.live_title_color = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
+            self.live_price_color = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
+        else:
+            # Si NO se usa el default, determina cómo DEBERÍA verse la tarjeta
+            target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
+
+            # Aplica los colores default CORRESPONDIENTES a la apariencia objetivo
+            if target_appearance == "light":
+                self.live_card_bg_color = DEFAULT_LIGHT_BG
+                self.live_title_color = DEFAULT_LIGHT_TITLE
+                self.live_price_color = DEFAULT_LIGHT_PRICE
+            else: # target_appearance == "dark"
+                self.live_card_bg_color = DEFAULT_DARK_BG
+                self.live_title_color = DEFAULT_DARK_TITLE
+                self.live_price_color = DEFAULT_DARK_PRICE
+
+    # --- SETTERS MODIFICADOS ---
+    # (Llaman a _update_live_colors después de cambiar el valor)
     def set_use_default_style(self, checked: bool):
-        """Maneja el switch de estilo predeterminado."""
         self.use_default_style = checked
+        self._update_live_colors() # Actualiza los colores live
 
     def set_card_theme_mode(self, mode: str):
         """Cambia entre la previsualización del modo claro y oscuro."""
@@ -3401,33 +3424,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.live_title_color = self.light_title_color_input if is_light else self.dark_title_color_input
             self.live_price_color = self.light_price_color_input if is_light else self.dark_price_color_input
 
+    # --- toggle_preview_mode MODIFICADO ---
+    # (Ahora solo cambia el modo y llama a _update_live_colors)
     def toggle_preview_mode(self, mode: str | list[str]):
-        """
-        Cambia entre la previsualización del modo claro y oscuro, Y ACTUALIZA
-        los colores 'live_' que usa directamente el componente post_preview.
-        """
-        # Asegura que 'mode' sea un string
+        """Cambia el modo de previsualización (claro/oscuro) y actualiza los colores."""
         actual_mode = mode[0] if isinstance(mode, list) else mode
-        self.card_theme_mode = actual_mode # 'light' o 'dark'
-
-        # Ahora, basándonos en el modo de previsualización y si se usa el default,
-        # actualizamos las variables 'live_'
-        is_light_preview = actual_mode == "light"
-
-        if self.use_default_style:
-            self.live_card_bg_color = DEFAULT_LIGHT_BG if is_light_preview else DEFAULT_DARK_BG
-            self.live_title_color = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
-            self.live_price_color = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
-        else:
-            # Usa los colores guardados para el tema correspondiente
-            theme_colors_to_use = self.light_theme_colors if is_light_preview else self.dark_theme_colors
-            default_bg = DEFAULT_LIGHT_BG if is_light_preview else DEFAULT_DARK_BG
-            default_title = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
-            default_price = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
-
-            self.live_card_bg_color = theme_colors_to_use.get("bg") or default_bg
-            self.live_title_color = theme_colors_to_use.get("title") or default_title
-            self.live_price_color = theme_colors_to_use.get("price") or default_price
+        self.card_theme_mode = actual_mode
+        self._update_live_colors() # Actualiza los colores live
 
     # Setters para los color pickers (ahora modifican los colores 'vivos')
     def set_live_card_bg_color(self, color: str):
@@ -3463,29 +3466,30 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
             yield rx.toast.success("Estilo para MODO OSCURO guardado.")
 
-    # --- Lógica de Limpieza y Carga ---
+    # --- _clear_card_styles MODIFICADO ---
     def _clear_card_styles(self):
         """Limpia todos los estados de estilo al resetear el formulario."""
         self.use_default_style = True
         self.card_theme_mode = "light" # Vuelve a preview claro
 
-        # Resetea colores 'live' a los defaults del modo claro
-        self.live_card_bg_color = DEFAULT_LIGHT_BG
-        self.live_title_color = DEFAULT_LIGHT_TITLE
-        self.live_price_color = DEFAULT_LIGHT_PRICE
-
-        # Limpia los colores guardados
-        self.light_theme_colors = {"bg": "", "title": "", "price": ""}
-        self.dark_theme_colors = {"bg": "", "title": "", "price": ""}
-
         # Resetea las selecciones de apariencia a los defaults
         self.edit_light_mode_appearance = "light"
         self.edit_dark_mode_appearance = "dark"
 
+        # Limpia los colores personalizados guardados
+        self.light_theme_colors = {"bg": "", "title": "", "price": ""}
+        self.dark_theme_colors = {"bg": "", "title": "", "price": ""}
+
+        # Actualiza los colores live_ a los defaults del modo claro
+        self._update_live_colors()
+
+    # --- _load_card_styles_from_db MODIFICADO ---
+    # (Ya no necesita llamar a toggle_preview_mode al final, _update_live_colors lo hará)
     def _load_card_styles_from_db(self, db_post: BlogPostModel):
         """Carga los estilos guardados desde un objeto de la base de datos."""
         self.use_default_style = db_post.use_default_style
 
+        # Carga colores personalizados guardados (usados por el modal artístico)
         self.light_theme_colors = {
             "bg": db_post.light_card_bg_color or "",
             "title": db_post.light_title_color or "",
@@ -3496,11 +3500,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             "title": db_post.dark_title_color or "",
             "price": db_post.dark_price_color or "",
         }
-        self.edit_light_mode_appearance = db_post.light_mode_appearance # Carga apariencia modo claro
-        self.edit_dark_mode_appearance = db_post.dark_mode_appearance   # Carga apariencia modo oscuro
+        # Carga las apariencias guardadas
+        self.edit_light_mode_appearance = db_post.light_mode_appearance
+        self.edit_dark_mode_appearance = db_post.dark_mode_appearance
 
-        # Inicia la previsualización en modo claro por defecto Y ACTUALIZA LOS COLORES LIVE
-        self.toggle_preview_mode("light") # Llama a la función que ahora actualiza 'live_...'
+        # Establece el modo de preview inicial y actualiza los colores live
+        self.card_theme_mode = "light" # Inicia en claro
+        self._update_live_colors() # Asegura que los live_ colors se calculen correctamente
 
     show_color_picker: bool = False
         
