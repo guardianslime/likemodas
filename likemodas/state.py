@@ -3375,8 +3375,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     dark_title_color_input: str = DEFAULT_DARK_TITLE
     dark_price_color_input: str = DEFAULT_DARK_PRICE
 
-    light_theme_colors: dict = {"bg": "", "title": "", "price": ""}
-    dark_theme_colors: dict = {"bg": "", "title": "", "price": ""}
+    ight_theme_colors: Dict[str, str] = {"bg": "", "title": "", "price": ""}
+    dark_theme_colors: Dict[str, str] = {"bg": "", "title": "", "price": ""}
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
 
     # --- ✨ 3. REEMPLAZA LAS FUNCIONES DE MANEJO DE ESTILO CON ESTAS ✨ ---
