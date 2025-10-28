@@ -1,20 +1,23 @@
-# likemodas/blog/add.py
-# En: likemodas/blog/add.py
+# EN: likemodas/blog/add.py
 
-# En: likemodas/blog/add.py
-
-from typing import Dict
 import reflex as rx
+from typing import Dict, Union, List # Añadido Union y List
 from rx_color_picker.color_picker import color_picker
+from reflex.components.component import NoSSRComponent # Importación correcta
 
 from likemodas.data.product_options import LISTA_TALLAS_ROPA
-from ..state import DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE, DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE, AppState, VariantGroupDTO
+# Importa las constantes y AppState
+from ..state import (
+    DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE,
+    DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE,
+    AppState, VariantGroupDTO # Añadido VariantGroupDTO
+)
 from ..auth.admin_auth import require_panel_access
-from .forms import blog_post_add_form
+# Importa otros componentes UI necesarios
 from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_display_safe
 from ..utils.formatting import format_to_cop
-from reflex.components.component import NoSSRComponent
 
+# --- Definición del componente Moveable ---
 class Moveable(NoSSRComponent):
     """Componente Reflex que envuelve la librería React-Moveable."""
     library = "react-moveable"
@@ -45,8 +48,145 @@ const onRotateEnd = (e, on_rotate_end) => {
 """
 moveable = Moveable.create
 
+# --- Función auxiliar movida fuera de post_preview ---
+def get_theme_color(theme_colors_var: rx.Var[Dict[str, str]], key: str, default_color: str) -> rx.Var[str]:
+    """
+    Función auxiliar para obtener un color de tema de forma segura,
+    usando rx.cond externamente.
+    """
+    color_value = theme_colors_var[key]
+    return rx.cond(color_value != "", color_value, default_color)
 
-# --- Componente del formulario (CORREGIDO) ---
+# --- Función auxiliar _preview_badge ---
+def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+    light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
+    dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+    colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
+    return rx.box(
+        rx.text(text_content, size="2", weight="medium"),
+        bg=colors["bg"], color=colors["text"], padding="1px 10px",
+        border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
+    )
+
+# --- Componente post_preview CORREGIDO (v11) ---
+def post_preview(
+    title: rx.Var[str],
+    price_cop: rx.Var[str],
+    first_image_url: rx.Var[str],
+    is_imported: rx.Var[bool],
+    shipping_cost_badge_text: rx.Var[str],
+    is_moda_completa: rx.Var[bool],
+    moda_completa_tooltip_text: rx.Var[str],
+    combines_shipping: rx.Var[bool],
+    envio_combinado_tooltip_text: rx.Var[str],
+    is_artistic_preview: bool = False
+) -> rx.Component:
+
+    preview_site_theme = AppState.card_theme_mode
+    explicit_appearance = rx.cond(
+        preview_site_theme == "light",
+        AppState.edit_light_mode_appearance,
+        AppState.edit_dark_mode_appearance
+    )
+
+    card_bg_color = rx.cond(
+        AppState.use_default_style,
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        rx.cond(
+            is_artistic_preview,
+            AppState.live_card_bg_color,
+            rx.cond(
+                explicit_appearance == "light",
+                get_theme_color(AppState.light_theme_colors, "bg", DEFAULT_LIGHT_BG),
+                get_theme_color(AppState.dark_theme_colors, "bg", DEFAULT_DARK_BG)
+            )
+        )
+    )
+
+    title_color = rx.cond(
+        AppState.use_default_style,
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        rx.cond(
+            is_artistic_preview,
+            AppState.live_title_color,
+            rx.cond(
+                explicit_appearance == "light",
+                get_theme_color(AppState.light_theme_colors, "title", DEFAULT_LIGHT_TITLE),
+                get_theme_color(AppState.dark_theme_colors, "title", DEFAULT_DARK_TITLE)
+            )
+        )
+    )
+
+    price_color = rx.cond(
+        AppState.use_default_style,
+        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        rx.cond(
+            is_artistic_preview,
+            AppState.live_price_color,
+            rx.cond(
+                explicit_appearance == "light",
+                get_theme_color(AppState.light_theme_colors, "price", DEFAULT_LIGHT_PRICE),
+                get_theme_color(AppState.dark_theme_colors, "price", DEFAULT_DARK_PRICE)
+            )
+        )
+    )
+
+    return rx.box(
+        rx.vstack(
+             rx.box( # Contenedor de la imagen
+                 rx.image(
+                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
+                    width="100%", height="260px", object_fit="contain",
+                    transform=rx.cond(
+                        AppState.is_hydrated,
+                        f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
+                        "scale(1)"
+                    ),
+                    transition="transform 0.2s ease-out",
+                 ),
+                 rx.badge( # Badge Importado/Nacional
+                    rx.cond(is_imported, "Importado", "Nacional"),
+                    color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
+                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
+                 ),
+                 position="relative", width="100%", height="260px",
+                 overflow="hidden",
+                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
+                 bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
+             ),
+             rx.vstack( # Contenedor de la información
+                 rx.text( # Título
+                    rx.cond(title, title, "Título del Producto"),
+                    weight="bold", size="6", width="100%",
+                    color=title_color,
+                    style=TITLE_CLAMP_STYLE
+                ),
+                star_rating_display_safe(0, 0, size=24),
+                rx.text( # Precio
+                    price_cop, size="5", weight="medium",
+                    color=price_color
+                ),
+                rx.spacer(),
+                rx.vstack( # Badges de envío
+                    rx.grid(
+                        _preview_badge(shipping_cost_badge_text, "gray"),
+                        rx.cond(is_moda_completa, rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text)),
+                        columns="auto auto", spacing="2", align="center", justify="start", width="100%",
+                    ),
+                    rx.cond(combines_shipping, rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text)),
+                    spacing="1", align_items="start", width="100%",
+                ),
+                spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
+             ),
+            spacing="0", align_items="stretch", height="100%",
+        ),
+        width="290px", height="480px",
+        bg=card_bg_color,
+        border="1px solid var(--gray-a6)",
+        border_radius="8px", box_shadow="md",
+    )
+
+# --- Componente del formulario (CORREGIDO para usar lambda y controles de lightbox) ---
 def blog_post_add_form() -> rx.Component:
     """
     Formulario completo para AÑADIR una nueva publicación, con la sintaxis
@@ -83,22 +223,19 @@ def blog_post_add_form() -> rx.Component:
         return rx.vstack(
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
             rx.upload(
-                 rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
+                rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=10,
-                # Corregido para usar lambda si es necesario (depende de la versión de reflex)
                 on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
             rx.text("2. Selecciona y ordena las imágenes para el grupo:"),
-            # --- 👇 ASEGÚRATE DE QUE ESTE rx.flex ESTÉ ASÍ 👇 ---
             rx.flex(
                  rx.foreach(
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            # AppState.image_selection_for_grouping.contains(img_name), # <--- ¡ASÍ DEBE SER!
-                            AppState.image_selection_for_grouping.contains(img_name), # <-- Usa .contains()
+                            AppState.image_selection_for_grouping.contains(img_name), # Usa .contains()
                             rx.box(
                                 rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"),
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
@@ -107,15 +244,13 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                         position="relative", border="2px solid",
-                        # border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- ¡ASÍ DEBE SER!
-                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <-- Usa .contains()
+                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # Usa .contains()
                         border_radius="lg", cursor="pointer",
                         on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
                 wrap="wrap", spacing="3", padding_top="0.5em",
              ),
-             # --- 👆 FIN DE LA VERIFICACIÓN DEL rx.flex 👆 ---
             rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"),
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos (Selecciona uno para editar abajo):"),
@@ -130,6 +265,7 @@ def blog_post_add_form() -> rx.Component:
                 rx.divider(margin_y="1.5em"),
                 rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
                 rx.grid(
+                    # Columna Atributos
                     rx.vstack(
                         rx.text("Atributos del Grupo", weight="medium"),
                         rx.text("Color"),
@@ -148,53 +284,40 @@ def blog_post_add_form() -> rx.Component:
                             rx.foreach(
                                 AppState.attr_tallas_ropa,
                                 lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray") # Usar lambda
-                             ),
+                            ),
                             wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
                         ),
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
                         spacing="3", align_items="stretch",
                     ),
-                    # --- ✨ INICIO: AÑADE ESTOS DOS NUEVOS VSTACKS AQUÍ ✨ ---
+                    # Columna Lightbox Claro
                     rx.vstack(
                         rx.text("Fondo Lightbox (Sitio Claro)", weight="medium"),
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
                             rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.temp_lightbox_bg_light, # Usa 'temp_' para CREAR
+                            value=AppState.temp_lightbox_bg_light, # Usa 'temp_'
                             on_change=AppState.set_temp_lightbox_bg_light,
                             color_scheme="gray", size="1",
                         ),
                         spacing="2", align_items="stretch",
                     ),
+                    # Columna Lightbox Oscuro
                     rx.vstack(
                         rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium"),
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
                             rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.temp_lightbox_bg_dark, # Usa 'temp_' para CREAR
+                            value=AppState.temp_lightbox_bg_dark, # Usa 'temp_'
                             on_change=AppState.set_temp_lightbox_bg_dark,
                             color_scheme="gray", size="1",
                         ),
                         spacing="2", align_items="stretch",
                     ),
-                    # --- ✨ FIN ✨ ---
-                    # Columna de Variantes y Stock (contenido existente)
-                    rx.vstack(
-                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium"),
-                        rx.segmented_control.root(
-                            rx.segmented_control.item("Oscuro", value="dark"),
-                            rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.edit_temp_lightbox_bg_dark,
-                            on_change=AppState.set_edit_temp_lightbox_bg_dark,
-                            color_scheme="gray", size="1",
-                        ),
-                        spacing="2", align_items="stretch",
-                    ),
-                    # ++++++++++++++++++++++++++++++++++++++++
+                    # Columna Variantes y Stock
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
-                        # Usar lambda si la función toma argumentos
-                        rx.button("Generar / Actualizar Variantes", on_click=lambda: AppState.generate_variants_for_group(AppState.selected_group_index), type="button"),
+                        rx.button("Generar / Actualizar Variantes", on_click=lambda: AppState.generate_variants_for_group(AppState.selected_group_index), type="button"), # Usar lambda
                         rx.cond(
                             AppState.generated_variants_map.contains(AppState.selected_group_index),
                             rx.scroll_area(
@@ -203,29 +326,28 @@ def blog_post_add_form() -> rx.Component:
                                         AppState.generated_variants_map[AppState.selected_group_index],
                                         lambda variant, var_index: rx.hstack(
                                             rx.text(variant.attributes["Talla"]), rx.spacer(),
-                                            # Usar lambda para pasar argumentos
-                                            rx.icon_button(rx.icon("minus"), on_click=lambda: AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
+                                            rx.icon_button(rx.icon("minus"), on_click=lambda: AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"), # Usar lambda
                                             rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"), # Usar lambda
                                             rx.icon_button(rx.icon("plus"), on_click=lambda: AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"), # Usar lambda
                                             align="center"
-                                         )
+                                        )
                                     ),
                                     spacing="2", width="100%", padding_top="1em"
-                                 ),
+                                ),
                                 max_height="200px", type="auto", scrollbars="vertical"
                             )
                         ),
                         spacing="3", align_items="stretch",
                     ),
-                    columns="2", spacing="4", width="100%"
+                    columns={"initial": "1", "md": "2", "lg": "1fr auto auto 1fr"}, # Ajustado a 4 columnas
+                    spacing="4", width="100%"
                 ),
                 align_items="stretch", width="100%"
             )
         )
 
-    # --- 👇 INICIO: CORRECCIÓN ESTRUCTURAL CLAVE 👇 ---
-    return rx.form( # <--- ENVOLVEMOS TODO EN rx.form
-        rx.vstack( # <--- Este vstack organiza, pero NO tiene on_submit
+    return rx.form(
+        rx.vstack(
             rx.grid(
                 # Columna izquierda (Imágenes y Variantes)
                 rx.vstack(
@@ -239,65 +361,45 @@ def blog_post_add_form() -> rx.Component:
                     rx.vstack(
                         rx.text("Título del Producto"),
                         rx.input(
-                            name="title",
-                            value=AppState.title,
-                            on_change=AppState.set_title,
-                            required=True,
-                            max_length=40
+                            name="title", value=AppState.title, on_change=AppState.set_title,
+                            required=True, max_length=40
                         ),
                         align_items="stretch"
                     ),
-                    # Sección de Categoría, Tipo, Material
+                    # Sección Categoría, Tipo, Material/Tela
                     rx.grid(
                         rx.vstack(rx.text("Categoría"), rx.select(
                             AppState.categories, name="category", required=True,
                             value=AppState.category, on_change=AppState.set_category
                         ), align_items="stretch"),
                         rx.vstack(rx.text("Tipo"), searchable_select(
-                            placeholder="Selecciona un Tipo",
-                            options=AppState.filtered_attr_tipos,
-                            value_select=AppState.attr_tipo,
-                            on_change_select=AppState.set_attr_tipo,
-                            search_value=AppState.search_attr_tipo,
-                            on_change_search=AppState.set_search_attr_tipo,
-                            filter_name="add_tipo_filter",
-                            is_disabled=~AppState.category
+                            placeholder="Selecciona un Tipo", options=AppState.filtered_attr_tipos,
+                            value_select=AppState.attr_tipo, on_change_select=AppState.set_attr_tipo,
+                            search_value=AppState.search_attr_tipo, on_change_search=AppState.set_search_attr_tipo,
+                            filter_name="add_tipo_filter", is_disabled=~AppState.category
                         ), align_items="stretch"),
                         rx.vstack(
                             rx.text(AppState.material_label),
                             searchable_select(
                                 placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
-                                options=AppState.filtered_attr_materiales,
-                                value_select=AppState.attr_material,
-                                on_change_select=AppState.set_attr_material,
-                                search_value=AppState.search_attr_material,
-                                on_change_search=AppState.set_search_attr_material,
-                                filter_name="add_material_filter",
+                                options=AppState.filtered_attr_materiales, value_select=AppState.attr_material,
+                                on_change_select=AppState.set_attr_material, search_value=AppState.search_attr_material,
+                                on_change_search=AppState.set_search_attr_material, filter_name="add_material_filter",
                                 is_disabled=~AppState.category
-                            )
-                        , align_items="stretch"),
-                        columns={"initial": "1", "md": "3"},
-                        spacing="4",
-                        width="100%"
+                            ),
+                            align_items="stretch"
+                        ),
+                        columns={"initial": "1", "md": "3"}, spacing="4", width="100%"
                     ),
                     # Sección Precio, Ganancia
                     rx.grid(
                         rx.vstack(rx.text("Precio (COP)"), rx.input(
-                            name="price",
-                            value=AppState.price_str,
-                            on_change=AppState.set_price_str,
-                            on_blur=AppState.validate_price_on_blur_add,
-                            type="number", # Mantenido como number para validación del navegador
-                            required=True,
-                            placeholder="Ej: 55000"
+                            name="price", value=AppState.price_str, on_change=AppState.set_price_str,
+                            on_blur=AppState.validate_price_on_blur_add, type="number", required=True, placeholder="Ej: 55000"
                         ), align_items="stretch"),
                         rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                            name="profit",
-                            value=AppState.profit_str,
-                            on_change=AppState.set_profit_str,
-                            on_blur=AppState.validate_profit_on_blur_add,
-                            type="number", # Mantenido como number
-                            placeholder="Ej: 15000"
+                            name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str,
+                            on_blur=AppState.validate_profit_on_blur_add, type="number", placeholder="Ej: 15000"
                         ), align_items="stretch"),
                         columns="2", spacing="4", width="100%"
                     ),
@@ -331,212 +433,58 @@ def blog_post_add_form() -> rx.Component:
             # Botón de Publicar
             rx.hstack(
                 rx.spacer(),
-                # El botón tiene type="submit" para que el form lo maneje
-                rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"),
+                rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"), # type="submit"
                 width="100%",
             ),
-            # Atributos del vstack principal
             spacing="5",
             width="100%",
         ), # Fin vstack principal
-
-        # --- 👇 on_submit y reset_on_submit APLICADOS AL rx.form 👇 ---
-        on_submit=AppState.submit_and_publish_manual, # Evento correcto
+        on_submit=AppState.submit_and_publish_manual, # on_submit en el form
         reset_on_submit=False,
         width="100%"
-    ) # --- 👆 FIN DEL rx.form y CORRECCIÓN ESTRUCTURAL 👆 ---
+    ) # Fin rx.form
 
-# --- Componente para la previsualización de la tarjeta ---
-def post_preview(
-    title: rx.Var[str],
-    price_cop: rx.Var[str],
-    first_image_url: rx.Var[str],
-    is_imported: rx.Var[bool],
-    shipping_cost_badge_text: rx.Var[str],
-    is_moda_completa: rx.Var[bool],
-    moda_completa_tooltip_text: rx.Var[str],
-    combines_shipping: rx.Var[bool],
-    envio_combinado_tooltip_text: rx.Var[str],
-    is_artistic_preview: bool = False
-) -> rx.Component:
-
-    # --- LÓGICA DE COLOR CORREGIDA (v11 - Evita .cond() en item de dict) ---
-
-    preview_site_theme = AppState.card_theme_mode
-    explicit_appearance = rx.cond(
-        preview_site_theme == "light",
-        AppState.edit_light_mode_appearance,
-        AppState.edit_dark_mode_appearance
-    )
-
-    # Función auxiliar para obtener el color de forma segura usando rx.cond externamente
-    def get_theme_color(theme_colors_var: rx.Var[Dict[str, str]], key: str, default_color: str) -> rx.Var[str]:
-        # Accede al valor del diccionario
-        color_value = theme_colors_var[key]
-        # Aplica la condición externamente
-        return rx.cond(color_value != "", color_value, default_color)
-
-    card_bg_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        rx.cond(
-            is_artistic_preview,
-            AppState.live_card_bg_color,
-            rx.cond(
-                explicit_appearance == "light",
-                # Usa la función auxiliar
-                get_theme_color(AppState.light_theme_colors, "bg", DEFAULT_LIGHT_BG),
-                # Usa la función auxiliar
-                get_theme_color(AppState.dark_theme_colors, "bg", DEFAULT_DARK_BG)
-            )
-        )
-    )
-
-    title_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        rx.cond(
-            is_artistic_preview,
-            AppState.live_title_color,
-            rx.cond(
-                explicit_appearance == "light",
-                # Usa la función auxiliar
-                get_theme_color(AppState.light_theme_colors, "title", DEFAULT_LIGHT_TITLE),
-                # Usa la función auxiliar
-                get_theme_color(AppState.dark_theme_colors, "title", DEFAULT_DARK_TITLE)
-            )
-        )
-    )
-
-    price_color = rx.cond(
-        AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        rx.cond(
-            is_artistic_preview,
-            AppState.live_price_color,
-            rx.cond(
-                explicit_appearance == "light",
-                # Usa la función auxiliar
-                get_theme_color(AppState.light_theme_colors, "price", DEFAULT_LIGHT_PRICE),
-                # Usa la función auxiliar
-                get_theme_color(AppState.dark_theme_colors, "price", DEFAULT_DARK_PRICE)
-            )
-        )
-    )
-    # --- FIN LÓGICA DE COLOR CORREGIDA (v11) ---
-
-    # --- La estructura de la tarjeta rx.box(...) permanece igual que en la corrección anterior ---
-    # Asegúrate de que usa las variables card_bg_color, title_color, price_color
-    return rx.box(
-        rx.vstack(
-             rx.box( # Contenedor de la imagen
-                 rx.image(
-                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
-                    width="100%", height="260px", object_fit="contain",
-                    transform=rx.cond(
-                        AppState.is_hydrated, # Asegura que se aplique solo después de hidratar
-                        f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
-                        "scale(1)"
-                    ),
-                    transition="transform 0.2s ease-out",
-                 ),
-                 rx.badge( # Badge Importado/Nacional
-                    rx.cond(is_imported, "Importado", "Nacional"),
-                    color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
-                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                 ),
-                 position="relative", width="100%", height="260px",
-                 overflow="hidden",
-                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
-             ),
-             rx.vstack( # Contenedor de la información
-                 rx.text( # Título
-                    rx.cond(title, title, "Título del Producto"),
-                    weight="bold", size="6", width="100%",
-                    color=title_color, # COLOR CORREGIDO APLICADO
-                    style=TITLE_CLAMP_STYLE
-                ),
-                star_rating_display_safe(0, 0, size=24), # Estrellas (sin cambios)
-                rx.text( # Precio
-                    price_cop, size="5", weight="medium",
-                    color=price_color # COLOR CORREGIDO APLICADO
-                ),
-                rx.spacer(),
-                rx.vstack( # Badges de envío
-                    rx.grid(
-                        _preview_badge(shipping_cost_badge_text, "gray"),
-                        rx.cond(is_moda_completa, rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text)),
-                        columns="auto auto", spacing="2", align="center", justify="start", width="100%",
-                    ),
-                    rx.cond(combines_shipping, rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text)),
-                    spacing="1", align_items="start", width="100%",
-                ),
-                spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
-             ),
-            spacing="0", align_items="stretch", height="100%",
-        ),
-        width="290px", height="480px", # Dimensiones fijas
-        bg=card_bg_color, # COLOR CORREGIDO APLICADO AL FONDO PRINCIPAL
-        border="1px solid var(--gray-a6)",
-        border_radius="8px", box_shadow="md",
-    )
-
+# --- Componente principal de la página de añadir ---
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
+    # Panel de edición de imagen (sin cambios)
     image_editor_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack(
             rx.text("Ajustar Imagen", weight="bold", size="4"),
             rx.spacer(),
             rx.tooltip(
-                rx.icon_button(
-                    rx.icon("rotate-ccw", size=14),
-                    on_click=AppState.reset_image_styles,
-                    variant="soft", size="1"
-                ),
+                rx.icon_button(rx.icon("rotate-ccw", size=14), on_click=AppState.reset_image_styles, variant="soft", size="1"),
                 content="Resetear ajustes de imagen"
             ),
-            width="100%",
-            align="center",
+            width="100%", align="center",
         ),
         rx.vstack(
             rx.text("Zoom", size="2"),
-            rx.slider(
-                value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, 
-                min=0.5, max=3, step=0.05
-            ),
+            rx.slider(value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, min=0.5, max=3, step=0.05),
             spacing="1", align_items="stretch", width="100%"
         ),
         rx.vstack(
             rx.text("Rotación", size="2"),
-            rx.slider(
-                value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, 
-                min=-45, max=45, step=1
-            ),
+            rx.slider(value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, min=-45, max=45, step=1),
             spacing="1", align_items="stretch", width="100%"
         ),
         rx.vstack(
             rx.text("Posición Horizontal (X)", size="2"),
-            rx.slider(
-                value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, 
-                min=-100, max=100, step=1
-            ),
+            rx.slider(value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, min=-100, max=100, step=1),
             spacing="1", align_items="stretch", width="100%"
         ),
         rx.vstack(
             rx.text("Posición Vertical (Y)", size="2"),
-            rx.slider(
-                value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, 
-                min=-100, max=100, step=1
-            ),
+            rx.slider(value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, min=-100, max=100, step=1),
             spacing="1", align_items="stretch", width="100%"
         ),
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
-    
+
+    # Lógica para obtener la URL de la primera imagen (sin cambios)
     first_image_url = rx.cond(
         (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
         AppState.variant_groups[0].image_urls[0],
@@ -547,15 +495,17 @@ def blog_post_add_content() -> rx.Component:
         )
     )
 
+    # Estructura principal de la página (sin cambios)
     return rx.grid(
         rx.vstack(
             rx.heading("Crear Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em", color_scheme="gray", font_weight="medium"),
-            blog_post_add_form(),
+            blog_post_add_form(), # El formulario que definimos arriba
             width="100%", spacing="4", align_items="center",
-            padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
+            padding_left={"lg": "15em"}, padding_x=["1em", "2em"], # Ajusta el padding si es necesario
         ),
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+            # Llamada a post_preview (sin cambios)
             post_preview(
                 title=AppState.title,
                 price_cop=AppState.price_cop_preview,
@@ -566,13 +516,13 @@ def blog_post_add_content() -> rx.Component:
                 moda_completa_tooltip_text=AppState.moda_completa_tooltip_text_preview,
                 combines_shipping=AppState.combines_shipping,
                 envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
+                is_artistic_preview=False # Importante: indica que es la preview normal
             ),
-            image_editor_panel,
-            # Se ha eliminado el 'display' responsivo para que sea visible en móvil
+            image_editor_panel, # Panel de edición de imagen
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
             on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
         ),
-        columns={"initial": "1", "lg": "auto auto"},
+        columns={"initial": "1", "lg": "auto auto"}, # Layout responsivo
         justify="center",
         align="start",
         gap="3em",
