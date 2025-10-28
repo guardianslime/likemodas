@@ -5434,29 +5434,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_background_color(self) -> str:
         """
-        [VERSIÓN CORREGIDA PARA EXPORTACIÓN V4 - USA VARS INTERMEDIAS]
-        Calcula el color de fondo usando variables computadas seguras.
+        [VERSIÓN CORREGIDA PARA EXPORTACIÓN V5 - LÓGICA SIMPLIFICADA]
+        Calcula el color de fondo asegurando devolver solo strings.
         """
-        # Valor por defecto si product_in_modal es None (manejado por las vars _safe_*)
-        default_color = rx.color_mode_cond("white", "black")
+        # --- Usa las variables _safe_* que ya verifican si product_in_modal existe ---
 
-        # La lógica ahora usa las variables _safe_* que ya manejan el caso None
+        # Condición Principal: ¿Está el sitio en modo claro?
         return rx.cond(
-            rx.color_mode_cond("light", "dark") == "light", # ¿Sitio claro?
-            # Si sitio claro:
+            rx.color_mode_cond("light", "dark") == "light",
+            # --- Lógica si el SITIO está en MODO CLARO ---
             rx.cond(
-                self._safe_light_mode_appearance == "light", # ¿Tarjeta clara?
-                # Tarjeta clara: Usa fondo claro configurado
+                self._safe_light_mode_appearance == "light", # ¿Tarjeta quiere verse CLARA?
+                # Tarjeta CLARA: Usa fondo claro configurado
                 rx.cond(self._safe_lightbox_bg_light == "white", "white", "black"),
-                # Tarjeta oscura: Usa fondo oscuro configurado
+                # Tarjeta OSCURA: Usa fondo oscuro configurado
                 rx.cond(self._safe_lightbox_bg_dark == "white", "white", "black")
             ),
-            # Si sitio oscuro:
+            # --- Lógica si el SITIO está en MODO OSCURO ---
             rx.cond(
-                self._safe_dark_mode_appearance == "light", # ¿Tarjeta clara?
-                # Tarjeta clara: Usa fondo claro configurado
+                self._safe_dark_mode_appearance == "light", # ¿Tarjeta quiere verse CLARA?
+                # Tarjeta CLARA: Usa fondo claro configurado
                 rx.cond(self._safe_lightbox_bg_light == "white", "white", "black"),
-                # Tarjeta oscura: Usa fondo oscuro configurado
+                # Tarjeta OSCURA: Usa fondo oscuro configurado
                 rx.cond(self._safe_lightbox_bg_dark == "white", "white", "black")
             )
         )
