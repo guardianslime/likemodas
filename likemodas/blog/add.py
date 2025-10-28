@@ -347,6 +347,7 @@ def post_preview(
 
     # --- La función interna _preview_badge NO cambia ---
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # ... (código interno sin cambios) ...
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
@@ -356,9 +357,9 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # --- 👇 INICIO: LÓGICA DE COLOR FINAL Y CORRECTA PARA PREVIEW 👇 ---
+    # --- 👇 INICIO: LÓGICA DE COLOR DEFINITIVA Y CORRECTA 👇 ---
 
-    # 1. Determina el tema que el PREVIEW está mostrando (light o dark)
+    # 1. Determina el tema que el PREVIEW está simulando (light o dark)
     preview_site_theme = AppState.card_theme_mode
 
     # 2. Determina cómo DEBERÍA verse la tarjeta según las configuraciones del editor
@@ -373,12 +374,13 @@ def post_preview(
         )
     )
 
-    # 3. Asigna colores:
+    # 3. Asigna colores basados EXCLUSIVAMENTE en 'card_should_appear_as'
+    #    y si se están usando los colores personalizados GUARDADOS o los DEFAULTS.
     card_bg_color = rx.cond(
         AppState.use_default_style,
-        # Si usa default, aplica el color default según el MODO DE PREVISUALIZACIÓN
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        # Si NO usa default, aplica los colores GUARDADOS según CÓMO DEBERÍA VERSE
+         # Si usa default, usa el default correspondiente a CÓMO DEBERÍA VERSE
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+        # Si NO usa default, usa los colores GUARDADOS correspondientes a CÓMO DEBERÍA VERSE
         rx.cond(
             card_should_appear_as == "light",
             AppState.light_theme_colors.get("bg") | DEFAULT_LIGHT_BG, # Usa el guardado claro o fallback
@@ -387,7 +389,7 @@ def post_preview(
     )
     title_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
         rx.cond(
             card_should_appear_as == "light",
             AppState.light_theme_colors.get("title") | DEFAULT_LIGHT_TITLE,
@@ -396,14 +398,14 @@ def post_preview(
     )
     price_color = rx.cond(
         AppState.use_default_style,
-        rx.cond(preview_site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+        rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
         rx.cond(
             card_should_appear_as == "light",
             AppState.light_theme_colors.get("price") | DEFAULT_LIGHT_PRICE,
             AppState.dark_theme_colors.get("price") | DEFAULT_DARK_PRICE
         )
     )
-    # --- 👆 FIN: LÓGICA DE COLOR FINAL Y CORRECTA 👆 ---
+    # --- 👆 FIN: LÓGICA DE COLOR DEFINITIVA Y CORRECTA 👆 ---
 
     return rx.box(
         rx.vstack(
@@ -426,7 +428,7 @@ def post_preview(
                  position="relative", width="100%", height="260px",
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 # El fondo de la imagen siempre usa el modo de previsualización
+                 # El fondo de la imagen siempre usa el modo de previsualización (preview_site_theme)
                  bg=rx.cond(preview_site_theme == "light", "white", rx.color("gray", 3)),
              ),
              rx.vstack( # Contenedor de la información
@@ -436,7 +438,7 @@ def post_preview(
                     color=title_color, # Aplicado
                     style=TITLE_CLAMP_STYLE
                 ),
-                star_rating_display_safe(0, 0, size=24), # Estrellas (siempre vacías en preview)
+                star_rating_display_safe(0, 0, size=24), # Estrellas
                 rx.text( # Precio
                     price_cop, size="5", weight="medium",
                     color=price_color # Aplicado
@@ -462,7 +464,7 @@ def post_preview(
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=card_bg_color, # Aplicado al contenedor principal
+        bg=card_bg_color, # Aplicado al contenedor principal de la tarjeta
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
