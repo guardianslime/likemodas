@@ -5498,36 +5498,26 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_background_settings(self) -> tuple[str, str]:
         """
-        [VERSIÓN CORREGIDA]
-        Determina los colores de fondo ("white" o "black") para el lightbox
-        usando las variables 'current_lightbox_bg...' y la apariencia deseada.
+        [LÓGICA CORREGIDA]
+        Determina el color de fondo ("white" o "black") para el lightbox
+        basándose ÚNICAMENTE en las preferencias guardadas para la variante actual.
+        
+        Esta función ya NO depende de la apariencia de la tarjeta,
+        sino directamente de las preferencias del lightbox.
         """
-        # Obtenemos cómo debería verse la tarjeta (clara u oscura)
-        light_appearance = self._safe_light_mode_appearance # ej: "light" o "dark"
-        dark_appearance = self._safe_dark_mode_appearance   # ej: "light" o "dark"
+        
+        # 1. Obtiene la preferencia guardada para el modo claro del sitio.
+        #    (self.current_lightbox_bg_light almacena "white" o "dark")
+        light_mode_bg = self.current_lightbox_bg_light
+        
+        # 2. Obtiene la preferencia guardada para el modo oscuro del sitio.
+        #    (self.current_lightbox_bg_dark almacena "white" o "dark")
+        dark_mode_bg = self.current_lightbox_bg_dark
 
-        # <-- ESTA ES LA CLAVE -->
-        # Obtenemos la preferencia de fondo guardada para la variante actual
-        # DESDE LAS VARIABLES DE ESTADO 'current', no desde 'product_in_modal'.
-        lightbox_pref_if_card_light = self.current_lightbox_bg_light # ej: "white" o "dark"
-        lightbox_pref_if_card_dark = self.current_lightbox_bg_dark   # ej: "white" o "dark"
-
-        # Lógica para MODO CLARO del sitio
-        light_mode_bg_string: str
-        if light_appearance == "light": 
-            light_mode_bg_string = "white" if lightbox_pref_if_card_light == "white" else "black"
-        else: # Tarjeta quiere verse OSCURA en modo claro del sitio
-            light_mode_bg_string = "white" if lightbox_pref_if_card_dark == "white" else "black"
-
-        # Lógica para MODO OSCURO del sitio
-        dark_mode_bg_string: str
-        if dark_appearance == "light": 
-            dark_mode_bg_string = "white" if lightbox_pref_if_card_light == "white" else "black"
-        else: # Tarjeta quiere verse OSCURA en modo oscuro del sitio
-            dark_mode_bg_string = "white" if lightbox_pref_if_card_dark == "white" else "black"
-
-        # Devuelve ("fondo_para_modo_claro", "fondo_para_modo_oscuro")
-        return (light_mode_bg_string, dark_mode_bg_string)
+        # 3. Devuelve la tupla ("color_para_modo_claro", "color_para_modo_oscuro")
+        #    El componente rx.color_mode_cond(light=..., dark=...) en la UI
+        #    se encargará de elegir cuál usar.
+        return (light_mode_bg, dark_mode_bg)
 
     # --- NUEVAS VARIABLES para el fondo del lightbox actual ---
     current_lightbox_bg_light: str = "dark" # Fondo para lightbox si la tarjeta debe verse CLARA
