@@ -4392,22 +4392,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_temp_lightbox_bg_light: str = "dark" # Para el formulario de EDITAR
     edit_temp_lightbox_bg_dark: str = "dark"  # Para el formulario de EDITAR
 
-    # --- Setters para las variables temporales del lightbox ---
-    def set_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
-        actual_value = value[0] if isinstance(value, list) else value
-        self.temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
-
-    def set_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
-        actual_value = value[0] if isinstance(value, list) else value
-        self.temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
-
     def set_edit_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
+        """
+        [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
+        del grupo seleccionado.
+        """
         actual_value = value[0] if isinstance(value, list) else value
         self.edit_temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
+        
+        # --- Lógica de actualización añadida ---
+        # Actualiza todas las variantes en el mapa para este grupo
+        if self.edit_selected_group_index in self.edit_generated_variants_map:
+            for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
+                variant_data.lightbox_bg_light = self.edit_temp_lightbox_bg_light
+        # --- Fin de la lógica ---
 
     def set_edit_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
+        """
+        [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
+        del grupo seleccionado.
+        """
         actual_value = value[0] if isinstance(value, list) else value
         self.edit_temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
+        
+        # --- Lógica de actualización añadida ---
+        # Actualiza todas las variantes en el mapa para este grupo
+        if self.edit_selected_group_index in self.edit_generated_variants_map:
+            for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
+                variant_data.lightbox_bg_dark = self.edit_temp_lightbox_bg_dark
+        # --- Fin de la lógica ---
 
     # Dentro de la clase AppState
     def set_edit_temp_lightbox_bg(self, value: Union[str, list[str]]):
@@ -4420,8 +4433,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def save_edited_post(self):
         """
-        [VERSIÓN CORREGIDA]
-        Guarda una publicación editada, incluyendo los fondos del lightbox.
+        [VERSIÓN FINAL CORREGIDA]
+        Guarda una publicación editada, leyendo los fondos del lightbox
+        directamente desde los DTOs de variantes.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
@@ -4432,13 +4446,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
             return
 
+        # --- (Validación de try/except para números se mantiene igual) ---
         try:
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
             threshold = float(self.edit_free_shipping_threshold_str) if self.edit_is_moda_completa and self.edit_free_shipping_threshold_str else None
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
-
         except (ValueError, TypeError):
             yield rx.toast.error("Valores numéricos inválidos en el formulario de edición.")
             return
@@ -4446,21 +4460,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         all_variants_for_db = []
         for group_index, generated_list in self.edit_generated_variants_map.items():
             if group_index >= len(self.edit_variant_groups): continue
-
             image_urls_for_group = self.edit_variant_groups[group_index].image_urls
-            for variant_data in generated_list:
-                # Asegura que cada variante tenga un UUID, si no lo tiene, genera uno nuevo
+            
+            for variant_data in generated_list: # variant_data es un VariantFormData
                 variant_uuid = getattr(variant_data, 'variant_uuid', None) or str(uuid.uuid4())
+                
+                # --- ✨ INICIO DE LA CORRECCIÓN DE GUARDADO ✨ ---
+                # Ahora leemos los valores de fondo desde el DTO de la variante (variant_data),
+                # que fue actualizado por los setters (set_edit_temp_lightbox_bg_...).
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
-                    "variant_uuid": variant_uuid, # Guarda el UUID existente o el nuevo
-                    # --- ✨ GUARDADO DE FONDOS LIGHTBOX (EDITAR) ✨ ---
-                    "lightbox_bg_light": self.edit_temp_lightbox_bg_light,
-                    "lightbox_bg_dark": self.edit_temp_lightbox_bg_dark,
-                    # --- FIN ✨ ---
+                    "variant_uuid": variant_uuid,
+                    "lightbox_bg_light": variant_data.lightbox_bg_light, # Lee desde el DTO
+                    "lightbox_bg_dark": variant_data.lightbox_bg_dark,   # Lee desde el DTO
                 }
+                # --- ✨ FIN DE LA CORRECCIÓN DE GUARDADO ✨ ---
                 all_variants_for_db.append(variant_dict)
 
         if not all_variants_for_db:
@@ -4473,7 +4489,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
 
-            # Actualización de todos los campos del producto (igual que antes)
+            # --- (Actualización de campos del post: title, content, price, etc. se mantiene igual) ---
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
             post_to_update.price = price
@@ -4487,10 +4503,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.free_shipping_threshold = threshold
             post_to_update.combines_shipping = self.edit_combines_shipping
             post_to_update.shipping_combination_limit = limit
-            post_to_update.variants = all_variants_for_db # Incluye los fondos del lightbox
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
+            
+            # Asigna las variantes corregidas
+            post_to_update.variants = all_variants_for_db 
 
-            # Guardado de estilo (igual que antes)
+            # --- (Guardado de estilos de tarjeta e imagen se mantiene igual) ---
             post_to_update.use_default_style = self.use_default_style
             post_to_update.light_mode_appearance = self.edit_light_mode_appearance
             post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance
@@ -4509,6 +4527,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             session.add(post_to_update)
 
+            # --- (Lógica de ActivityLog se mantiene igual) ---
             log_entry = ActivityLog(
                 actor_id=self.authenticated_user_info.id,
                 owner_id=post_to_update.userinfo_id,
@@ -4516,9 +4535,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 description=f"Modificó la publicación '{post_to_update.title}'"
             )
             session.add(log_entry)
+            
             session.commit()
 
-        yield self.cancel_editing_post(False) # Limpia todo, incluyendo edit_temp_lightbox_bg
+        yield self.cancel_editing_post(False)
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
