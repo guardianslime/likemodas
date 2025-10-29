@@ -5498,26 +5498,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_background_settings(self) -> tuple[str, str]:
         """
-        [LÓGICA CORREGIDA]
-        Determina el color de fondo ("white" o "black") para el lightbox
-        basándose ÚNICAMENTE en las preferencias guardadas para la variante actual.
-        
-        Esta función ya NO depende de la apariencia de la tarjeta,
-        sino directamente de las preferencias del lightbox.
+        [LÓGICA CORREGIDA v2]
+        Determina el color de fondo FINAL ("white" o "black") para el lightbox,
+        basándose únicamente en las preferencias guardadas para la variante actual.
         """
         
-        # 1. Obtiene la preferencia guardada para el modo claro del sitio.
-        #    (self.current_lightbox_bg_light almacena "white" o "dark")
-        light_mode_bg = self.current_lightbox_bg_light
+        # 1. Lee la preferencia guardada ("white" o "dark") para el MODO CLARO del sitio.
+        #    (self.current_lightbox_bg_light almacena la preferencia del usuario)
+        pref_light = self.current_lightbox_bg_light
         
-        # 2. Obtiene la preferencia guardada para el modo oscuro del sitio.
-        #    (self.current_lightbox_bg_dark almacena "white" o "dark")
-        dark_mode_bg = self.current_lightbox_bg_dark
+        # 2. Lee la preferencia guardada ("white" o "dark") para el MODO OSCURO del sitio.
+        #    (self.current_lightbox_bg_dark almacena la preferencia del usuario)
+        pref_dark = self.current_lightbox_bg_dark
 
-        # 3. Devuelve la tupla ("color_para_modo_claro", "color_para_modo_oscuro")
-        #    El componente rx.color_mode_cond(light=..., dark=...) en la UI
-        #    se encargará de elegir cuál usar.
-        return (light_mode_bg, dark_mode_bg)
+        # --- ESTA ES LA TRADUCCIÓN CLAVE ---
+        # 3. Convierte la preferencia ("dark") al color CSS real ("black").
+        final_light_bg = "white" if pref_light == "white" else "black"
+        final_dark_bg = "white" if pref_dark == "white" else "black"
+        # --- FIN DE LA TRADUCCIÓN ---
+
+        # 4. Devuelve la tupla de colores CSS finales.
+        #    El componente rx.color_mode_cond en la UI se encargará de elegir.
+        return (final_light_bg, final_dark_bg)
 
     # --- NUEVAS VARIABLES para el fondo del lightbox actual ---
     current_lightbox_bg_light: str = "dark" # Fondo para lightbox si la tarjeta debe verse CLARA
