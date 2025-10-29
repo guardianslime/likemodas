@@ -4425,7 +4425,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.edit_selected_group_index in self.edit_generated_variants_map:
             for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
                 variant_data.lightbox_bg_dark = actual_value
-        # --- Fin de la lógica ---
 
     # Dentro de la clase AppState
     def set_edit_temp_lightbox_bg(self, value: Union[str, list[str]]):
