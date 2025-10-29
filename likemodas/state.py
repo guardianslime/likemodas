@@ -9226,8 +9226,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         """
-        [VERSIÓN CORREGIDA]
-        Abre el modal de detalle del producto, cargando fondos de lightbox.
+        [VERSIÓN FINAL CORREGIDA]
+        Abre el modal de detalle del producto, cargando correctamente
+        las preferencias de apariencia y de fondo del lightbox.
         """
         self.modal_carousel_key += 1 # Fuerza re-renderizado del carrusel
 
@@ -9243,7 +9244,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_review_form = False
         self.review_limit_reached = False
         self.expanded_comments = {}
-        self.modal_carousel_key += 1
 
         with rx.session() as session:
             # Carga el post con todas las relaciones necesarias
@@ -9265,7 +9265,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             js_title = json.dumps(db_post.title)
             yield rx.call_script(f"document.title = {js_title}")
 
-            # Calcula el costo de envío dinámico (igual que antes)
+            # Calcula el costo de envío dinámico
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
@@ -9277,6 +9277,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
 
+            # Prepara datos del vendedor y tooltips
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             seller_city_info = db_post.userinfo.seller_city if db_post.userinfo else None
@@ -9284,71 +9285,79 @@ class AppState(reflex_local_auth.LocalAuthState):
             moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
             combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
 
-            # Crea el DTO ProductDetailData (igual que antes)
-            self.product_in_modal = ProductDetailData(
-                id=db_post.id, title=db_post.title, content=db_post.content,
-                price_cop=db_post.price_cop, variants=db_post.variants or [],
-                created_at_formatted=db_post.created_at_formatted,
-                average_rating=db_post.average_rating, rating_count=db_post.rating_count,
-                shipping_cost=db_post.shipping_cost,
-                is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                is_imported=db_post.is_imported, shipping_display_text=shipping_text,
-                seller_name=seller_name, seller_id=seller_id, seller_score=db_post.seller_score,
-                seller_city=seller_city_info,
-                free_shipping_threshold=db_post.free_shipping_threshold,
-                moda_completa_tooltip_text=moda_completa_text,
-                combines_shipping=db_post.combines_shipping,
-                shipping_combination_limit=db_post.shipping_combination_limit,
-                envio_combinado_tooltip_text=combinado_text,
-                use_default_style=db_post.use_default_style,
-                light_card_bg_color=db_post.light_card_bg_color, light_title_color=db_post.light_title_color, light_price_color=db_post.light_price_color,
-                dark_card_bg_color=db_post.dark_card_bg_color, dark_title_color=db_post.dark_title_color, dark_price_color=db_post.dark_price_color,
-                # Apariencias de tarjeta
-                light_mode_appearance=db_post.light_mode_appearance,
-                dark_mode_appearance=db_post.dark_mode_appearance,
-            )
-
-            # --- ✨ CARGA INICIAL DE FONDOS LIGHTBOX (MODAL PÚBLICO) - CORREGIDO ✨ ---
+            # --- ✨ INICIO DE LA CORRECCIÓN DE LÓGICA ✨ ---
+            # Necesitamos obtener la PRIMERA VARIANTE ÚNICA para leer sus
+            # preferencias de lightbox iniciales.
             initial_bg_light = "dark" # Default
             initial_bg_dark = "dark"  # Default
+            first_variant_index_to_load = 0
 
-            # Obtenemos el índice REAL de la primera variante ÚNICA (la que se mostrará primero)
-            # Necesitamos calcular unique_modal_variants ANTES de acceder a él.
-            # (Asumiendo que la lógica de unique_modal_variants ya existe y funciona)
-            # Primero calculamos las variantes únicas basadas en el DTO que acabamos de crear.
-            unique_variants_list = []
+            # Calculamos las variantes únicas (basadas en grupos de imágenes)
+            unique_variants_temp = []
             seen_image_groups_temp = set()
-            if self.product_in_modal and self.product_in_modal.variants:
-                for i, variant in enumerate(self.product_in_modal.variants):
+            if db_post.variants:
+                for i, variant in enumerate(db_post.variants):
                     image_urls_tuple = tuple(sorted(variant.get("image_urls", [])))
                     if image_urls_tuple and image_urls_tuple not in seen_image_groups_temp:
                         seen_image_groups_temp.add(image_urls_tuple)
-                        # Creamos temporalmente el objeto UniqueVariantItem aquí
-                        unique_variants_list.append({"variant": variant, "index": i}) # Usamos dict temporal
+                        unique_variants_temp.append({"variant": variant, "index": i})
 
-            # Ahora sí, obtenemos la primera variante única si existe
-            first_unique_variant_item_dict = unique_variants_list[0] if unique_variants_list else None
+            # Si encontramos variantes únicas, tomamos las preferencias de la PRIMERA
+            if unique_variants_temp:
+                first_unique_variant_item_dict = unique_variants_temp[0]
+                first_variant_index_to_load = first_unique_variant_item_dict["index"]
+                initial_variant_dict = first_unique_variant_item_dict["variant"]
+                initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
+                initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
 
-            if first_unique_variant_item_dict:
-                 # Accedemos a los datos de esa variante específica
-                 initial_variant_dict = first_unique_variant_item_dict["variant"]
-                 initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
-                 initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
+            # Ahora creamos el DTO CON las preferencias de lightbox (que faltaban)
+            self.product_in_modal = ProductDetailData(
+                id=db_post.id,
+                title=db_post.title,
+                content=db_post.content,
+                price_cop=db_post.price_cop,
+                variants=db_post.variants or [],
+                created_at_formatted=db_post.created_at_formatted,
+                average_rating=db_post.average_rating,
+                rating_count=db_post.rating_count,
+                seller_name=seller_name,
+                seller_id=seller_id,
+                attributes={}, # Este campo parece no usarse en el DTO
+                shipping_cost=db_post.shipping_cost,
+                is_moda_completa_eligible=db_post.is_moda_completa_eligible,
+                free_shipping_threshold=db_post.free_shipping_threshold,
+                combines_shipping=db_post.combines_shipping,
+                shipping_combination_limit=db_post.shipping_combination_limit,
+                moda_completa_tooltip_text=moda_completa_text,
+                envio_combinado_tooltip_text=combinado_text,
+                shipping_display_text=shipping_text,
+                is_imported=db_post.is_imported,
+                seller_score=db_post.seller_score,
+                seller_city=seller_city_info,
+                use_default_style=db_post.use_default_style,
+                light_card_bg_color=db_post.light_card_bg_color,
+                light_title_color=db_post.light_title_color,
+                light_price_color=db_post.light_price_color,
+                dark_card_bg_color=db_post.dark_card_bg_color,
+                dark_title_color=db_post.dark_title_color,
+                dark_price_color=db_post.dark_price_color,
+                light_mode_appearance=db_post.light_mode_appearance,
+                dark_mode_appearance=db_post.dark_mode_appearance,
+                # Asignamos las preferencias iniciales al DTO
+                lightbox_bg_light=initial_bg_light,
+                lightbox_bg_dark=initial_bg_dark
+            )
 
-            # Guarda los fondos iniciales en las variables de estado CORRECTAS
+            # Cargamos las preferencias iniciales TAMBIÉN a las variables de estado 'current'
             self.current_lightbox_bg_light = initial_bg_light
             self.current_lightbox_bg_dark = initial_bg_dark
-            # --- FIN CARGA INICIAL ✨ ---
+            # --- ✨ FIN DE LA CORRECCIÓN DE LÓGICA ✨ ---
 
-            # Establece la selección de atributos por defecto (igual que antes)
-            if self.product_in_modal.variants:
-                # Usa el índice real de la primera variante única si existe
-                first_variant_index = first_unique_variant_item_dict["index"] if first_unique_variant_item_dict else 0
-                if 0 <= first_variant_index < len(self.product_in_modal.variants):
-                   self._set_default_attributes_from_variant(self.product_in_modal.variants[first_variant_index])
-                # Si no hay variantes únicas (error raro), usa la primera variante general
-                elif self.product_in_modal.variants:
-                     self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
+            # Establece la selección de atributos por defecto de la primera variante
+            if self.product_in_modal.variants and 0 <= first_variant_index_to_load < len(self.product_in_modal.variants):
+                self._set_default_attributes_from_variant(self.product_in_modal.variants[first_variant_index_to_load])
+            elif self.product_in_modal.variants:
+                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
             # Carga comentarios y estado de revisión (igual que antes)
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]

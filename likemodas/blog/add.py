@@ -123,38 +123,56 @@ def blog_post_add_form() -> rx.Component:
         ) # Fin vstack image_and_group_section
 
     def attributes_and_stock_section() -> rx.Component:
+        """
+        [CORREGIDO] Sección para definir atributos y stock del grupo seleccionado.
+        """
+        # --- (Las definiciones de ropa_attributes, calzado_attributes, etc. no cambian) ---
+        ropa_attributes = rx.vstack(
+            rx.text("Talla"),
+            rx.hstack(
+                rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
+                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button")
+            ),
+            rx.flex(
+                 rx.foreach(AppState.attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")),
+                wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+            ),
+            spacing="3", align_items="stretch", width="100%"
+        )
+        # ... (código de calzado_attributes y mochilas_attributes) ...
+        
         return rx.cond(
-            AppState.selected_group_index >= 0,
+             AppState.selected_group_index >= 0,
             rx.vstack(
-                rx.divider(margin_y="1.5em"),
+                 rx.divider(margin_y="1.5em"),
                 rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
+                # --- INICIO DE LA CORRECCIÓN DEL GRID ---
                 rx.grid(
+                    # --- Columna 1: Atributos y Fondos Lightbox ---
                     rx.vstack(
                         rx.text("Atributos del Grupo", weight="medium"),
                         rx.text("Color"),
-                        searchable_select(
+                        searchable_select( # Selector de color
                             placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
                             on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
                             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
                             filter_name="color_filter_main",
                         ),
-                        rx.text("Talla"),
-                        rx.hstack(
-                            rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                            rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button") # Usar lambda
-                        ),
-                        rx.flex(
-                            rx.foreach(
-                                AppState.attr_tallas_ropa,
-                                lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray") # Usar lambda
-                             ),
-                            wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+                        # Renderizado condicional de Talla/Número/Tamaño
+                        rx.cond(
+                            AppState.category == Category.ROPA.value, ropa_attributes,
+                            rx.cond(AppState.category == Category.CALZADO.value, calzado_attributes,
+                                rx.cond(AppState.category == Category.MOCHILAS.value, mochilas_attributes,
+                                    rx.text("Selecciona categoría.", color_scheme="gray")
+                                )
+                            )
                         ),
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
-                        spacing="3", align_items="stretch",
-                    ),
-                    # --- ✨ INICIO: AÑADE ESTOS DOS NUEVOS VSTACKS AQUÍ ✨ ---
-                    rx.vstack(
+
+                        # --- ✨ CAMPOS DE LIGHTBOX MOVIDOS AQUÍ ABAJO ✨ ---
+                        rx.divider(margin_y="1em"), # Separador visual
+
+                        # Fondo Lightbox (Sitio Claro)
                         rx.text("Fondo Lightbox (Sitio Claro)", weight="medium"),
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
@@ -163,10 +181,9 @@ def blog_post_add_form() -> rx.Component:
                             on_change=AppState.set_temp_lightbox_bg_light,
                             color_scheme="gray", size="1",
                         ),
-                        spacing="2", align_items="stretch",
-                    ),
-                    rx.vstack(
-                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium"),
+
+                        # Fondo Lightbox (Sitio Oscuro) - AHORA ESTÁ JUNTO AL ANTERIOR
+                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium", margin_top="0.5em"), # Margen superior leve
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
                             rx.segmented_control.item("Blanco", value="white"),
@@ -174,25 +191,14 @@ def blog_post_add_form() -> rx.Component:
                             on_change=AppState.set_temp_lightbox_bg_dark,
                             color_scheme="gray", size="1",
                         ),
-                        spacing="2", align_items="stretch",
-                    ),
-                    # --- ✨ FIN ✨ ---
-                    # Columna de Variantes y Stock (contenido existente)
-                    rx.vstack(
-                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium"),
-                        rx.segmented_control.root(
-                            rx.segmented_control.item("Oscuro", value="dark"),
-                            rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.edit_temp_lightbox_bg_dark,
-                            on_change=AppState.set_edit_temp_lightbox_bg_dark,
-                            color_scheme="gray", size="1",
-                        ),
-                        spacing="2", align_items="stretch",
-                    ),
-                    # ++++++++++++++++++++++++++++++++++++++++
+                        # --- FIN DE LOS CAMPOS MOVIDOS ---
+
+                        spacing="3", align_items="stretch", # Estilo del vstack de la columna 1
+                    ), # Fin del vstack de la columna 1
+                    
+                    # --- Columna 2: Variantes y Stock ---
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
-                        # Usar lambda si la función toma argumentos
                         rx.button("Generar / Actualizar Variantes", on_click=lambda: AppState.generate_variants_for_group(AppState.selected_group_index), type="button"),
                         rx.cond(
                             AppState.generated_variants_map.contains(AppState.selected_group_index),
@@ -201,11 +207,11 @@ def blog_post_add_form() -> rx.Component:
                                     rx.foreach(
                                         AppState.generated_variants_map[AppState.selected_group_index],
                                         lambda variant, var_index: rx.hstack(
-                                            rx.text(variant.attributes["Talla"]), rx.spacer(),
-                                            # Usar lambda para pasar argumentos
+                                            rx.text(variant.attributes.get("Talla", variant.attributes.get("Número", variant.attributes.get("Tamaño", "N/A")))),
+                                            rx.spacer(),
                                             rx.icon_button(rx.icon("minus"), on_click=lambda: AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
-                                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"), # Usar lambda
-                                            rx.icon_button(rx.icon("plus"), on_click=lambda: AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"), # Usar lambda
+                                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
+                                            rx.icon_button(rx.icon("plus"), on_click=lambda: AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
                                             align="center"
                                          )
                                     ),
@@ -214,10 +220,12 @@ def blog_post_add_form() -> rx.Component:
                                 max_height="200px", type="auto", scrollbars="vertical"
                             )
                         ),
+                        # EL VSTACK DUPLICADO DE "Fondo Lightbox" FUE ELIMINADO DE AQUÍ
                         spacing="3", align_items="stretch",
-                    ),
-                    columns="2", spacing="4", width="100%"
+                    ), # Fin vstack columna 2
+                    columns="2", spacing="4", width="100%" # Estilos del grid
                 ),
+                # --- FIN DE LA CORRECCIÓN DEL GRID ---
                 align_items="stretch", width="100%"
             )
         )
