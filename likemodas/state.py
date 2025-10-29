@@ -5501,26 +5501,26 @@ class AppState(reflex_local_auth.LocalAuthState):
     current_lightbox_bg_dark: str = "dark"  # Fondo para lightbox si la tarjeta debe verse OSCURA
 
     # --- MÉTODO MODIFICADO: set_modal_variant_index ---
-    # (Este se llama cuando haces clic en una miniatura en el modal)
+    # (Este se llama cuando haces clic en una miniatura en el modal público)
     def set_modal_variant_index(self, visual_index: int):
         """
-        [VERSIÓN CORREGIDA]
-        Actualiza el índice visual y carga los fondos del lightbox correspondientes.
+        [VERSIÓN FINAL CON LIGHTBOX BG]
+        Actualiza el índice visual y carga los fondos del lightbox correspondientes
+        a la variante seleccionada en el modal público.
         """
-        self.modal_selected_variant_index = visual_index
+        self.modal_selected_variant_index = visual_index # Actualiza índice visual
 
-        unique_variants = self.unique_modal_variants
+        unique_variants = self.unique_modal_variants # Obtiene lista de variantes únicas
         if 0 <= visual_index < len(unique_variants):
-            selected_item = unique_variants[visual_index]
-            self._internal_variant_data_index = selected_item.index
-            self.modal_selected_attributes = {}
-            self._set_default_attributes_from_variant(selected_item.variant)
+            selected_item = unique_variants[visual_index] # Obtiene el item único seleccionado
+            self._internal_variant_data_index = selected_item.index # Guarda el índice real de datos
+            self.modal_selected_attributes = {} # Limpia atributos seleccionables
+            self._set_default_attributes_from_variant(selected_item.variant) # Pre-selecciona atributos
 
             # --- ✨ ACTUALIZACIÓN DE FONDOS LIGHTBOX (MODAL PÚBLICO) ✨ ---
-            # Carga los fondos del lightbox DESDE LA VARIANTE seleccionada
-            new_variant_data = selected_item.variant # Usamos la variante directamente
+            # Carga los fondos del lightbox DESDE LA VARIANTE recién seleccionada
+            new_variant_data = selected_item.variant
             if new_variant_data:
-                # Leemos la configuración guardada EN la variante
                 self.current_lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
                 self.current_lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
             else:
@@ -5529,10 +5529,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                  self.current_lightbox_bg_dark = "dark"
             # --- FIN ✨ ---
         else:
-             # Si el índice no es válido, resetea valores internos
+             # Resetea si el índice no es válido
              self._internal_variant_data_index = 0
              self.modal_selected_attributes = {}
-             # Resetea también los fondos del lightbox a valores por defecto
+             # Resetea fondos a default
              self.current_lightbox_bg_light = "dark"
              self.current_lightbox_bg_dark = "dark"
 
@@ -9243,6 +9243,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_review_form = False
         self.review_limit_reached = False
         self.expanded_comments = {}
+        self.modal_carousel_key += 1
 
         with rx.session() as session:
             # Carga el post con todas las relaciones necesarias
@@ -9307,25 +9308,47 @@ class AppState(reflex_local_auth.LocalAuthState):
                 dark_mode_appearance=db_post.dark_mode_appearance,
             )
 
-            # --- ✨ CARGA INICIAL DE FONDOS LIGHTBOX (MODAL PÚBLICO) ✨ ---
-            initial_bg_light = "dark"
-            initial_bg_dark = "dark"
-            # Obtenemos el índice REAL de la primera variante única (la que se mostrará primero)
-            first_unique_variant_item = self.unique_modal_variants[0] if self.unique_modal_variants else None
-            if first_unique_variant_item:
+            # --- ✨ CARGA INICIAL DE FONDOS LIGHTBOX (MODAL PÚBLICO) - CORREGIDO ✨ ---
+            initial_bg_light = "dark" # Default
+            initial_bg_dark = "dark"  # Default
+
+            # Obtenemos el índice REAL de la primera variante ÚNICA (la que se mostrará primero)
+            # Necesitamos calcular unique_modal_variants ANTES de acceder a él.
+            # (Asumiendo que la lógica de unique_modal_variants ya existe y funciona)
+            # Primero calculamos las variantes únicas basadas en el DTO que acabamos de crear.
+            unique_variants_list = []
+            seen_image_groups_temp = set()
+            if self.product_in_modal and self.product_in_modal.variants:
+                for i, variant in enumerate(self.product_in_modal.variants):
+                    image_urls_tuple = tuple(sorted(variant.get("image_urls", [])))
+                    if image_urls_tuple and image_urls_tuple not in seen_image_groups_temp:
+                        seen_image_groups_temp.add(image_urls_tuple)
+                        # Creamos temporalmente el objeto UniqueVariantItem aquí
+                        unique_variants_list.append({"variant": variant, "index": i}) # Usamos dict temporal
+
+            # Ahora sí, obtenemos la primera variante única si existe
+            first_unique_variant_item_dict = unique_variants_list[0] if unique_variants_list else None
+
+            if first_unique_variant_item_dict:
                  # Accedemos a los datos de esa variante específica
-                 initial_variant_dict = first_unique_variant_item.variant
+                 initial_variant_dict = first_unique_variant_item_dict["variant"]
                  initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
                  initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
 
-            # Guarda los fondos iniciales en las NUEVAS variables de estado
+            # Guarda los fondos iniciales en las variables de estado CORRECTAS
             self.current_lightbox_bg_light = initial_bg_light
             self.current_lightbox_bg_dark = initial_bg_dark
-            # --- FIN ✨ ---
+            # --- FIN CARGA INICIAL ✨ ---
 
-            # Establece la selección de atributos por defecto de la primera variante (igual que antes)
+            # Establece la selección de atributos por defecto (igual que antes)
             if self.product_in_modal.variants:
-                self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
+                # Usa el índice real de la primera variante única si existe
+                first_variant_index = first_unique_variant_item_dict["index"] if first_unique_variant_item_dict else 0
+                if 0 <= first_variant_index < len(self.product_in_modal.variants):
+                   self._set_default_attributes_from_variant(self.product_in_modal.variants[first_variant_index])
+                # Si no hay variantes únicas (error raro), usa la primera variante general
+                elif self.product_in_modal.variants:
+                     self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
             # Carga comentarios y estado de revisión (igual que antes)
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
