@@ -7,6 +7,7 @@ import reflex as rx
 from rx_color_picker.color_picker import color_picker
 
 from likemodas.data.product_options import LISTA_TALLAS_ROPA
+from likemodas.models import Category
 from ..state import DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE, DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE, AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from .forms import blog_post_add_form
