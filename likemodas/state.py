@@ -4392,34 +4392,39 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_temp_lightbox_bg_light: str = "dark" # Para el formulario de EDITAR
     edit_temp_lightbox_bg_dark: str = "dark"  # Para el formulario de EDITAR
 
-    def set_edit_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
-        """
-        [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
-        del grupo seleccionado.
-        """
-        actual_value = value[0] if isinstance(value, list) else value
-        self.edit_temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
-        
-        # --- Lógica de actualización añadida ---
-        # Actualiza todas las variantes en el mapa para este grupo
-        if self.edit_selected_group_index in self.edit_generated_variants_map:
-            for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
-                variant_data.lightbox_bg_light = self.edit_temp_lightbox_bg_light
-        # --- Fin de la lógica ---
+    def set_temp_lightbox_bg_light(self, value: str):
+        """Manejador para el fondo lightbox (Crear - Sitio Claro). Acepta solo 'str'."""
+        self.temp_lightbox_bg_light = value if value in ["dark", "white"] else "dark"
 
-    def set_edit_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
+    def set_temp_lightbox_bg_dark(self, value: str):
+        """Manejador para el fondo lightbox (Crear - Sitio Oscuro). Acepta solo 'str'."""
+        self.temp_lightbox_bg_dark = value if value in ["dark", "white"] else "dark"
+
+    def set_edit_temp_lightbox_bg_light(self, value: str):
         """
         [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
-        del grupo seleccionado.
+        del grupo seleccionado. Ahora solo acepta 'str'.
         """
-        actual_value = value[0] if isinstance(value, list) else value
-        self.edit_temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
+        actual_value = value if value in ["dark", "white"] else "dark"
+        self.edit_temp_lightbox_bg_light = actual_value
         
-        # --- Lógica de actualización añadida ---
         # Actualiza todas las variantes en el mapa para este grupo
         if self.edit_selected_group_index in self.edit_generated_variants_map:
             for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
-                variant_data.lightbox_bg_dark = self.edit_temp_lightbox_bg_dark
+                variant_data.lightbox_bg_light = actual_value
+
+    def set_edit_temp_lightbox_bg_dark(self, value: str):
+        """
+        [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
+        del grupo seleccionado. Ahora solo acepta 'str'.
+        """
+        actual_value = value if value in ["dark", "white"] else "dark"
+        self.edit_temp_lightbox_bg_dark = actual_value
+        
+        # Actualiza todas las variantes en el mapa para este grupo
+        if self.edit_selected_group_index in self.edit_generated_variants_map:
+            for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
+                variant_data.lightbox_bg_dark = actual_value
         # --- Fin de la lógica ---
 
     # Dentro de la clase AppState
