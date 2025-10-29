@@ -1,16 +1,20 @@
-# likemodas/blog/add.py
-# En: likemodas/blog/add.py
-
 # En: likemodas/blog/add.py
 
 import reflex as rx
 from rx_color_picker.color_picker import color_picker
 
-from likemodas.data.product_options import LISTA_TALLAS_ROPA
-from likemodas.models import Category
-from ..state import DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE, DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE, AppState, VariantGroupDTO
+# Importaciones de datos y modelos
+from likemodas.data.product_options import (
+    LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS
+)
+from ..state import (
+    DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE,
+    DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE,
+    AppState, VariantGroupDTO, VariantFormData
+)
+from ..models import Category # Importar Category
 from ..auth.admin_auth import require_panel_access
-from .forms import blog_post_add_form
+# Se elimina la importación de 'blog_post_add_form' desde 'forms.py'
 from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_display_safe
 from ..utils.formatting import format_to_cop
 from reflex.components.component import NoSSRComponent
@@ -85,20 +89,17 @@ def blog_post_add_form() -> rx.Component:
             rx.upload(
                  rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=10,
-                # Corregido para usar lambda si es necesario (depende de la versión de reflex)
                 on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
             rx.text("2. Selecciona y ordena las imágenes para el grupo:"),
-            # --- 👇 ASEGÚRATE DE QUE ESTE rx.flex ESTÉ ASÍ 👇 ---
             rx.flex(
                  rx.foreach(
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            # AppState.image_selection_for_grouping.contains(img_name), # <--- ¡ASÍ DEBE SER!
-                            AppState.image_selection_for_grouping.contains(img_name), # <-- Usa .contains()
+                            AppState.image_selection_for_grouping.contains(img_name), # Usa .contains()
                             rx.box(
                                 rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"),
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
@@ -107,15 +108,13 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                         position="relative", border="2px solid",
-                        # border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- ¡ASÍ DEBE SER!
-                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <-- Usa .contains()
+                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # Usa .contains()
                         border_radius="lg", cursor="pointer",
                         on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
-                wrap="wrap", spacing="3", padding_top="0.5em",
+                 wrap="wrap", spacing="3", padding_top="0.5em",
              ),
-             # --- 👆 FIN DE LA VERIFICACIÓN DEL rx.flex 👆 ---
             rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"),
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos (Selecciona uno para editar abajo):"),
@@ -123,11 +122,14 @@ def blog_post_add_form() -> rx.Component:
             spacing="3", width="100%", align_items="stretch",
         ) # Fin vstack image_and_group_section
 
+    # --- INICIO: FUNCIÓN attributes_and_stock_section CORREGIDA ---
     def attributes_and_stock_section() -> rx.Component:
         """
-        [CORREGIDO] Sección para definir atributos y stock del grupo seleccionado.
+        [CORREGIDO] Sección para atributos y stock del formulario de CREACIÓN.
+        Define los atributos dinámicos (ropa, calzado, mochila) y corrige el layout del grid.
         """
-        # --- (Las definiciones de ropa_attributes, calzado_attributes, etc. no cambian) ---
+
+        # --- INICIO: Definición de atributos dinámicos (para CREACIÓN) ---
         ropa_attributes = rx.vstack(
             rx.text("Talla"),
             rx.hstack(
@@ -140,14 +142,40 @@ def blog_post_add_form() -> rx.Component:
             ),
             spacing="3", align_items="stretch", width="100%"
         )
-        # ... (código de calzado_attributes y mochilas_attributes) ...
-        
+
+        calzado_attributes = rx.vstack(
+            rx.text("Número"),
+            rx.hstack(
+                rx.select(LISTA_NUMEROS_CALZADO, placeholder="Añadir número...", value=AppState.temp_numero, on_change=AppState.set_temp_numero),
+                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero), type="button")
+            ),
+            rx.flex(
+                 rx.foreach(AppState.attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")),
+                wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+            ),
+            spacing="3", align_items="stretch", width="100%"
+        )
+
+        mochilas_attributes = rx.vstack(
+            rx.text("Tamaño"),
+            rx.hstack(
+                rx.select(LISTA_TAMANOS_MOCHILAS, placeholder="Añadir tamaño...", value=AppState.temp_tamano, on_change=AppState.set_temp_tamano),
+                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano), type="button")
+            ),
+            rx.flex(
+                 rx.foreach(AppState.attr_tamanos_mochila, lambda tam: rx.badge(tam, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Tamaño", tam), cursor="pointer"), variant="soft", color_scheme="gray")),
+                wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+            ),
+            spacing="3", align_items="stretch", width="100%"
+        )
+        # --- FIN: Definición de atributos dinámicos ---
+
         return rx.cond(
              AppState.selected_group_index >= 0,
             rx.vstack(
                  rx.divider(margin_y="1.5em"),
                 rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
-                # --- INICIO DE LA CORRECCIÓN DEL GRID ---
+                # --- INICIO: CORRECCIÓN DEL GRID ---
                 rx.grid(
                     # --- Columna 1: Atributos y Fondos Lightbox ---
                     rx.vstack(
@@ -159,7 +187,8 @@ def blog_post_add_form() -> rx.Component:
                             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
                             filter_name="color_filter_main",
                         ),
-                        # Renderizado condicional de Talla/Número/Tamaño
+
+                        # --- USO DE LAS VARIABLES DEFINIDAS ARRIBA ---
                         rx.cond(
                             AppState.category == Category.ROPA.value, ropa_attributes,
                             rx.cond(AppState.category == Category.CALZADO.value, calzado_attributes,
@@ -168,35 +197,30 @@ def blog_post_add_form() -> rx.Component:
                                 )
                             )
                         ),
+
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline", type="button"),
 
-                        # --- ✨ CAMPOS DE LIGHTBOX MOVIDOS AQUÍ ABAJO ✨ ---
-                        rx.divider(margin_y="1em"), # Separador visual
-
-                        # Fondo Lightbox (Sitio Claro)
+                        # --- CAMPOS DE LIGHTBOX MOVIDOS AQUÍ ---
+                        rx.divider(margin_y="1em"),
                         rx.text("Fondo Lightbox (Sitio Claro)", weight="medium"),
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
                             rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.temp_lightbox_bg_light, # Usa 'temp_' para CREAR
+                            value=AppState.temp_lightbox_bg_light,
                             on_change=AppState.set_temp_lightbox_bg_light,
                             color_scheme="gray", size="1",
                         ),
-
-                        # Fondo Lightbox (Sitio Oscuro) - AHORA ESTÁ JUNTO AL ANTERIOR
-                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium", margin_top="0.5em"), # Margen superior leve
+                        rx.text("Fondo Lightbox (Sitio Oscuro)", weight="medium", margin_top="0.5em"),
                         rx.segmented_control.root(
                             rx.segmented_control.item("Oscuro", value="dark"),
                             rx.segmented_control.item("Blanco", value="white"),
-                            value=AppState.temp_lightbox_bg_dark, # Usa 'temp_' para CREAR
+                            value=AppState.temp_lightbox_bg_dark,
                             on_change=AppState.set_temp_lightbox_bg_dark,
                             color_scheme="gray", size="1",
                         ),
-                        # --- FIN DE LOS CAMPOS MOVIDOS ---
+                        spacing="3", align_items="stretch",
+                    ), # Fin vstack columna 1
 
-                        spacing="3", align_items="stretch", # Estilo del vstack de la columna 1
-                    ), # Fin del vstack de la columna 1
-                    
                     # --- Columna 2: Variantes y Stock ---
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
@@ -221,92 +245,48 @@ def blog_post_add_form() -> rx.Component:
                                 max_height="200px", type="auto", scrollbars="vertical"
                             )
                         ),
-                        # EL VSTACK DUPLICADO DE "Fondo Lightbox" FUE ELIMINADO DE AQUÍ
+                        # EL VSTACK DUPLICADO FUE ELIMINADO
                         spacing="3", align_items="stretch",
                     ), # Fin vstack columna 2
-                    columns="2", spacing="4", width="100%" # Estilos del grid
+                    columns="2", spacing="4", width="100%"
                 ),
                 # --- FIN DE LA CORRECCIÓN DEL GRID ---
                 align_items="stretch", width="100%"
             )
         )
+    # --- FIN: FUNCIÓN attributes_and_stock_section CORREGIDA ---
 
-    # --- 👇 INICIO: CORRECCIÓN ESTRUCTURAL CLAVE 👇 ---
-    return rx.form( # <--- ENVOLVEMOS TODO EN rx.form
-        rx.vstack( # <--- Este vstack organiza, pero NO tiene on_submit
+    # --- Estructura principal del formulario de CREACIÓN ---
+    return rx.form(
+        rx.vstack(
             rx.grid(
                 # Columna izquierda (Imágenes y Variantes)
                 rx.vstack(
                     image_and_group_section(),
                     attributes_and_stock_section(),
-                    spacing="5",
-                    width="100%",
+                    spacing="5", width="100%",
                 ),
                 # Columna derecha (Detalles del Producto)
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto"),
-                        rx.input(
-                            name="title",
-                            value=AppState.title,
-                            on_change=AppState.set_title,
-                            required=True,
-                            max_length=40
-                        ),
+                        rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True, max_length=40),
                         align_items="stretch"
                     ),
-                    # Sección de Categoría, Tipo, Material
+                    # Sección Categoría, Tipo, Material/Tela
                     rx.grid(
-                        rx.vstack(rx.text("Categoría"), rx.select(
-                            AppState.categories, name="category", required=True,
-                            value=AppState.category, on_change=AppState.set_category
-                        ), align_items="stretch"),
-                        rx.vstack(rx.text("Tipo"), searchable_select(
-                            placeholder="Selecciona un Tipo",
-                            options=AppState.filtered_attr_tipos,
-                            value_select=AppState.attr_tipo,
-                            on_change_select=AppState.set_attr_tipo,
-                            search_value=AppState.search_attr_tipo,
-                            on_change_search=AppState.set_search_attr_tipo,
-                            filter_name="add_tipo_filter",
-                            is_disabled=~AppState.category
-                        ), align_items="stretch"),
+                        rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, name="category", required=True, value=AppState.category, on_change=AppState.set_category), align_items="stretch"),
+                        rx.vstack(rx.text("Tipo"), searchable_select(placeholder="Selecciona un Tipo", options=AppState.filtered_attr_tipos, value_select=AppState.attr_tipo, on_change_select=AppState.set_attr_tipo, search_value=AppState.search_attr_tipo, on_change_search=AppState.set_search_attr_tipo, filter_name="add_tipo_filter", is_disabled=~AppState.category), align_items="stretch"),
                         rx.vstack(
                             rx.text(AppState.material_label),
-                            searchable_select(
-                                placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
-                                options=AppState.filtered_attr_materiales,
-                                value_select=AppState.attr_material,
-                                on_change_select=AppState.set_attr_material,
-                                search_value=AppState.search_attr_material,
-                                on_change_search=AppState.set_search_attr_material,
-                                filter_name="add_material_filter",
-                                is_disabled=~AppState.category
-                            )
+                            searchable_select(placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"), options=AppState.filtered_attr_materiales, value_select=AppState.attr_material, on_change_select=AppState.set_attr_material, search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material, filter_name="add_material_filter", is_disabled=~AppState.category)
                         , align_items="stretch"),
-                        columns={"initial": "1", "md": "3"},
-                        spacing="4",
-                        width="100%"
+                        columns={"initial": "1", "md": "3"}, spacing="4", width="100%"
                     ),
                     # Sección Precio, Ganancia
                     rx.grid(
-                        rx.vstack(rx.text("Precio (COP)"), rx.input(
-                            name="price",
-                            value=AppState.price_str,
-                            on_change=AppState.set_price_str,
-                            on_blur=AppState.validate_price_on_blur_add,
-                            type="number", # Mantenido como number para validación del navegador
-                            required=True,
-                            placeholder="Ej: 55000"
-                        ), align_items="stretch"),
-                        rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                            name="profit",
-                            value=AppState.profit_str,
-                            on_change=AppState.set_profit_str,
-                            on_blur=AppState.validate_profit_on_blur_add,
-                            type="number", # Mantenido como number
-                            placeholder="Ej: 15000"
-                        ), align_items="stretch"),
+                        rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, on_blur=AppState.validate_price_on_blur_add, type="number", required=True, placeholder="Ej: 55000"), align_items="stretch"),
+                        rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, on_blur=AppState.validate_profit_on_blur_add, type="number", placeholder="Ej: 15000"), align_items="stretch"),
                         columns="2", spacing="4", width="100%"
                     ),
                     # Sección IVA, Origen
@@ -315,7 +295,7 @@ def blog_post_add_form() -> rx.Component:
                         rx.vstack(rx.text("Origen"), rx.hstack(rx.switch(name="is_imported", is_checked=AppState.is_imported, on_change=AppState.set_is_imported), rx.text(rx.cond(AppState.is_imported, "Importado", "Nacional")))),
                         columns="2", spacing="4", width="100%"
                     ),
-                     # Sección Envío
+                    # Sección Envío
                     rx.grid(
                         rx.vstack(rx.text("Costo de Envío Mínimo (Local)"), rx.input(name="shipping_cost_str", value=AppState.shipping_cost_str, on_change=AppState.set_shipping_cost_str, placeholder="Ej: 3000"), rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), align_items="stretch"),
                         rx.vstack(rx.text("Moda Completa"), rx.hstack(rx.switch(name="is_moda_completa", is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa), rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"))), rx.input(name="free_shipping_threshold_str", value=AppState.free_shipping_threshold_str, on_change=AppState.set_free_shipping_threshold_str, is_disabled=~AppState.is_moda_completa, placeholder="Monto para envío gratis"), rx.text("Envío gratis en compras > este monto.", size="1", color_scheme="gray"), align_items="stretch"),
@@ -339,20 +319,17 @@ def blog_post_add_form() -> rx.Component:
             # Botón de Publicar
             rx.hstack(
                 rx.spacer(),
-                # El botón tiene type="submit" para que el form lo maneje
                 rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"),
                 width="100%",
             ),
-            # Atributos del vstack principal
             spacing="5",
             width="100%",
-        ), # Fin vstack principal
-
-        # --- 👇 on_submit y reset_on_submit APLICADOS AL rx.form 👇 ---
-        on_submit=AppState.submit_and_publish_manual, # Evento correcto
+        ),
+        on_submit=AppState.submit_and_publish_manual,
         reset_on_submit=False,
         width="100%"
-    ) # --- 👆 FIN DEL rx.form y CORRECCIÓN ESTRUCTURAL 👆 ---
+    )
+
 
 # --- Componente para la previsualización de la tarjeta ---
 def post_preview(
@@ -373,7 +350,6 @@ def post_preview(
     """
 
     # --- INICIO: Determinar la apariencia objetivo DENTRO de la función ---
-    # Replicamos la lógica de _update_live_colors para saber cómo debe verse la tarjeta
     is_light_preview = AppState.card_theme_mode == "light"
     card_target_appearance = rx.cond(
         AppState.use_default_style,
@@ -389,34 +365,29 @@ def post_preview(
         """
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
-        # --- CORRECCIÓN CLAVE AQUÍ ---
-        # Usa card_target_appearance en lugar de AppState.card_theme_mode
         colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
-        # --- FIN CORRECCIÓN ---
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"], color=colors["text"], padding="1px 10px",
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # Colores principales (ya corregidos, dependen de las variables 'live_')
+    # Colores principales (dependen de las variables 'live_')
     card_bg_color = AppState.live_card_bg_color
     title_color = AppState.live_title_color
     price_color = AppState.live_price_color
 
     # --- Fondo DETRÁS de la imagen CORREGIDO ---
-    # Ahora depende de la apariencia objetivo de la tarjeta
     image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
     # --- FIN ---
 
     return rx.box(
         rx.vstack(
-             # --- Contenedor de la imagen ---
-             rx.box(
+             rx.box( # Contenedor de la imagen
                  rx.image(
                     src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
                     width="100%", height="260px", object_fit="contain",
-                    transform=rx.cond( # Transformación (zoom, rotación)
+                    transform=rx.cond(
                         AppState.is_hydrated,
                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
                         "scale(1)"
@@ -433,8 +404,7 @@ def post_preview(
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
                  bg=image_bg, # <-- Fondo de imagen corregido
              ),
-             # --- Contenedor de la información ---
-             rx.vstack(
+             rx.vstack( # Contenedor de la información
                 rx.text( # Título
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
@@ -471,6 +441,7 @@ def post_preview(
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
+
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
     image_editor_panel = rx.vstack(
@@ -557,7 +528,6 @@ def blog_post_add_content() -> rx.Component:
                 envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
             ),
             image_editor_panel,
-            # Se ha eliminado el 'display' responsivo para que sea visible en móvil
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
             on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
         ),
