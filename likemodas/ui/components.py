@@ -10,6 +10,9 @@ from ..state import (
     DEFAULT_DARK_BG, DEFAULT_DARK_TITLE, DEFAULT_DARK_PRICE,
 )
 
+# Asegúrate de importar TITLE_CLAMP_STYLE y star_rating_display_safe si no están ya
+from ..ui.components import TITLE_CLAMP_STYLE, star_rating_display_safe
+
 from reflex.event import EventSpec
 
 # --- ✨ INICIO: AÑADE ESTE DICCIONARIO DE ESTILO ✨ ---
@@ -150,111 +153,126 @@ def multi_select_component(
 # --- ✨ 2. REEMPLAZA LA FUNCIÓN product_gallery_component CON ESTA ✨ ---
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL SIMPLIFICADA]
-    Galería de productos que renderiza tarjetas con el nuevo sistema de inversión de tema.
+    [VERSIÓN FINAL CONSISTENTE]
+    Galería de productos que renderiza tarjetas con la lógica de apariencia
+    unificada, igual que la previsualización.
     """
     def _render_single_card(post: ProductCardData) -> rx.Component:
-        """Función interna para renderizar una sola tarjeta de producto."""
-        
-        # 1. Obtiene los estilos de imagen (Zoom/Rotación)
-        image_styles = post.image_styles 
-        zoom = image_styles.get("zoom", 1.0) 
+        """
+        [CORREGIDO] Función interna para renderizar una sola tarjeta de producto,
+        aplicando la lógica de apariencia consistente.
+        """
+        # --- INICIO: Determinar apariencia objetivo y colores ---
+        # 1. Obtiene el modo de color actual del sitio REAL
+        site_theme = rx.color_mode_cond("light", "dark")
+
+        # 2. Determina cómo DEBERÍA verse la tarjeta según los valores guardados en el DTO
+        card_target_appearance = rx.cond(
+            post.use_default_style,
+            site_theme, # Si default=ON, apariencia = modo sitio
+            # Si default=OFF, apariencia = selección guardada para el modo sitio
+            rx.cond(site_theme == "light", post.light_mode_appearance, post.dark_mode_appearance)
+        )
+
+        # 3. Asigna colores principales basados en la apariencia objetivo
+        card_bg_color = rx.cond(
+            post.use_default_style,
+            rx.cond(site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG), # Usa default del sitio
+            # Si no es default, usa default de la apariencia objetivo
+            rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+        )
+        title_color = rx.cond(
+            post.use_default_style,
+            rx.cond(site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+            rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+        )
+        price_color = rx.cond(
+            post.use_default_style,
+            rx.cond(site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+            rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+        )
+
+        # 4. Fondo detrás de la imagen: depende de la apariencia objetivo
+        image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
+        # --- FIN ---
+
+        # Función interna para badges (USA LA APARIENCIA OBJETIVO)
+        def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+            light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
+            dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+            # Usa card_target_appearance para elegir colores
+            colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
+            return rx.box(
+                rx.text(text_content, size="2", weight="medium"),
+                bg=colors["bg"], color=colors["text"], padding="1px 10px",
+                border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
+            )
+
+        # Estilos de imagen (Zoom/Rotación) - Leídos del DTO
+        image_styles = post.image_styles
+        zoom = image_styles.get("zoom", 1.0)
         rotation = image_styles.get("rotation", 0)
         offset_x = image_styles.get("offsetX", 0)
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # --- 👇 INICIO: LÓGICA DE TEMA Y COLOR SIMPLIFICADA 👇 ---
-
-        # 1. Determina el tema REAL del sitio
-        site_theme = rx.color_mode_cond("light", "dark")
-
-        # 2. Determina cómo DEBERÍA verse la tarjeta según los valores guardados en el DTO
-        card_should_appear_as = rx.cond(
-            site_theme == "light",
-            post.light_mode_appearance, # El valor guardado para modo claro
-            post.dark_mode_appearance   # El valor guardado para modo oscuro
-        )
-
-        # 3. Asigna colores basados en cómo debería verse, usando defaults o los colores guardados
-        card_bg_color = rx.cond(
-            post.use_default_style,
-            rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-            rx.cond(
-                card_should_appear_as == "light",
-                post.light_card_bg_color | DEFAULT_LIGHT_BG,
-                post.dark_card_bg_color | DEFAULT_DARK_BG
-            )
-        )
-        title_color = rx.cond(
-            post.use_default_style,
-            rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-            rx.cond(
-                card_should_appear_as == "light",
-                post.light_title_color | DEFAULT_LIGHT_TITLE,
-                post.dark_title_color | DEFAULT_DARK_TITLE
-            )
-        )
-        price_color = rx.cond(
-            post.use_default_style,
-            rx.cond(card_should_appear_as == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-            rx.cond(
-                card_should_appear_as == "light",
-                post.light_price_color | DEFAULT_LIGHT_PRICE,
-                post.dark_price_color | DEFAULT_DARK_PRICE
-            )
-        )
-
+        # --- Renderizado de la tarjeta ---
         return rx.box(
             rx.vstack(
+                # Contenedor principal clickeable
                 rx.vstack(
+                    # --- Contenedor de la imagen ---
                     rx.box(
-                        rx.cond(
+                        rx.cond( # Muestra imagen o placeholder
                             post.main_image_url != "",
                             rx.image(
-                                src=rx.get_upload_url(post.main_image_url),
-                                width="100%", height="260px", 
+                                 src=rx.get_upload_url(post.main_image_url),
+                                width="100%", height="260px",
                                 object_fit="contain",
-                                transform=transform_style,
+                                transform=transform_style, # Aplica zoom/rotación
                                 transition="transform 0.2s ease-out",
                             ),
-                            rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center") 
+                            # Placeholder si no hay imagen
+                            rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                         ),
+                        # Badge de Origen
                         rx.badge(
                             rx.cond(post.is_imported, "Importado", "Nacional"),
                             color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
                             variant="solid",
-                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"} 
+                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                         ),
-                        position="relative",
-                        width="100%", height="260px",
+                        position="relative", width="100%", height="260px",
                         overflow="hidden",
-                        bg=rx.color_mode_cond("white", rx.color("gray", 3)),
+                        bg=image_bg, # <-- Fondo de imagen corregido
                     ),
+                    # --- Contenedor de la información ---
                     rx.vstack(
+                        # Título
                         rx.text(
-                            post.title, 
-                            weight="bold", 
-                            size="6", 
-                            width="100%", 
-                            color=title_color, # <--- APLICADO [cite: 2840]
-                            style=TITLE_CLAMP_STYLE 
+                            post.title,
+                            weight="bold", size="6", width="100%",
+                            color=title_color, # <-- Color corregido
+                            style=TITLE_CLAMP_STYLE # Limita a 2 líneas
                         ),
-                        star_rating_display_safe(post.average_rating, post.rating_count, size=24), 
-                        rx.text(post.price_cop, size="5", weight="medium", color=price_color), # <--- APLICADO [cite: 2840]
+                        # Estrellas
+                        star_rating_display_safe(post.average_rating, post.rating_count, size=24),
+                        # Precio
+                        rx.text(post.price_cop, size="5", weight="medium", color=price_color), # <-- Color corregido
                         rx.spacer(),
+                        # Badges de envío (usando _card_badge corregido)
                         rx.vstack(
                             rx.hstack(
-                                rx.badge(post.shipping_display_text, color_scheme="gray", variant="soft", size="2"),
+                                _card_badge(post.shipping_display_text, "gray"),
                                 rx.cond(
                                     post.is_moda_completa_eligible,
-                                    rx.tooltip(rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"), content=post.moda_completa_tooltip_text), 
+                                    rx.tooltip(_card_badge("Moda Completa", "violet"), content=post.moda_completa_tooltip_text),
                                 ),
                                 spacing="3", align="center",
                             ),
                             rx.cond(
                                 post.combines_shipping,
-                                rx.tooltip(rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"), content=post.envio_combinado_tooltip_text),
+                                rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                             ),
                             spacing="1", align_items="start", width="100%",
                         ),
@@ -262,23 +280,24 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                     spacing="0", align_items="stretch", width="100%",
                 ),
+                # Acción al hacer clic en la tarjeta
                 on_click=AppState.open_product_detail_modal(post.id),
                 cursor="pointer",
-                height="100%" 
+                height="100%"
             ),
-            width="290px", 
-            height="480px",
-            bg=card_bg_color, # <--- APLICADO
+            # Estilos generales de la tarjeta
+            width="290px", height="480px", # Tamaño unificado
+            bg=card_bg_color, # <-- Fondo corregido
             border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
-            border_radius="8px", 
-            box_shadow="md",
+            border_radius="8px", box_shadow="md",
             overflow="hidden"
         )
 
+    # --- Renderizado de la galería ---
     return rx.cond(
-        posts,
+        posts, # Asegura que haya posts antes de intentar renderizar
         rx.flex(
-            rx.foreach(posts, _render_single_card),
+            rx.foreach(posts, _render_single_card), # Itera y renderiza cada tarjeta
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
     )
