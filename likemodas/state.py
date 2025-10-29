@@ -5484,10 +5484,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             return self.product_in_modal.lightbox_bg_dark
         return "dark" # Valor predeterminado
     
+    # ESTA PROPIEDAD COMPUTADA CALCULA EL COLOR FINAL
     @rx.var
     def lightbox_background_settings(self) -> tuple[str, str]:
         """
-        [VERSIÓN CORREGIDA PARA EXPORTACIÓN V7 - LÓGICA PYTHON PURA]
+        [VERSIÓN CORREGIDA]
         Determina los colores de fondo ("white" o "black") para el lightbox
         usando las variables 'current_lightbox_bg...' y la apariencia deseada.
         """
@@ -5495,26 +5496,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         light_appearance = self._safe_light_mode_appearance # ej: "light" o "dark"
         dark_appearance = self._safe_dark_mode_appearance   # ej: "light" o "dark"
 
+        # <-- ESTA ES LA CLAVE -->
         # Obtenemos la preferencia de fondo guardada para la variante actual
+        # DESDE LAS VARIABLES DE ESTADO 'current', no desde 'product_in_modal'.
         lightbox_pref_if_card_light = self.current_lightbox_bg_light # ej: "white" o "dark"
         lightbox_pref_if_card_dark = self.current_lightbox_bg_dark   # ej: "white" o "dark"
 
         # Lógica para MODO CLARO del sitio
         light_mode_bg_string: str
-        if light_appearance == "light": # Tarjeta quiere verse CLARA en modo claro del sitio
-            # Usa la preferencia para tarjetas claras
+        if light_appearance == "light": 
             light_mode_bg_string = "white" if lightbox_pref_if_card_light == "white" else "black"
         else: # Tarjeta quiere verse OSCURA en modo claro del sitio
-            # Usa la preferencia para tarjetas oscuras
             light_mode_bg_string = "white" if lightbox_pref_if_card_dark == "white" else "black"
 
         # Lógica para MODO OSCURO del sitio
         dark_mode_bg_string: str
-        if dark_appearance == "light": # Tarjeta quiere verse CLARA en modo oscuro del sitio
-            # Usa la preferencia para tarjetas claras
+        if dark_appearance == "light": 
             dark_mode_bg_string = "white" if lightbox_pref_if_card_light == "white" else "black"
         else: # Tarjeta quiere verse OSCURA en modo oscuro del sitio
-            # Usa la preferencia para tarjetas oscuras
             dark_mode_bg_string = "white" if lightbox_pref_if_card_dark == "white" else "black"
 
         # Devuelve ("fondo_para_modo_claro", "fondo_para_modo_oscuro")
@@ -5524,8 +5523,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     current_lightbox_bg_light: str = "dark" # Fondo para lightbox si la tarjeta debe verse CLARA
     current_lightbox_bg_dark: str = "dark"  # Fondo para lightbox si la tarjeta debe verse OSCURA
 
-    # --- MÉTODO MODIFICADO: set_modal_variant_index ---
-    # (Este se llama cuando haces clic en una miniatura en el modal público)
+    # ESTA FUNCIÓN SE LLAMA CUANDO HACES CLIC EN UNA MINIATURA
     def set_modal_variant_index(self, visual_index: int):
         """
         [VERSIÓN FINAL CON LIGHTBOX BG]
@@ -5545,6 +5543,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             # Carga los fondos del lightbox DESDE LA VARIANTE recién seleccionada
             new_variant_data = selected_item.variant
             if new_variant_data:
+                # <-- ESTA ES LA CLAVE -->
+                # Actualiza las variables de estado 'current' que el lightbox lee.
                 self.current_lightbox_bg_light = new_variant_data.get("lightbox_bg_light", "dark")
                 self.current_lightbox_bg_dark = new_variant_data.get("lightbox_bg_dark", "dark")
             else:
@@ -9289,7 +9289,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             js_title = json.dumps(db_post.title)
             yield rx.call_script(f"document.title = {js_title}")
 
-            # Calcula el costo de envío dinámico
+            # ... (Lógica de cálculo de envío y tooltips se mantiene igual) ...
+            # (El código de cálculo de envío dinámico va aquí)
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
@@ -9300,16 +9301,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_city=seller_city, buyer_city=buyer_city
             )
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
-
-            # Prepara datos del vendedor y tooltips
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             seller_city_info = db_post.userinfo.seller_city if db_post.userinfo else None
-
             moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
             combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
 
-            # --- ✨ INICIO DE LA CORRECCIÓN DE LÓGICA ✨ ---
+
+            # --- ✨ INICIO DE LA CORRECCIÓN DE LÓGICA DEL LIGHTBOX ✨ ---
             # Necesitamos obtener la PRIMERA VARIANTE ÚNICA para leer sus
             # preferencias de lightbox iniciales.
             initial_bg_light = "dark" # Default
@@ -9331,10 +9330,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 first_unique_variant_item_dict = unique_variants_temp[0]
                 first_variant_index_to_load = first_unique_variant_item_dict["index"]
                 initial_variant_dict = first_unique_variant_item_dict["variant"]
+                # Leemos las preferencias de ESE GRUPO
                 initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
                 initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
 
-            # Ahora creamos el DTO CON las preferencias de lightbox (que faltaban)
+            # Ahora creamos el DTO (product_in_modal)
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -9346,7 +9346,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 rating_count=db_post.rating_count,
                 seller_name=seller_name,
                 seller_id=seller_id,
-                attributes={}, # Este campo parece no usarse en el DTO
+                attributes={}, 
                 shipping_cost=db_post.shipping_cost,
                 is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                 free_shipping_threshold=db_post.free_shipping_threshold,
@@ -9372,7 +9372,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 lightbox_bg_dark=initial_bg_dark
             )
 
+            # <-- ESTA ES LA CLAVE -->
             # Cargamos las preferencias iniciales TAMBIÉN a las variables de estado 'current'
+            # que el lightbox usará.
             self.current_lightbox_bg_light = initial_bg_light
             self.current_lightbox_bg_dark = initial_bg_dark
             # --- ✨ FIN DE LA CORRECCIÓN DE LÓGICA ✨ ---
@@ -9383,46 +9385,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             elif self.product_in_modal.variants:
                  self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # Carga comentarios y estado de revisión (igual que antes)
+            # ... (Lógica de carga de comentarios se mantiene) ...
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.created_at, reverse=True) # Ordena por fecha
-
+            # ... (Lógica de formulario de review se mantiene) ...
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
-                # Verifica si el usuario ha comprado Y RECIBIDO el producto
                 purchase_count = session.exec(
                     sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                     .join(PurchaseModel)
                     .where(
                         PurchaseModel.userinfo_id == user_info_id,
                         PurchaseItemModel.blog_post_id == post_id,
-                        PurchaseModel.status == PurchaseStatus.DELIVERED # Solo permite opinar si está entregado
+                        PurchaseModel.status == PurchaseStatus.DELIVERED 
                     )
                 ).one()
-
                 if purchase_count > 0:
                     user_original_comment = next((c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None), None)
                     if not user_original_comment:
-                        self.show_review_form = True # Mostrar formulario si no ha opinado
+                        self.show_review_form = True 
                     else:
-                        # Revisa cuántas veces ha comprado vs cuántas ha actualizado
-                        current_updates_count = len(user_original_comment.updates)
-                        # Cuenta cuántas veces ha comprado ESTE item específico
-                        # (Podría ser más complejo si permites comprar la misma variante varias veces)
-                        # Simplificación: si ya opinó y actualizó menos de 2 veces, permite actualizar.
-                        # Una lógica más precisa requeriría vincular comentarios a PurchaseItemModel.id
-                        if current_updates_count < 2: # Límite de 2 actualizaciones
+                        if len(user_original_comment.updates) < 2: 
                             self.show_review_form = True
-                            # Carga los datos de la última entrada (original o actualización)
                             latest_entry = sorted([user_original_comment] + user_original_comment.updates, key=lambda c: c.created_at, reverse=True)[0]
                             self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
                             self.review_rating = latest_entry.rating
                             self.review_content = latest_entry.content
                         else:
-                            self.review_limit_reached = True # Ya no puede actualizar
+                            self.review_limit_reached = True
 
-        # Carga los IDs de posts guardados (igual que antes)
+        # Carga los IDs de posts guardados
         yield AppState.load_saved_post_ids
 
     @rx.var

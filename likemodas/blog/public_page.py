@@ -419,7 +419,7 @@ def lightbox_modal() -> rx.Component:
     """
     [VERSIÓN SIMPLIFICADA] Lightbox que usa una variable computada para el fondo.
     """
-    # El componente 'controls' no necesita cambios
+    # ... (los controles no cambian) ...
     controls = rx.box(
         rx.hstack(
             rx.icon_button(rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")), on_click=AppState.toggle_lightbox_lock, variant="ghost", color_scheme="gray", size="2"),
@@ -462,11 +462,13 @@ def lightbox_modal() -> rx.Component:
                     width="100%", style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%", height="100%",
-                # --- ✨ APLICA rx.color_mode_cond AQUÍ ✨ ---
-                # Usa los valores de la tupla devuelta por la variable computada
+                
+                # --- ✨ ESTA ES LA APLICACIÓN DE LA CORRECCIÓN ✨ ---
+                # bg_settings[0] será "white" o "black" (para modo claro)
+                # bg_settings[1] será "white" o "black" (para modo oscuro)
                 bg=rx.color_mode_cond(
-                    light=bg_settings[0], # El primer elemento es para el modo claro
-                    dark=bg_settings[1]   # El segundo elemento es para el modo oscuro
+                    light=bg_settings[0], 
+                    dark=bg_settings[1]   
                 ),
                 # --- ✨ FIN ✨ ---
             ),
