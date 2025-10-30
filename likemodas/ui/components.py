@@ -12,22 +12,16 @@ from ..state import (
 
 from reflex.event import EventSpec
 
-# --- ✨ INICIO: AÑADE ESTE DICCIONARIO DE ESTILO ✨ ---
-# Este es el CSS a prueba de fallos para forzar 2 líneas y agregar "..."
+# --- ESTILO PARA EL TÍTULO (SIN CAMBIOS) ---
 TITLE_CLAMP_STYLE = {
     "display": "-webkit-box",
-    "-webkit-line-clamp": "2",  # El número de líneas
+    "-webkit-line-clamp": "2",
     "-webkit-box-orient": "vertical",
     "overflow": "hidden",
     "text_overflow": "ellipsis",
 }
-# --- ✨ FIN ✨ ---
 
-# --- LINEA ELIMINADA ---
-# La siguiente línea causaba el error y ha sido eliminada:
-# from ..ui.components import TITLE_CLAMP_STYLE, star_rating_display_safe
-# ---------------------
-
+# --- star_rating_display_safe (SIN CAMBIOS) ---
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """Muestra estrellas de calificación de forma segura."""
     return rx.hstack(
@@ -48,6 +42,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         spacing="1",
     )
 
+# --- searchable_select (SIN CAMBIOS) ---
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
@@ -58,36 +53,30 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
-    """Componente de selección con búsqueda."""
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        """Renderiza una opción individual en el dropdown."""
         label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
         value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
 
         return rx.button(
             label,
             on_click=[on_change_select(value), AppState.toggle_filter_dropdown(filter_name)],
-            width="100%",
-            variant="soft",
-            color_scheme="gray",
-            justify_content="start",
-            type="button", # Importante para que no envíe formularios
+            width="100%", variant="soft", color_scheme="gray",
+            justify_content="start", type="button",
         )
 
     return rx.box(
-        rx.button( # Botón principal para abrir/cerrar
+        rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
             on_click=AppState.toggle_filter_dropdown(filter_name),
             variant="outline", width="100%", justify_content="space-between",
             color_scheme="gray", size="2", is_disabled=is_disabled,
             height="auto", white_space="normal", text_align="left",
-            padding="0.5em 0.75em",
-            type="button", # Importante para que no envíe formularios
+            padding="0.5em 0.75em", type="button",
         ),
-        rx.cond( # Dropdown con búsqueda y opciones
+        rx.cond(
             is_open,
             rx.vstack(
                 rx.input(placeholder="Buscar...", value=search_value, on_change=on_change_search),
@@ -107,6 +96,7 @@ def searchable_select(
         position="relative", width="100%",
     )
 
+# --- multi_select_component (SIN CAMBIOS) ---
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -118,16 +108,15 @@ def multi_select_component(
     on_change_search: rx.event.EventSpec,
     filter_name: str,
 ) -> rx.Component:
-    """Componente para seleccionar múltiples opciones con badges."""
     return rx.vstack(
-        rx.flex( # Muestra los badges de los items seleccionados
+        rx.flex(
             rx.foreach(
                 selected_items,
                 lambda item: rx.badge(
                     item,
                     rx.icon(
                         "x", size=12, cursor="pointer",
-                        on_click=lambda: remove_handler(prop_name, item), # Llama al handler para quitar
+                        on_click=lambda: remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -136,12 +125,11 @@ def multi_select_component(
             wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
             border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
         ),
-        # Usa el searchable_select para añadir nuevos items
         searchable_select(
             placeholder=placeholder,
             options=options,
-            on_change_select=lambda val: add_handler(prop_name, val), # Llama al handler para añadir
-            value_select="", # El valor seleccionado se muestra arriba como badge
+            on_change_select=lambda val: add_handler(prop_name, val),
+            value_select="",
             search_value=search_value,
             on_change_search=on_change_search,
             filter_name=filter_name,
@@ -149,7 +137,7 @@ def multi_select_component(
         spacing="2", align_items="stretch", width="100%",
     )
 
-# --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE APARIENCIA CORREGIDA) ---
+# --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE BADGES CORREGIDA) ---
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
     [VERSIÓN FINAL CONSISTENTE]
@@ -161,7 +149,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         [CORREGIDO] Función interna para renderizar una sola tarjeta de producto,
         aplicando la lógica de apariencia consistente.
         """
-        # --- INICIO: Determinar apariencia objetivo y colores ---
+        # --- Lógica de apariencia y colores (SIN CAMBIOS) ---
         site_theme = rx.color_mode_cond("light", "dark")
         card_target_appearance = rx.cond(
             post.use_default_style,
@@ -184,20 +172,30 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
         )
         image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
-        # --- FIN ---
 
-        # Función interna para badges (USA LA APARIENCIA OBJETIVO)
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Definimos _card_badge EXACTAMENTE IGUAL que _preview_badge
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+            """
+            Renderiza los badges usando la apariencia objetivo de la tarjeta.
+            Copiado de 'add.py' para consistencia visual.
+            """
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+            
+            # Usa la variable 'card_target_appearance' definida arriba
             colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
+            
             return rx.box(
                 rx.text(text_content, size="2", weight="medium"),
                 bg=colors["bg"], color=colors["text"], padding="1px 10px",
                 border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
             )
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
-        # Estilos de imagen (Zoom/Rotación)
+
+        # --- (Estilos de imagen - SIN CAMBIOS) ---
         image_styles = post.image_styles
         zoom = image_styles.get("zoom", 1.0)
         rotation = image_styles.get("rotation", 0)
@@ -213,7 +211,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.cond(
                             post.main_image_url != "",
                             rx.image(
-                                 src=rx.get_upload_url(post.main_image_url),
+                                src=rx.get_upload_url(post.main_image_url),
                                 width="100%", height="260px", object_fit="contain",
                                 transform=transform_style, transition="transform 0.2s ease-out",
                             ),
@@ -228,24 +226,36 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                     rx.vstack( # Información
                         rx.text(post.title, weight="bold", size="6", width="100%", color=title_color, style=TITLE_CLAMP_STYLE),
-                        star_rating_display_safe(post.average_rating, post.rating_count, size=24), # Usa la función importada
+                        star_rating_display_safe(post.average_rating, post.rating_count, size=24), 
                         rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                         rx.spacer(),
-                        rx.vstack( # Badges envío
-                            rx.hstack(
+                        
+                        # --- ✨ INICIO DE LA CORRECCIÓN DE LAYOUT ✨ ---
+                        # Usamos la misma estructura de layout que la previsualización
+                        rx.vstack( 
+                            rx.grid(
                                 _card_badge(post.shipping_display_text, "gray"),
                                 rx.cond(
                                     post.is_moda_completa_eligible,
                                     rx.tooltip(_card_badge("Moda Completa", "violet"), content=post.moda_completa_tooltip_text),
                                 ),
-                                spacing="3", align="center",
+                                # Usamos la misma configuración de la previsualización
+                                columns="auto auto", 
+                                spacing="2", 
+                                align="center", 
+                                justify="start", 
+                                width="100%",
                             ),
                             rx.cond(
                                 post.combines_shipping,
                                 rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                             ),
-                            spacing="1", align_items="start", width="100%",
+                            spacing="1", 
+                            align_items="start", 
+                            width="100%",
                         ),
+                        # --- ✨ FIN DE LA CORRECCIÓN DE LAYOUT ✨ ---
+
                         spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
                     ),
                     spacing="0", align_items="stretch", width="100%",
@@ -258,7 +268,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             border_radius="8px", box_shadow="md", overflow="hidden"
         )
 
-    # --- Renderizado de la galería ---
+    # --- Renderizado de la galería (SIN CAMBIOS) ---
     return rx.cond(
         posts,
         rx.flex(
