@@ -498,15 +498,14 @@ class VariantGroupDTO(rx.Base):
 
 # --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
 #    (Usamos strings de texto para evitar el TypeError)
-# --- APARIENCIA CLARA POR DEFECTO ---
-DEFAULT_LIGHT_BG = "#FFFFFF"            # Fondo blanco sólido
-DEFAULT_LIGHT_TITLE = "var(--gray-12)"  # Texto negro sólido
-DEFAULT_LIGHT_PRICE = "var(--gray-11)"  # Texto gris oscuro
+# --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
+DEFAULT_LIGHT_BG = "#fdfcff"
+DEFAULT_LIGHT_TITLE = "var(--gray-11)"  # <-- CORREGIDO a gris oscuro
+DEFAULT_LIGHT_PRICE = "var(--gray-9)"
 
-# --- APARIENCIA OSCURA POR DEFECTO (CORREGIDA) ---
-DEFAULT_DARK_BG = "var(--gray-3)"       # Fondo gris oscuro sólido
-DEFAULT_DARK_TITLE = "var(--gray-12)"   # Texto blanco sólido
-DEFAULT_DARK_PRICE = "var(--gray-a11)"  # Texto gris claro
+DEFAULT_DARK_BG = "var(--gray-2)"
+DEFAULT_DARK_TITLE = "white"
+DEFAULT_DARK_PRICE = "var(--gray-a11)"
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
