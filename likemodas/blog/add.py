@@ -351,13 +351,15 @@ def post_preview(
 
     # --- INICIO: Determinar la apariencia objetivo DENTRO de la función ---
     is_light_preview = AppState.card_theme_mode == "light"
+    
+    # La apariencia objetivo (para badges y fondo de imagen) AHORA
+    # SIEMPRE sigue los toggles simples, sin importar el switch "Usar estilo predeterminado".
     card_target_appearance = rx.cond(
-        AppState.use_default_style,
-        rx.cond(is_light_preview, "light", "dark"), # Si default=ON, apariencia = modo preview
-        # Si default=OFF, apariencia = selección del usuario para el modo preview
-        rx.cond(is_light_preview, AppState.edit_light_mode_appearance, AppState.edit_dark_mode_appearance)
+        is_light_preview,
+        AppState.edit_light_mode_appearance, # Si preview es claro, usa config clara
+        AppState.edit_dark_mode_appearance   # Si preview es oscuro, usa config oscura
     )
-    # --- FIN ---
+    # --- ✨ FIN DE la CORRECCIÓN CLAVE ✨ ---
 
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         """

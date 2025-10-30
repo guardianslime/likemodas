@@ -3375,35 +3375,31 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- FUNCIÓN INTERNA MODIFICADA ---
     def _update_live_colors(self):
         """
-        [VERSIÓN FINAL - CORREGIDA]
-        Calcula y actualiza las variables live_*_color.
-        - Si use_default_style=True: Usa los defaults según el MODO PREVIEW.
-        - Si use_default_style=False: Usa los defaults según la APARIENCIA SELECCIONADA.
+        [VERSIÓN FINAL - UNIFICADA]
+        Calcula y actualiza las variables live_*_color para la previsualización.
         """
         is_light_preview = self.card_theme_mode == "light"
+        
+        # 1. Determina la APARIENCIA OBJETIVO (SIEMPRE sigue los toggles)
+        target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
 
-        if self.use_default_style:
-            # Lógica para default ON: Usa defaults según el MODO DE PREVISUALIZACIÓN
-            self.live_card_bg_color = DEFAULT_LIGHT_BG if is_light_preview else DEFAULT_DARK_BG
-            self.live_title_color = DEFAULT_LIGHT_TITLE if is_light_preview else DEFAULT_DARK_TITLE
-            self.live_price_color = DEFAULT_LIGHT_PRICE if is_light_preview else DEFAULT_DARK_PRICE
-        else:
-            # Lógica para default OFF: Determina la APARIENCIA que debe tener
-            # según la selección del usuario para el modo de previsualización actual.
-            target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
+        # 2. Determina los colores por DEFECTO basados en la APARIENCIA
+        default_bg_by_appearance = DEFAULT_LIGHT_BG if target_appearance == "light" else DEFAULT_DARK_BG
+        default_title_by_appearance = DEFAULT_LIGHT_TITLE if target_appearance == "light" else DEFAULT_DARK_TITLE
+        default_price_by_appearance = DEFAULT_LIGHT_PRICE if target_appearance == "light" else DEFAULT_DARK_PRICE
+        
+        # 3. Determina los colores ARTISTICOS (basados en el MODO PREVIEW)
+        #    (Usa el color guardado o el default de apariencia como fallback)
+        custom_bg = (self.light_theme_colors.get("bg") or default_bg_by_appearance) if is_light_preview else (self.dark_theme_colors.get("bg") or default_bg_by_appearance)
+        custom_title = (self.light_theme_colors.get("title") or default_title_by_appearance) if is_light_preview else (self.dark_theme_colors.get("title") or default_title_by_appearance)
+        custom_price = (self.light_theme_colors.get("price") or default_price_by_appearance) if is_light_preview else (self.dark_theme_colors.get("price") or default_price_by_appearance)
 
-            # APLICA los colores DEFAULTS correspondientes a la APARIENCIA OBJETIVO,
-            # ignorando los colores personalizados guardados (esos son para el modal artístico).
-            if target_appearance == "light":
-                # Forzar apariencia CLARA predeterminada
-                self.live_card_bg_color = DEFAULT_LIGHT_BG
-                self.live_title_color = DEFAULT_LIGHT_TITLE
-                self.live_price_color = DEFAULT_LIGHT_PRICE
-            else: # target_appearance == "dark"
-                # Forzar apariencia OSCURA predeterminada
-                self.live_card_bg_color = DEFAULT_DARK_BG
-                self.live_title_color = DEFAULT_DARK_TITLE
-                self.live_price_color = DEFAULT_DARK_PRICE
+        # 4. Asigna los colores LIVE
+        #    Si "default" (Simple Mode) está ON, usa los defaults by appearance (Paso 2)
+        #    Si "default" (Artistic Mode) está OFF, usa los artisticos (Paso 3)
+        self.live_card_bg_color = default_bg_by_appearance if self.use_default_style else custom_bg
+        self.live_title_color = default_title_by_appearance if self.use_default_style else custom_title
+        self.live_price_color = default_price_by_appearance if self.use_default_style else custom_price
 
     # --- SETTERS MODIFICADOS ---
     # (Llaman a _update_live_colors después de cambiar el valor)

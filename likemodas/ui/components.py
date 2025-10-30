@@ -148,57 +148,55 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
     """
     def _render_single_card(post: ProductCardData) -> rx.Component:
         
-        # --- ✨ INICIO DE LA CORRECCIÓN DE LÓGICA DE COLOR (UNIFICADA) ✨ ---
+        # --- ✨ INICIO DE LA LÓGICA DE COLOR UNIFICADA (CORREGIDA) ✨ ---
         
         # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
         site_theme = rx.color_mode_cond("light", "dark")
         
         # 2. Determina la APARIENCIA OBJETIVO ("light" o "dark")
         #    Esta lógica es para los BADGES y el FONDO DE IMAGEN
+        #    *** ESTA ES LA CORRECCIÓN ***
+        #    La apariencia SIEMPRE sigue los toggles.
         card_target_appearance = rx.cond(
-            post.use_default_style,
-            site_theme,
-            rx.cond(
-                site_theme == "light",
-                post.light_mode_appearance, # Si sitio es claro, usa config clara
-                post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
-            )
+            site_theme == "light",
+            post.light_mode_appearance, # Si sitio es claro, usa config clara
+            post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
         )
         
         # 3. Determina los colores por DEFECTO basados en la APARIENCIA OBJETIVO
-        default_bg = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
-        default_title = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
-        default_price = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+        default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+        default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+        default_price_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
 
         # 4. Determina los colores PERSONALIZADOS (Modo Artista)
         #    (Usa el color guardado para el tema actual, o el default de apariencia como fallback)
         custom_bg = rx.cond(
             site_theme == "light",
-            post.light_card_bg_color | default_bg,
-            post.dark_card_bg_color | default_bg
+            post.light_card_bg_color | default_bg_by_appearance,
+            post.dark_card_bg_color | default_bg_by_appearance
         )
         custom_title = rx.cond(
             site_theme == "light",
-            post.light_title_color | default_title,
-            post.dark_title_color | default_title
+            post.light_title_color | default_title_by_appearance,
+            post.dark_title_color | default_title_by_appearance
         )
         custom_price = rx.cond(
             site_theme == "light",
-            post.light_price_color | default_price,
-            post.dark_price_color | default_price
+            post.light_price_color | default_price_by_appearance,
+            post.dark_price_color | default_price_by_appearance
         )
         
         # 5. Asigna los colores FINALES
-        #    Si es "default", usa los colores del paso 3.
-        #    Si NO es "default", usa los colores del paso 4 (Modo Artista).
-        card_bg_color = rx.cond(post.use_default_style, default_bg, custom_bg)
-        title_color = rx.cond(post.use_default_style, default_title, custom_title)
-        price_color = rx.cond(post.use_default_style, default_price, custom_price)
+        #    Si es "default" (Simple Mode), usa los colores del paso 3.
+        #    Si NO es "default" (Artistic Mode), usa los colores del paso 4.
+        card_bg_color = rx.cond(post.use_default_style, default_bg_by_appearance, custom_bg)
+        title_color = rx.cond(post.use_default_style, default_title_by_appearance, custom_title)
+        price_color = rx.cond(post.use_default_style, default_price_by_appearance, custom_price)
         
         # El fondo de la imagen SÍ usa la apariencia simple
         image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
         
-        # --- ✨ FIN DE LA CORRECCIÓN DE LÓGICA DE COLOR ✨ ---
+        # --- ✨ FIN DE LA LÓGICA DE COLOR UNIFICADA ✨ ---
 
         # (La función _card_badge usa card_target_appearance y es correcta)
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:

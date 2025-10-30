@@ -105,8 +105,9 @@ def edit_post_dialog() -> rx.Component:
     """
 
     # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
+    # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
     personalizar_tarjeta_panel = rx.vstack(
-        rx.divider(margin_y="1em"),
+         rx.divider(margin_y="1em"),
         rx.hstack(
             rx.text("Personalizar Tarjeta", weight="bold", size="4"),
             rx.spacer(),
@@ -115,7 +116,7 @@ def edit_post_dialog() -> rx.Component:
                     rx.icon("rotate-ccw", size=14),
                     on_click=AppState.reset_card_styles_to_default,
                     variant="ghost", color_scheme="gray", size="1", type="button",
-                ),
+                 ),
                 content="Restablecer estilos"
             ),
             justify="between", width="100%", align_items="center",
@@ -125,30 +126,35 @@ def edit_post_dialog() -> rx.Component:
             rx.spacer(),
             rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
             width="100%", align="center",
-        ),
+         ),
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Antes decía: rx.cond(~AppState.use_default_style,
+        # Ahora dice:
         rx.cond(
-            ~AppState.use_default_style,
+            AppState.use_default_style,
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
             rx.vstack(
                 rx.divider(margin_top="1em"),
                 rx.text("Apariencia en Modo Claro:", size="3"),
                 rx.segmented_control.root(
                     rx.segmented_control.item("Claro", value="light"),
                     rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.edit_light_mode_appearance,
+                     value=AppState.edit_light_mode_appearance,
                     on_change=AppState.set_edit_light_mode_appearance,
                     width="100%", color_scheme="violet",
                 ),
                 rx.divider(margin_top="1em"),
                 rx.text("Apariencia en Modo Oscuro:", size="3"),
                 rx.segmented_control.root(
-                    rx.segmented_control.item("Claro", value="light"),
+                     rx.segmented_control.item("Claro", value="light"),
                     rx.segmented_control.item("Oscuro", value="dark"),
                     value=AppState.edit_dark_mode_appearance,
                     on_change=AppState.set_edit_dark_mode_appearance,
                     width="100%", color_scheme="violet",
                 ),
                 spacing="3", width="100%", margin_top="1em"
-            ),
+             ),
         ),
         rx.divider(margin_top="1em"),
         rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
@@ -160,7 +166,7 @@ def edit_post_dialog() -> rx.Component:
             width="100%",
         ),
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
-        border_radius="md", margin_top="1.5em", align_items="stretch",
+         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
     # --- 👆 FIN DEL PANEL SIMPLIFICADO 👆 ---
