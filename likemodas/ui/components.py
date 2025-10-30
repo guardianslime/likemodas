@@ -142,9 +142,9 @@ def multi_select_component(
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL CONSISTENTE v3]
+    [VERSIÓN FINAL CONSISTENTE v4]
     Galería de productos que renderiza tarjetas con la lógica de apariencia
-    unificada, igual que la previsualización.
+    unificada, idéntica a la previsualización.
     """
     def _render_single_card(post: ProductCardData) -> rx.Component:
         
@@ -166,11 +166,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         )
         
         # 3. Asigna los colores FINALES basándose SÓLO en la apariencia objetivo
-        #    Esta lógica es ahora IDÉNTICA a la de _update_live_colors en state.py
         card_bg_color = rx.cond(
             card_target_appearance == "light",
             DEFAULT_LIGHT_BG,  # Fondo de apariencia clara (blanco)
-            DEFAULT_DARK_BG    # Fondo de apariencia oscura (gris claro)
+            DEFAULT_DARK_BG    # Fondo de apariencia oscura (gris)
         )
         title_color = rx.cond(
             card_target_appearance == "light",
