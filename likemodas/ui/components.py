@@ -142,7 +142,7 @@ def multi_select_component(
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL CONSISTENTE v4]
+    [VERSIÓN FINAL CONSISTENTE v6]
     Galería de productos que renderiza tarjetas con la lógica de apariencia
     unificada, idéntica a la previsualización.
     """
@@ -160,12 +160,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             # Si NO es default:
             rx.cond(
                 site_theme == "light",
-                post.light_mode_appearance, # Si el sitio es claro, usa la config clara guardada
-                post.dark_mode_appearance   # Si el sitio es oscuro, usa la config oscura guardada
+                post.light_mode_appearance, # Si sitio es claro, usa config clara
+                post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
             )
         )
         
         # 3. Asigna los colores FINALES basándose SÓLO en la apariencia objetivo
+        #    (Esta es la lógica que faltaba y que soluciona tu problema)
         card_bg_color = rx.cond(
             card_target_appearance == "light",
             DEFAULT_LIGHT_BG,  # Fondo de apariencia clara (blanco)
@@ -188,7 +189,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         )
         # --- ✨ FIN DE LA CORRECCIÓN DE LÓGICA DE COLOR ✨ ---
 
-        # (La función _card_badge ahora usa card_target_appearance y es correcta)
+        # (La función _card_badge usa card_target_appearance y es correcta)
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -262,7 +263,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                 cursor="pointer", height="100%"
             ),
             width="290px", height="480px", bg=card_bg_color,
-            border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
+            border=rx.color_mode_cond("1px solid #e5e5e2", "1px solid #1a1a1a"), # Ajuste de borde claro
             border_radius="8px", box_shadow="md", overflow="hidden"
         )
 
