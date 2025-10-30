@@ -137,63 +137,68 @@ def multi_select_component(
         spacing="2", align_items="stretch", width="100%",
     )
 
-# --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE BADGES CORREGIDA) ---
+
+# --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE APARIENCIA CORREGIDA) ---
+
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL CONSISTENTE]
+    [VERSIÓN FINAL CONSISTENTE v3]
     Galería de productos que renderiza tarjetas con la lógica de apariencia
     unificada, igual que la previsualización.
     """
     def _render_single_card(post: ProductCardData) -> rx.Component:
-        """
-        [CORREGIDO] Función interna para renderizar una sola tarjeta de producto,
-        aplicando la lógica de apariencia consistente.
-        """
-        # --- Lógica de apariencia y colores (SIN CAMBIOS) ---
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN DE LÓGICA DE COLOR ✨ ---
+        
+        # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
         site_theme = rx.color_mode_cond("light", "dark")
+        
+        # 2. Determina la APARIENCIA OBJETIVO ("light" o "dark") que la tarjeta debe tener
         card_target_appearance = rx.cond(
             post.use_default_style,
-            site_theme,
-            rx.cond(site_theme == "light", post.light_mode_appearance, post.dark_mode_appearance)
+            site_theme, # Si es default, la apariencia = tema del sitio
+            # Si NO es default:
+            rx.cond(
+                site_theme == "light",
+                post.light_mode_appearance, # Si el sitio es claro, usa la config clara guardada
+                post.dark_mode_appearance   # Si el sitio es oscuro, usa la config oscura guardada
+            )
         )
+        
+        # 3. Asigna los colores FINALES basándose SÓLO en la apariencia objetivo
+        #    Esta lógica es ahora IDÉNTICA a la de _update_live_colors en state.py
         card_bg_color = rx.cond(
-            post.use_default_style,
-            rx.cond(site_theme == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-            rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+            card_target_appearance == "light",
+            DEFAULT_LIGHT_BG,  # Fondo de apariencia clara (blanco)
+            DEFAULT_DARK_BG    # Fondo de apariencia oscura (gris claro)
         )
         title_color = rx.cond(
-            post.use_default_style,
-            rx.cond(site_theme == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-            rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+            card_target_appearance == "light",
+            DEFAULT_LIGHT_TITLE, # Título de apariencia clara (oscuro)
+            DEFAULT_DARK_TITLE   # Título de apariencia oscura (blanco)
         )
         price_color = rx.cond(
-            post.use_default_style,
-            rx.cond(site_theme == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-            rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+            card_target_appearance == "light",
+            DEFAULT_LIGHT_PRICE, # Precio de apariencia clara (gris)
+            DEFAULT_DARK_PRICE   # Precio de apariencia oscura (gris claro)
         )
-        image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
+        image_bg = rx.cond(
+            card_target_appearance == "light",
+            "white",
+            rx.color("gray", 3)
+        )
+        # --- ✨ FIN DE LA CORRECCIÓN DE LÓGICA DE COLOR ✨ ---
 
-        
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Definimos _card_badge EXACTAMENTE IGUAL que _preview_badge
+        # (La función _card_badge ahora usa card_target_appearance y es correcta)
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-            """
-            Renderiza los badges usando la apariencia objetivo de la tarjeta.
-            Copiado de 'add.py' para consistencia visual.
-            """
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
-            
-            # Usa la variable 'card_target_appearance' definida arriba
             colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
-            
             return rx.box(
                 rx.text(text_content, size="2", weight="medium"),
                 bg=colors["bg"], color=colors["text"], padding="1px 10px",
                 border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
             )
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
 
         # --- (Estilos de imagen - SIN CAMBIOS) ---
         image_styles = post.image_styles
@@ -203,7 +208,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # --- Renderizado de la tarjeta ---
+        # --- Renderizado de la tarjeta (SIN CAMBIOS, AHORA ES CORRECTO) ---
         return rx.box(
             rx.vstack(
                 rx.vstack( # Contenedor clickeable
@@ -229,17 +234,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         star_rating_display_safe(post.average_rating, post.rating_count, size=24), 
                         rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                         rx.spacer(),
-                        
-                        # --- ✨ INICIO DE LA CORRECCIÓN DE LAYOUT ✨ ---
-                        # Usamos la misma estructura de layout que la previsualización
-                        rx.vstack( 
+                        rx.vstack( # Badges envío
                             rx.grid(
                                 _card_badge(post.shipping_display_text, "gray"),
                                 rx.cond(
                                     post.is_moda_completa_eligible,
                                     rx.tooltip(_card_badge("Moda Completa", "violet"), content=post.moda_completa_tooltip_text),
                                 ),
-                                # Usamos la misma configuración de la previsualización
                                 columns="auto auto", 
                                 spacing="2", 
                                 align="center", 
@@ -254,13 +255,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             align_items="start", 
                             width="100%",
                         ),
-                        # --- ✨ FIN DE LA CORRECCIÓN DE LAYOUT ✨ ---
-
                         spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
                     ),
                     spacing="0", align_items="stretch", width="100%",
                 ),
-                on_click=AppState.open_product_detail_modal(post.id), # Acción al clickear
+                on_click=AppState.open_product_detail_modal(post.id),
                 cursor="pointer", height="100%"
             ),
             width="290px", height="480px", bg=card_bg_color,
