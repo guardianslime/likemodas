@@ -128,12 +128,12 @@ def edit_post_dialog() -> rx.Component:
             width="100%", align="center",
          ),
         
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Antes decía: rx.cond(~AppState.use_default_style,
-        # Ahora dice:
+        # --- ✨ ESTA ES LA CORRECCIÓN CRÍTICA DEL EDITOR ✨ ---
+        # Asegúrate de que la condición sea (AppState.use_default_style)
+        # y NO (~AppState.use_default_style)
         rx.cond(
             AppState.use_default_style,
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+        # --- ✨ FIN DE LA CORRECCIÓN CRÍTICA ✨ ---
             rx.vstack(
                 rx.divider(margin_top="1em"),
                 rx.text("Apariencia en Modo Claro:", size="3"),

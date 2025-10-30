@@ -10,6 +10,9 @@ from likemodas.data.product_options import (
 from ..state import (
     DEFAULT_DARK_BG, DEFAULT_DARK_PRICE, DEFAULT_DARK_TITLE,
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_PRICE, DEFAULT_LIGHT_TITLE,
+    # --- ✨ AÑADIR ESTAS DOS ✨ ---
+    DEFAULT_LIGHT_IMAGE_BG, DEFAULT_DARK_IMAGE_BG,
+    # --- FIN ✨ ---
     AppState, VariantGroupDTO, VariantFormData
 )
 from ..models import Category # Importar Category
@@ -334,7 +337,7 @@ def blog_post_add_form() -> rx.Component:
 # --- Componente para la previsualización de la tarjeta ---
 def post_preview(
     title: rx.Var[str],
-    price_cop: rx.Var[str],
+    price_cop: rx.Var[str], # type: ignore
     first_image_url: rx.Var[str],
     is_imported: rx.Var[bool],
     shipping_cost_badge_text: rx.Var[str],
@@ -344,30 +347,33 @@ def post_preview(
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
     """
-    [VERSIÓN FINAL CORREGIDA v2]
+    [VERSIÓN FINAL CON HEX]
     Muestra la previsualización de la tarjeta de producto, asegurando que TODOS
     sus elementos (fondo imagen, badges) respeten la apariencia seleccionada.
     """
 
     # --- INICIO: Determinar la apariencia objetivo DENTRO de la función ---
     is_light_preview = AppState.card_theme_mode == "light"
-    
+
     # La apariencia objetivo (para badges y fondo de imagen) AHORA
-    # SIEMPRE sigue los toggles simples, sin importar el switch "Usar estilo predeterminado".
+    # SIEMPRE sigue los toggles simples (Apariencia en Modo Claro/Oscuro).
     card_target_appearance = rx.cond(
         is_light_preview,
         AppState.edit_light_mode_appearance, # Si preview es claro, usa config clara
         AppState.edit_dark_mode_appearance   # Si preview es oscuro, usa config oscura
     )
-    # --- ✨ FIN DE la CORRECCIÓN CLAVE ✨ ---
+    # --- FIN ---
 
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         """
-        [CORREGIDO] Renderiza los badges usando la apariencia objetivo de la tarjeta.
+        Renderiza los badges usando la apariencia objetivo de la tarjeta.
         """
+        # (Usamos strings de colores literales para que no dependan del tema)
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+        
         colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"], color=colors["text"], padding="1px 10px",
@@ -379,25 +385,29 @@ def post_preview(
     title_color = AppState.live_title_color
     price_color = AppState.live_price_color
 
-    # --- Fondo DETRÁS de la imagen CORREGIDO ---
-    image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
+    # --- Fondo DETRÁS de la imagen CORREGIDO (usa HEX) ---
+    image_bg = rx.cond(
+        card_target_appearance == "light",
+        DEFAULT_LIGHT_IMAGE_BG,
+        DEFAULT_DARK_IMAGE_BG
+    )
     # --- FIN ---
 
     return rx.box(
-        rx.vstack(
+         rx.vstack(
              rx.box( # Contenedor de la imagen
                  rx.image(
                     src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
-                        f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
+                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
                         "scale(1)"
                     ),
                     transition="transform 0.2s ease-out",
                  ),
                  rx.badge( # Badge de Origen
-                    rx.cond(is_imported, "Importado", "Nacional"),
+                     rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                  ),
@@ -417,25 +427,25 @@ def post_preview(
                 rx.text( # Precio
                     price_cop, size="5", weight="medium",
                     color=price_color # Color 'live'
-                ),
+                 ),
                 rx.spacer(),
                 rx.vstack( # Badges de envío (usando _preview_badge corregido)
                     rx.grid(
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
-                            is_moda_completa,
+                             is_moda_completa,
                             rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                         ),
                         columns="auto auto", spacing="2", align="center", justify="start", width="100%",
                     ),
-                    rx.cond(
+                     rx.cond(
                         combines_shipping,
                         rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text),
                     ),
                     spacing="1", align_items="start", width="100%",
                 ),
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
-            ),
+             ),
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",

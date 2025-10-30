@@ -497,15 +497,18 @@ class VariantGroupDTO(rx.Base):
     attributes: dict = {}
 
 # --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
-#    (Usamos strings de texto para evitar el TypeError)
-# --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
-DEFAULT_LIGHT_BG = "#fdfcff"
-DEFAULT_LIGHT_TITLE = "var(--gray-11)"  # <-- CORREGIDO a gris oscuro
-DEFAULT_LIGHT_PRICE = "var(--gray-9)"
+# Forzamos colores HEX absolutos para que no dependan del tema
+DEFAULT_LIGHT_BG = "#FFFFFF"
+DEFAULT_LIGHT_TITLE = "#1C1C1E" # Un negro sutil
+DEFAULT_LIGHT_PRICE = "#5A5A5A" # Un gris oscuro
 
-DEFAULT_DARK_BG = "var(--gray-2)"
-DEFAULT_DARK_TITLE = "white"
-DEFAULT_DARK_PRICE = "var(--gray-a11)"
+DEFAULT_DARK_BG = "#1A1A1A" # Un gris muy oscuro
+DEFAULT_DARK_TITLE = "#F5F5F7" # Un blanco sutil
+DEFAULT_DARK_PRICE = "#A0A0A0" # Un gris claro
+
+# Nuevas constantes para el fondo de la imagen
+DEFAULT_LIGHT_IMAGE_BG = "#FFFFFF"
+DEFAULT_DARK_IMAGE_BG = "#2C2C2E" # Un gris más claro que el fondo
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -3375,7 +3378,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- FUNCIÓN INTERNA MODIFICADA ---
     def _update_live_colors(self):
         """
-        [VERSIÓN FINAL - UNIFICADA]
+        [VERSIÓN FINAL - UNIFICADA CON HEX]
         Calcula y actualiza las variables live_*_color para la previsualización.
         """
         is_light_preview = self.card_theme_mode == "light"
@@ -3383,7 +3386,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         # 1. Determina la APARIENCIA OBJETIVO (SIEMPRE sigue los toggles)
         target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
 
-        # 2. Determina los colores por DEFECTO basados en la APARIENCIA
+        # 2. Determina los colores por DEFECTO basados en la APARIENCIA (usando HEX)
         default_bg_by_appearance = DEFAULT_LIGHT_BG if target_appearance == "light" else DEFAULT_DARK_BG
         default_title_by_appearance = DEFAULT_LIGHT_TITLE if target_appearance == "light" else DEFAULT_DARK_TITLE
         default_price_by_appearance = DEFAULT_LIGHT_PRICE if target_appearance == "light" else DEFAULT_DARK_PRICE

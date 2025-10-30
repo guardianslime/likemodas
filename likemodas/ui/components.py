@@ -3,11 +3,15 @@
 import reflex as rx
 import math
 from likemodas.utils.formatting import format_to_cop
+
 from ..state import (
     AppState,
     ProductCardData,
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_TITLE, DEFAULT_LIGHT_PRICE,
     DEFAULT_DARK_BG, DEFAULT_DARK_TITLE, DEFAULT_DARK_PRICE,
+    # --- ✨ AÑADIR ESTAS DOS ✨ ---
+    DEFAULT_LIGHT_IMAGE_BG, DEFAULT_DARK_IMAGE_BG
+    # --- FIN ✨ ---
 )
 
 from reflex.event import EventSpec
@@ -142,10 +146,11 @@ def multi_select_component(
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL CONSISTENTE v7 - UNIFICADA]
+    [VERSIÓN FINAL UNIFICADA CON HEX]
     Galería de productos que renderiza tarjetas con la lógica de apariencia
-    unificada, idéntica a la previsualización del modo Artista.
+    unificada, forzando colores absolutos.
     """
+    
     def _render_single_card(post: ProductCardData) -> rx.Component:
         
         # --- ✨ INICIO DE LA LÓGICA DE COLOR UNIFICADA (CORREGIDA) ✨ ---
@@ -155,15 +160,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         
         # 2. Determina la APARIENCIA OBJETIVO ("light" o "dark")
         #    Esta lógica es para los BADGES y el FONDO DE IMAGEN
-        #    *** ESTA ES LA CORRECCIÓN ***
-        #    La apariencia SIEMPRE sigue los toggles.
+        #    La apariencia SIEMPRE sigue los toggles que guardó el vendedor.
         card_target_appearance = rx.cond(
             site_theme == "light",
             post.light_mode_appearance, # Si sitio es claro, usa config clara
             post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
         )
         
-        # 3. Determina los colores por DEFECTO basados en la APARIENCIA OBJETIVO
+        # 3. Determina los colores por DEFECTO basados en la APARIENCIA OBJETIVO (usando HEX)
         default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
         default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
         default_price_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
@@ -193,8 +197,12 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         title_color = rx.cond(post.use_default_style, default_title_by_appearance, custom_title)
         price_color = rx.cond(post.use_default_style, default_price_by_appearance, custom_price)
         
-        # El fondo de la imagen SÍ usa la apariencia simple
-        image_bg = rx.cond(card_target_appearance == "light", "white", rx.color("gray", 3))
+        # El fondo de la imagen SÍ usa la apariencia simple (con HEX)
+        image_bg = rx.cond(
+            card_target_appearance == "light",
+            DEFAULT_LIGHT_IMAGE_BG,
+            DEFAULT_DARK_IMAGE_BG
+        )
         
         # --- ✨ FIN DE LA LÓGICA DE COLOR UNIFICADA ✨ ---
 
@@ -222,7 +230,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             rx.vstack(
                 rx.vstack( # Contenedor clickeable
                     rx.box( # Imagen
-                        rx.cond(
+                         rx.cond(
                             post.main_image_url != "",
                             rx.image(
                                 src=rx.get_upload_url(post.main_image_url),
@@ -231,48 +239,48 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             ),
                             rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                         ),
-                        rx.badge( # Origen
+                         rx.badge( # Origen
                             rx.cond(post.is_imported, "Importado", "Nacional"),
                             color_scheme=rx.cond(post.is_imported, "purple", "cyan"), variant="solid",
                             style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                        ),
+                         ),
                         position="relative", width="100%", height="260px", overflow="hidden", bg=image_bg,
                     ),
                     rx.vstack( # Información
                         rx.text(post.title, weight="bold", size="6", width="100%", color=title_color, style=TITLE_CLAMP_STYLE),
                         star_rating_display_safe(post.average_rating, post.rating_count, size=24), 
-                        rx.text(post.price_cop, size="5", weight="medium", color=price_color),
+                         rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                         rx.spacer(),
                         rx.vstack( # Badges envío
                             rx.grid(
-                                _card_badge(post.shipping_display_text, "gray"),
+                                 _card_badge(post.shipping_display_text, "gray"),
                                 rx.cond(
                                     post.is_moda_completa_eligible,
                                     rx.tooltip(_card_badge("Moda Completa", "violet"), content=post.moda_completa_tooltip_text),
-                                ),
+                                 ),
                                 columns="auto auto", 
                                 spacing="2", 
                                 align="center", 
-                                justify="start", 
+                                 justify="start", 
                                 width="100%",
                             ),
                             rx.cond(
-                                post.combines_shipping,
-                                rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
+                                 post.combines_shipping,
+                                 rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                             ),
                             spacing="1", 
                             align_items="start", 
-                            width="100%",
+                             width="100%",
                         ),
                         spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
                     ),
                     spacing="0", align_items="stretch", width="100%",
                 ),
-                on_click=AppState.open_product_detail_modal(post.id),
+                 on_click=AppState.open_product_detail_modal(post.id),
                 cursor="pointer", height="100%"
             ),
             width="290px", height="480px", bg=card_bg_color,
-            border=rx.color_mode_cond("1px solid #e5e5e2", "1px solid #1a1a1a"), # Ajuste de borde claro
+            border=rx.color_mode_cond("1px solid #e5e5e2", "1px solid #1A1A1A"),
             border_radius="8px", box_shadow="md", overflow="hidden"
         )
 
@@ -280,7 +288,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
     return rx.cond(
         posts,
         rx.flex(
-            rx.foreach(posts, _render_single_card),
+             rx.foreach(posts, _render_single_card),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
     )
