@@ -4204,6 +4204,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_temp_tamano: str = ""
     edit_variants_map: dict[int, list[VariantFormData]] = {}
 
+    # --- ✨ INICIO: AÑADE ESTAS LÍNEAS ✨ ---
+    edit_main_image_url_variant: str = "" # URL de la imagen principal para el modal de edición
+    live_preview_image_url: str = ""      # URL de la imagen que la previsualización muestra EN VIVO
+    # --- ✨ FIN ✨ ---
 
     # --- FUNCIÓN CLAVE: Cargar datos en el formulario de edición ---
     @rx.event
