@@ -249,7 +249,12 @@ def edit_post_dialog() -> rx.Component:
                 
                 # Columna Derecha: Previsualización
                 rx.vstack(
-                    add.post_preview( # Llama a la previsualización (ya corregida)
+                    
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # Antes decía: add.post_preview(
+                    post_preview( # Llama a la previsualización (sin el prefijo 'add.')
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                    
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
                         is_imported=AppState.edit_is_imported,
