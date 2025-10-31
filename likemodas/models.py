@@ -367,7 +367,7 @@ class BlogPostModel(rx.Model, table=True):
     dark_mode_appearance: str = Field(default="dark", nullable=False)  # Opciones: "light", "dark"
 
     # El estilo de imagen se mantiene
-    image_styles: Optional[dict] = Field(default_factory=dict)
+    image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
     # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
     main_image_url_variant: Optional[str] = Field(default=None)
 
