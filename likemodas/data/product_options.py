@@ -1,7 +1,7 @@
 # likemodas/data/product_options.py
 
 MATERIALES_ROPA = sorted([
-    "Algodón Perchado", "Algodón", "Denim", "Gabardina", "Lana", "Licra", "Lino", 
+    "Algodón Monaco", "Algodón Perchado", "Algodón", "Denim", "Gabardina", "Lana", "Licra", "Lino", 
     "Pana", "Poliéster", "Seda", "Sintético", "Viscosa"
 ])
 
@@ -43,8 +43,11 @@ LISTA_TIPOS_GENERAL = sorted(list(set(
 # --- LISTAS DE CARACTERÍSTICAS ACTUALIZADAS Y AMPLIADAS ---
 
 LISTA_COLORES = sorted([
-    "Amarillo", "Azul", "Beige", "Blanco", "Café", "Dorado", "Gris", "Morado",
-    "Naranja", "Negro", "Plateado", "Rojo", "Rosa", "Verde", "Vino", "Multicolor"
+    "Amarillo oscuro", "Azul oscuro", "Beige oscuro", "Blanco oscuro", "Café oscuro", "Dorado oscuro", "Gris oscuro", "Morado oscuro",
+    "Naranja oscuro", "Negro oscuro", "Plateado oscuro", "Rojo oscuro", "Rosa oscuro", "Verde oscuro", "Vino oscuro","Amarillo claro", 
+    "Azul claro", "Beige claro", "Blanco claro", "Café claro", "Dorado claro", "Gris claro", "Morado claro","Naranja claro", 
+    "Negro claro", "Plateado claro", "Rojo claro", "Rosa claro", "Verde claro", "Vino claro","Amarillo", "Azul", "Beige", 
+    "Blanco", "Café", "Dorado", "Gris", "Morado","Naranja", "Negro", "Plateado", "Rojo", "Rosa", "Verde", "Vino", "Multicolor"
 ])
 
 LISTA_TALLAS_ROPA = ["XS", "S", "M", "L", "XL", "XXL", "Talla Única"]
