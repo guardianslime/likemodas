@@ -2653,27 +2653,32 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price_includes_iva=self.price_includes_iva,
                 category=category,
                 attr_material=self.attr_material,
-                # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
                 attr_tipo=self.attr_tipo,
-                variants=all_variants_for_db, # Incluye los fondos del lightbox
-                publish_active=True,
-                publish_date=datetime.now(timezone.utc),
-                shipping_cost=shipping_cost_float,
+                variants=all_variants_for_db,
+                
+                # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+                main_image_url_variant=self.live_preview_image_url, # Guarda la URL de la imagen que se muestra en la previsualización
+                # --- ✨ FIN ✨ ---
+                
+                publish_active=self.publish_active,
+                publish_date=self.publish_date_as_datetime,
+                shipping_cost=self.shipping_cost,
                 is_moda_completa_eligible=self.is_moda_completa,
-                free_shipping_threshold=threshold,
+                free_shipping_threshold=self.free_shipping_threshold,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit,
+                shipping_combination_limit=self.shipping_combination_limit,
                 is_imported=self.is_imported,
+                # ... (resto de campos de estilo) ...
                 use_default_style=self.use_default_style,
-                light_mode_appearance=self.light_mode_appearance, # Usa el estado actual
-                dark_mode_appearance=self.dark_mode_appearance,   # Usa el estado actual
-                light_card_bg_color=self.light_theme_colors.get("bg"),
-                light_title_color=self.light_theme_colors.get("title"),
-                light_price_color=self.light_theme_colors.get("price"),
-                dark_card_bg_color=self.dark_theme_colors.get("bg"),
-                dark_title_color=self.dark_theme_colors.get("title"),
-                dark_price_color=self.dark_theme_colors.get("price"),
-                image_styles=image_styles_to_save,
+                light_mode_appearance=self.light_mode_appearance,
+                dark_mode_appearance=self.dark_mode_appearance,
+                light_card_bg_color=self.light_card_bg_color,
+                light_title_color=self.light_title_color,
+                light_price_color=self.light_price_color,
+                dark_card_bg_color=self.dark_card_bg_color,
+                dark_title_color=self.dark_title_color,
+                dark_price_color=self.dark_price_color,
+                image_styles=self.image_styles,
             )
             session.add(new_post)
 
@@ -3639,9 +3644,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             temp_posts = []
             for p in results:
-                main_image = ""
-                if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
+                # --- ✨ INICIO: CAMBIO CLAVE para main_image ✨ ---
+                # Ahora usamos la URL de la imagen principal guardada, si existe.
+                # Si no, tomamos la primera imagen del primer grupo de variantes.
+                main_image = p.main_image_url_variant or ""
+                if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
+                # --- ✨ FIN: CAMBIO CLAVE ✨ ---
 
                 moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
@@ -3656,7 +3665,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     attributes=self._build_attributes_from_post(p),
                     average_rating=p.average_rating,
                     rating_count=p.rating_count,
-                    main_image_url=main_image,
+                    main_image_url=main_image, # Ahora usa la variable `main_image` que ya está bien construida
                     shipping_cost=p.shipping_cost,
                     is_moda_completa_eligible=p.is_moda_completa_eligible,
                     free_shipping_threshold=p.free_shipping_threshold,
@@ -3667,10 +3676,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     moda_completa_tooltip_text=moda_completa_text,
                     envio_combinado_tooltip_text=combinado_text,
                     use_default_style=p.use_default_style,
-                    # ++ AÑADE ESTAS DOS LÍNEAS ++
-                    light_mode_appearance=p.light_mode_appearance, # Lee el valor del modelo de BD
-                    dark_mode_appearance=p.dark_mode_appearance,   # Lee el valor del modelo de BD
-                    # ++++++++++++++++++++++++++++++
+                    light_mode_appearance=p.light_mode_appearance,
+                    dark_mode_appearance=p.dark_mode_appearance,
                     light_card_bg_color=p.light_card_bg_color,
                     light_title_color=p.light_title_color,
                     light_price_color=p.light_price_color,
@@ -3680,8 +3687,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     image_styles=p.image_styles,
                 )
                 temp_posts.append(card_data)
-
-            # Guardamos los datos crudos y los mostramos inmediatamente en la UI
+                
             self._raw_posts = temp_posts
             self.posts = temp_posts
 
@@ -3996,6 +4002,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Datos básicos del post en edición
     post_to_edit_id: Optional[int] = None
     edit_post_title: str = ""
+    # --- ✨ INICIO: AÑADE ESTAS LÍNEAS ✨ ---
+    edit_main_image_url_variant: str = "" # URL de la imagen principal para el modal de edición
     edit_post_content: str = ""
     edit_price_str: str = ""
     edit_profit_str: str = ""
@@ -4201,7 +4209,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def start_editing_post(self, post_id: int):
         """
-        [VERSIÓN CORREGIDA] Carga los datos para editar, incluyendo los fondos del lightbox.
+        [VERSIÓN CORREGIDA] Carga los datos para editar, incluyendo la URL
+        de la imagen principal y los fondos del lightbox.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
@@ -4212,7 +4221,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not db_post or db_post.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para editar esta publicación.")
 
-            # Cargar datos básicos (igual que antes)
+            # Cargar datos básicos
             self.post_to_edit_id = db_post.id
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
@@ -4220,9 +4229,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_profit_str = str(db_post.profit or "")
             self.edit_category = db_post.category
             self.edit_attr_material = db_post.attr_material or ""
-            # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
-            self.edit_attr_tipo = db_post.attr_tipo or ""
+            self.edit_attr_tipo = db_post.attr_tipo or "" # Carga el tipo
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
+            
+            # --- ✨ INICIO: Carga la URL de la imagen principal para el editor ✨ ---
+            # Si no hay ninguna guardada, usa la primera imagen del primer grupo como fallback
+            default_first_image = ""
+            if db_post.variants and db_post.variants[0].get("image_urls") and db_post.variants[0]["image_urls"]:
+                default_first_image = db_post.variants[0]["image_urls"][0]
+
+            self.edit_main_image_url_variant = db_post.main_image_url_variant or default_first_image
+            self.live_preview_image_url = self.edit_main_image_url_variant # Asegura que la previsualización se inicialice correctamente
+            # --- ✨ FIN ✨ ---
+
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
             self.edit_combines_shipping = db_post.combines_shipping
@@ -4232,72 +4251,57 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # Reconstruir la estructura de grupos y variantes
             groups_map = defaultdict(lambda: {"variants": []})
-            # Agrupa variantes por sus URLs de imagen
             for variant_db in (db_post.variants or []):
                 urls_tuple = tuple(sorted(variant_db.get("image_urls", [])))
                 groups_map[urls_tuple]["variants"].append(variant_db)
 
             temp_variant_groups = []
             temp_generated_variants = {}
-            # Itera sobre los grupos encontrados
             for group_index, (urls_tuple, group_data) in enumerate(groups_map.items()):
                 group_dto = VariantGroupDTO(image_urls=list(urls_tuple), attributes={})
                 generated_variants_list = []
-                # Conjuntos para almacenar atributos únicos del grupo
                 tallas_en_grupo = set()
                 numeros_en_grupo = set()
                 tamanos_en_grupo = set()
 
-                # Itera sobre las variantes dentro de este grupo
                 for variant_db in group_data["variants"]:
                     attrs = variant_db.get("attributes", {})
-                    # Crea el DTO VariantFormData cargando los fondos del lightbox
                     variant_form_data = VariantFormData(
                         attributes=attrs,
                         stock=variant_db.get("stock", 0),
                         variant_uuid=variant_db.get('variant_uuid'),
-                        # --- ✨ CARGA DE FONDOS LIGHTBOX (EDITAR) ✨ ---
                         lightbox_bg_light=variant_db.get("lightbox_bg_light", "dark"),
                         lightbox_bg_dark=variant_db.get("lightbox_bg_dark", "dark"),
-                        # --- FIN ✨ ---
                     )
                     generated_variants_list.append(variant_form_data)
 
-                    # Recopila los atributos del grupo
                     if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
                     if "Talla" in attrs: tallas_en_grupo.add(attrs["Talla"])
                     if "Número" in attrs: numeros_en_grupo.add(attrs["Número"])
                     if "Tamaño" in attrs: tamanos_en_grupo.add(attrs["Tamaño"])
 
-                # Asigna los atributos recopilados al DTO del grupo
                 if tallas_en_grupo: group_dto.attributes["Talla"] = sorted(list(tallas_en_grupo))
                 if numeros_en_grupo: group_dto.attributes["Número"] = sorted(list(numeros_en_grupo))
                 if tamanos_en_grupo: group_dto.attributes["Tamaño"] = sorted(list(tamanos_en_grupo))
 
                 temp_variant_groups.append(group_dto)
-                # Ordena las variantes generadas (ej. por talla) antes de guardarlas en el mapa
                 temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: list(v.attributes.values())[1] if len(v.attributes) > 1 else "")
 
-            # Actualiza el estado con los grupos y variantes reconstruidos
             self.edit_variant_groups = temp_variant_groups
             self.edit_generated_variants_map = temp_generated_variants
-            # Recopila todas las URLs de imagen únicas de todos los grupos para la lista de subida
             all_images_in_groups = {url for group in temp_variant_groups for url in group.image_urls}
             self.edit_uploaded_images = list(all_images_in_groups)
-            # Resetea la selección
             self.edit_image_selection_for_grouping = []
             self.edit_selected_group_index = -1
 
-            # Cargar estilos de tarjeta e imagen (igual que antes)
+            # Cargar estilos de tarjeta e imagen
             self._load_card_styles_from_db(db_post)
             self._load_image_styles_from_db(db_post)
 
             # Selecciona el primer grupo para empezar a editarlo, si existe
             if self.edit_variant_groups:
-                 # Llama al evento para cargar los datos del primer grupo en el formulario
                  yield self.select_edit_group_for_editing(0)
             else:
-                 # Si no hay grupos, limpia los campos temporales
                  self.edit_temp_color = ""
                  self.edit_attr_tallas_ropa = []
                  self.edit_attr_numeros_calzado = []
@@ -4305,10 +4309,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                  self.edit_temp_lightbox_bg_light = "dark"
                  self.edit_temp_lightbox_bg_dark = "dark"
 
-            # Finalmente, abre el modal de edición
             yield self.toggle_preview_mode(self.card_theme_mode)
 
-            self.is_editing_post = True # Abre el modal al final
+            self.is_editing_post = True
 
     
     # --- ⚙️ INICIO: LÓGICA FALTANTE PARA GESTIONAR VARIANTES EN EL FORMULARIO DE EDICIÓN ⚙️ ---
@@ -4369,6 +4372,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         if group_index in self.edit_generated_variants_map and 0 <= item_index < len(self.edit_generated_variants_map[group_index]):
             current_stock = self.edit_generated_variants_map[group_index][item_index].stock
             self.edit_generated_variants_map[group_index][item_index].stock = max(0, current_stock - 1)
+
+    # --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN ✨ ---
+    def set_main_image_url_for_editing(self, image_url: str):
+        """
+        Establece la URL de la imagen principal para la previsualización
+        y para ser guardada como la imagen principal de la tarjeta.
+        """
+        self.edit_main_image_url_variant = image_url
+        self.live_preview_image_url = image_url
 
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA PREVISUALIZACIÓN DE EDICIÓN ✨ ---
 
@@ -4513,8 +4525,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def save_edited_post(self):
         """
         [VERSIÓN FINAL CORREGIDA]
-        Guarda una publicación editada, leyendo los fondos del lightbox
-        directamente desde los DTOs de variantes.
+        Guarda una publicación editada, incluyendo la main_image_url_variant
+        y los fondos del lightbox desde los DTOs de variantes.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
@@ -4525,7 +4537,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
             return
 
-        # --- (Validación de try/except para números se mantiene igual) ---
         try:
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
@@ -4541,21 +4552,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             if group_index >= len(self.edit_variant_groups): continue
             image_urls_for_group = self.edit_variant_groups[group_index].image_urls
             
-            for variant_data in generated_list: # variant_data es un VariantFormData
+            for variant_data in generated_list:
                 variant_uuid = getattr(variant_data, 'variant_uuid', None) or str(uuid.uuid4())
                 
-                # --- ✨ INICIO DE LA CORRECCIÓN DE GUARDADO ✨ ---
-                # Ahora leemos los valores de fondo desde el DTO de la variante (variant_data),
-                # que fue actualizado por los setters (set_edit_temp_lightbox_bg_...).
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": variant_uuid,
-                    "lightbox_bg_light": variant_data.lightbox_bg_light, # Lee desde el DTO
-                    "lightbox_bg_dark": variant_data.lightbox_bg_dark,   # Lee desde el DTO
+                    "lightbox_bg_light": variant_data.lightbox_bg_light,
+                    "lightbox_bg_dark": variant_data.lightbox_bg_dark,
                 }
-                # --- ✨ FIN DE LA CORRECCIÓN DE GUARDADO ✨ ---
                 all_variants_for_db.append(variant_dict)
 
         if not all_variants_for_db:
@@ -4568,14 +4575,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
 
-            # --- (Actualización de campos del post: title, content, price, etc. se mantiene igual) ---
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
             post_to_update.price = price
             post_to_update.profit = profit
             post_to_update.category = self.edit_category
             post_to_update.attr_material = self.edit_attr_material
-            # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
             post_to_update.attr_tipo = self.edit_attr_tipo
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
@@ -4585,11 +4590,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.combines_shipping = self.edit_combines_shipping
             post_to_update.shipping_combination_limit = limit
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
-            
-            # Asigna las variantes corregidas
             post_to_update.variants = all_variants_for_db 
 
-            # --- (Guardado de estilos de tarjeta e imagen se mantiene igual) ---
+            # --- ✨ INICIO: GUARDADO DE IMAGEN PRINCIPAL ✨ ---
+            post_to_update.main_image_url_variant = self.edit_main_image_url_variant
+            # --- ✨ FIN ✨ ---
+
+            # Guardado de estilos de tarjeta
             post_to_update.use_default_style = self.use_default_style
             post_to_update.light_mode_appearance = self.edit_light_mode_appearance
             post_to_update.dark_mode_appearance = self.edit_dark_mode_appearance
@@ -4599,6 +4606,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
+            
+            # Guardado de estilos de imagen
             post_to_update.image_styles = {
                 "zoom": self.preview_zoom,
                 "rotation": self.preview_rotation,
@@ -4608,7 +4617,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             session.add(post_to_update)
 
-            # --- (Lógica de ActivityLog se mantiene igual) ---
             log_entry = ActivityLog(
                 actor_id=self.authenticated_user_info.id,
                 owner_id=post_to_update.userinfo_id,
@@ -8329,9 +8337,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_posts = []
             for p in results:
-                main_image = ""
-                if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
+                # --- ✨ INICIO: CAMBIO CLAVE para main_image ✨ ---
+                main_image = p.main_image_url_variant or ""
+                if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
+                # --- ✨ FIN: CAMBIO CLAVE ✨ ---
 
                 moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
@@ -8347,13 +8357,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attributes=self._build_attributes_from_post(p),
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        main_image_url=main_image,
+                        main_image_url=main_image, # Ahora usa la variable `main_image`
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         free_shipping_threshold=p.free_shipping_threshold,
                         combines_shipping=p.combines_shipping,
                         shipping_combination_limit=p.shipping_combination_limit,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost), # Solo aparece una vez
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported,
                         moda_completa_tooltip_text=moda_completa_text,
                         envio_combinado_tooltip_text=combinado_text,
@@ -9185,10 +9195,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 sorted_posts = sorted(user_with_posts.saved_posts, key=lambda p: p.created_at, reverse=True)
                 
                 for p in sorted_posts:
-                    # --- ✨ INICIO: LÓGICA COMPLETA PARA CREAR EL DTO ✨ ---
-                    main_image = ""
-                    if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
+                    # --- ✨ INICIO: CAMBIO CLAVE para main_image ✨ ---
+                    main_image = p.main_image_url_variant or ""
+                    if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                         main_image = p.variants[0]["image_urls"][0]
+                    # --- ✨ FIN: CAMBIO CLAVE ✨ ---
 
                     moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                     combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
@@ -9203,7 +9214,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attributes=self._build_attributes_from_post(p),
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        main_image_url=main_image,
+                        main_image_url=main_image, # Ahora usa la variable `main_image`
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         free_shipping_threshold=p.free_shipping_threshold,
@@ -9214,10 +9225,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         moda_completa_tooltip_text=moda_completa_text,
                         envio_combinado_tooltip_text=combinado_text,
                         use_default_style=p.use_default_style,
-                        # ++ AÑADE ESTAS DOS LÍNEAS ++
-                        light_mode_appearance=p.light_mode_appearance, # Lee el valor del modelo de BD
-                        dark_mode_appearance=p.dark_mode_appearance,   # Lee el valor del modelo de BD
-                        # ++++++++++++++++++++++++++++++
+                        light_mode_appearance=p.light_mode_appearance,
+                        dark_mode_appearance=p.dark_mode_appearance,
                         light_card_bg_color=p.light_card_bg_color,
                         light_title_color=p.light_title_color,
                         light_price_color=p.light_price_color,
@@ -9226,7 +9235,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         dark_price_color=p.dark_price_color,
                     )
                     temp_posts.append(card_data)
-                    # --- ✨ FIN ✨ ---
 
                 self.saved_posts_gallery = temp_posts
         
@@ -9552,7 +9560,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                     
                     temp_posts = []
                     for p in posts:
-                        # La sección clave donde estaba el error
+                        # --- ✨ INICIO: CAMBIO CLAVE para main_image ✨ ---
+                        main_image = p.main_image_url_variant or ""
+                        if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
+                            main_image = p.variants[0]["image_urls"][0]
+                        # --- ✨ FIN: CAMBIO CLAVE ✨ ---
+                        
+                        moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                        combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
+                        
                         temp_posts.append(
                             ProductCardData(
                                 id=p.id,
@@ -9564,17 +9580,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 attributes=self._build_attributes_from_post(p),
                                 average_rating=p.average_rating,
                                 rating_count=p.rating_count,
+                                main_image_url=main_image, # Ahora usa la variable `main_image`
                                 shipping_cost=p.shipping_cost,
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
                                 free_shipping_threshold=p.free_shipping_threshold,
                                 combines_shipping=p.combines_shipping,
                                 shipping_combination_limit=p.shipping_combination_limit,
-                                shipping_display_text=_get_shipping_display_text(p.shipping_cost), # Solo aparece una vez
-                                is_imported=p.is_imported
+                                shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                                is_imported=p.is_imported,
+                                moda_completa_tooltip_text=moda_completa_text,
+                                envio_combinado_tooltip_text=combinado_text,
+                                use_default_style=p.use_default_style,
+                                light_card_bg_color=p.light_card_bg_color,
+                                light_title_color=p.light_title_color,
+                                light_price_color=p.light_price_color,
+                                dark_card_bg_color=p.dark_card_bg_color,
+                                dark_title_color=p.dark_title_color,
+                                dark_price_color=p.dark_price_color,
                             )
                         )
                     self.seller_page_posts = temp_posts
-
+        
         self.is_loading = False
 
 

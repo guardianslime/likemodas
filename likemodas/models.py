@@ -367,7 +367,9 @@ class BlogPostModel(rx.Model, table=True):
     dark_mode_appearance: str = Field(default="dark", nullable=False)  # Opciones: "light", "dark"
 
     # El estilo de imagen se mantiene
-    image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    image_styles: Optional[dict] = Field(default_factory=dict)
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+    main_image_url_variant: Optional[str] = Field(default=None)
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'

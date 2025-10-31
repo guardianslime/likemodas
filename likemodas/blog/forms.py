@@ -338,6 +338,9 @@ def blog_post_edit_form() -> rx.Component:
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos existentes:"),
             rx.flex(rx.foreach(AppState.edit_variant_groups, render_group_card), wrap="wrap", spacing="2"),
+            # --- ✨ INICIO: AÑADE ESTO AL FINAL DE LA FUNCIÓN ✨ ---
+            # Inserta el componente selector que recibimos como argumento
+            main_image_selector,
             spacing="3", width="100%", align_items="stretch",
         ) # Fin vstack de image_and_group_section
 

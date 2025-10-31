@@ -337,8 +337,9 @@ def blog_post_add_form() -> rx.Component:
 # --- Componente para la previsualización de la tarjeta ---
 def post_preview(
     title: rx.Var[str],
-    price_cop: rx.Var[str], # type: ignore
-    first_image_url: rx.Var[str],
+    price_cop: rx.Var[str],
+    # --- ✨ CAMBIO AQUÍ: Eliminamos first_image_url de los argumentos ✨ ---
+    # Ya no se pasa directamente, ahora lo tomamos de AppState.live_preview_image_url
     is_imported: rx.Var[bool],
     shipping_cost_badge_text: rx.Var[str],
     is_moda_completa: rx.Var[bool],
@@ -347,28 +348,21 @@ def post_preview(
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
     """
-    [VERSIÓN FINAL CON HEX]
+    [VERSIÓN FINAL CON HEX Y SELECCIÓN DE IMAGEN PRINCIPAL]
     Muestra la previsualización de la tarjeta de producto, asegurando que TODOS
-    sus elementos (fondo imagen, badges) respeten la apariencia seleccionada.
+    sus elementos (fondo imagen, badges) respeten la apariencia seleccionada
+    y la imagen principal seleccionada.
     """
 
-    # --- INICIO: Determinar la apariencia objetivo DENTRO de la función ---
     is_light_preview = AppState.card_theme_mode == "light"
 
-    # La apariencia objetivo (para badges y fondo de imagen) AHORA
-    # SIEMPRE sigue los toggles simples (Apariencia en Modo Claro/Oscuro).
     card_target_appearance = rx.cond(
         is_light_preview,
-        AppState.edit_light_mode_appearance, # Si preview es claro, usa config clara
-        AppState.edit_dark_mode_appearance   # Si preview es oscuro, usa config oscura
+        AppState.edit_light_mode_appearance,
+        AppState.edit_dark_mode_appearance
     )
-    # --- FIN ---
 
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        """
-        Renderiza los badges usando la apariencia objetivo de la tarjeta.
-        """
-        # (Usamos strings de colores literales para que no dependan del tema)
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         
@@ -380,25 +374,25 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # Colores principales (dependen de las variables 'live_')
     card_bg_color = AppState.live_card_bg_color
     title_color = AppState.live_title_color
     price_color = AppState.live_price_color
 
-    # --- Fondo DETRÁS de la imagen CORREGIDO (usa HEX) ---
     image_bg = rx.cond(
         card_target_appearance == "light",
         DEFAULT_LIGHT_IMAGE_BG,
         DEFAULT_DARK_IMAGE_BG
     )
-    # --- FIN ---
 
     return rx.box(
          rx.vstack(
              rx.box( # Contenedor de la imagen
-                 rx.image(
-                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png",
-                    width="100%", height="260px", object_fit="contain",
+                rx.image(
+                    src=rx.get_upload_url(AppState.live_preview_image_url), # <-- ESTA LÍNEA ES CLAVE
+                    alt="Previsualización del Producto",
+                    width="280px",
+                    height="280px",
+                    object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
                          f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
@@ -407,7 +401,7 @@ def post_preview(
                     transition="transform 0.2s ease-out",
                  ),
                  rx.badge( # Badge de Origen
-                     rx.cond(is_imported, "Importado", "Nacional"),
+                    rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                  ),

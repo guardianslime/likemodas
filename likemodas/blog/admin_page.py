@@ -1,5 +1,6 @@
 # En: likemodas/blog/admin_page.py (VERSIÓN COMPLETA Y CORREGIDA)
 
+from cv2 import add
 import reflex as rx
 from ..auth.admin_auth import require_panel_access
 from .. import navigation
@@ -101,13 +102,13 @@ def admin_filter_bar() -> rx.Component:
 
 def edit_post_dialog() -> rx.Component:
     """
-    [CORREGIDO] El modal de edición principal, con panel de estilo simplificado.
+    [CORREGIDO] El modal de edición principal, con panel de estilo simplificado
+    y el nuevo selector de imagen principal.
     """
 
-    # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
-    # --- 👇 Panel de personalización SIMPLIFICADO 👇 ---
+    # --- Panel de personalización SIMPLIFICADO ---
     personalizar_tarjeta_panel = rx.vstack(
-         rx.divider(margin_y="1em"),
+        rx.divider(margin_y="1em"),
         rx.hstack(
             rx.text("Personalizar Tarjeta", weight="bold", size="4"),
             rx.spacer(),
@@ -116,7 +117,7 @@ def edit_post_dialog() -> rx.Component:
                     rx.icon("rotate-ccw", size=14),
                     on_click=AppState.reset_card_styles_to_default,
                     variant="ghost", color_scheme="gray", size="1", type="button",
-                 ),
+                ),
                 content="Restablecer estilos"
             ),
             justify="between", width="100%", align_items="center",
@@ -126,35 +127,30 @@ def edit_post_dialog() -> rx.Component:
             rx.spacer(),
             rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
             width="100%", align="center",
-         ),
-        
-        # --- ✨ ESTA ES LA CORRECCIÓN CRÍTICA DEL EDITOR ✨ ---
-        # Asegúrate de que la condición sea (AppState.use_default_style)
-        # y NO (~AppState.use_default_style)
+        ),
         rx.cond(
             AppState.use_default_style,
-        # --- ✨ FIN DE LA CORRECCIÓN CRÍTICA ✨ ---
             rx.vstack(
                 rx.divider(margin_top="1em"),
                 rx.text("Apariencia en Modo Claro:", size="3"),
                 rx.segmented_control.root(
                     rx.segmented_control.item("Claro", value="light"),
                     rx.segmented_control.item("Oscuro", value="dark"),
-                     value=AppState.edit_light_mode_appearance,
+                    value=AppState.edit_light_mode_appearance,
                     on_change=AppState.set_edit_light_mode_appearance,
                     width="100%", color_scheme="violet",
                 ),
                 rx.divider(margin_top="1em"),
                 rx.text("Apariencia en Modo Oscuro:", size="3"),
                 rx.segmented_control.root(
-                     rx.segmented_control.item("Claro", value="light"),
+                    rx.segmented_control.item("Claro", value="light"),
                     rx.segmented_control.item("Oscuro", value="dark"),
                     value=AppState.edit_dark_mode_appearance,
                     on_change=AppState.set_edit_dark_mode_appearance,
                     width="100%", color_scheme="violet",
                 ),
                 spacing="3", width="100%", margin_top="1em"
-             ),
+            ),
         ),
         rx.divider(margin_top="1em"),
         rx.text("Previsualizar como:", size="2", weight="medium", margin_top="0.5em"),
@@ -166,10 +162,70 @@ def edit_post_dialog() -> rx.Component:
             width="100%",
         ),
         spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
-         border_radius="md", margin_top="1.5em", align_items="stretch",
+        border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
-    # --- 👆 FIN DEL PANEL SIMPLIFICADO 👆 ---
+    # --- FIN DEL PANEL SIMPLIFICADO ---
+
+    # --- ✨ INICIO: NUEVA SECCIÓN PARA SELECCIONAR IMAGEN PRINCIPAL ✨ ---
+    # Este componente se insertará en el formulario de edición
+    main_image_selector = rx.vstack(
+        rx.divider(margin_y="1em"),
+        rx.text("Seleccionar Imagen Principal", weight="bold", size="4"),
+        rx.text("Elige la imagen que se mostrará en la galería principal.", size="2", color_scheme="gray"),
+        rx.scroll_area(
+            rx.vstack(
+                rx.foreach(
+                    AppState.edit_variant_groups,
+                    lambda group_data, index: rx.vstack(
+                        rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
+                        rx.flex(
+                            rx.foreach(
+                                group_data.image_urls,
+                                lambda image_url: rx.box(
+                                    rx.image(
+                                        src=rx.get_upload_url(image_url),
+                                        alt=f"Imagen {image_url}",
+                                        width="70px",
+                                        height="70px",
+                                        object_fit="contain",
+                                        bg="var(--gray-5)",
+                                        border=rx.cond(
+                                            AppState.edit_main_image_url_variant == image_url,
+                                            "3px solid var(--violet-9)", # Resalta la imagen seleccionada
+                                            "1px solid var(--gray-7)"
+                                        ),
+                                        border_radius="md",
+                                        cursor="pointer",
+                                        on_click=AppState.set_main_image_url_for_editing(image_url), # Al hacer clic, establece esta como principal
+                                    ),
+                                    padding="0.25em",
+                                ),
+                            ),
+                            wrap="wrap",
+                            spacing="3",
+                            width="100%",
+                        ),
+                        spacing="2",
+                        align_items="start",
+                        width="100%",
+                        margin_bottom="0.5em",
+                    )
+                ),
+                spacing="3",
+                width="100%",
+            ),
+            type="auto",
+            scrollbars="vertical",
+            max_height="250px", # Limita la altura para que no ocupe todo
+            width="100%",
+            style={"border": "1px solid var(--gray-6)", "border_radius": "var(--radius-3)", "padding": "0.5em"}
+        ),
+        spacing="2",
+        align_items="stretch",
+        width="100%"
+    )
+    # --- ✨ FIN: NUEVA SECCIÓN ✨ ---
 
     return rx.dialog.root(
         rx.dialog.content(
@@ -179,31 +235,39 @@ def edit_post_dialog() -> rx.Component:
             rx.dialog.title("Editar Publicación"),
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
             rx.grid(
-                blog_post_edit_form(), # El formulario de edición
+                # Columna Izquierda: Formulario de Edición
+                rx.scroll_area(
+                    rx.vstack(
+                        # Pasa el selector de imagen principal al formulario de edición
+                        blog_post_edit_form(main_image_selector=main_image_selector),
+                    ),
+                    type="auto",
+                    scrollbars="vertical",
+                    max_height="75vh", # Limita la altura del formulario
+                    padding_right="1.5em",
+                ),
+                
+                # Columna Derecha: Previsualización
                 rx.vstack(
-                    # La previsualización normal (no artística)
-                    post_preview(
+                    add.post_preview( # Llama a la previsualización (ya corregida)
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
-                        first_image_url=AppState.edit_main_image_url_for_preview,
                         is_imported=AppState.edit_is_imported,
                         shipping_cost_badge_text=AppState.edit_shipping_cost_badge_text_preview,
                         is_moda_completa=AppState.edit_is_moda_completa,
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        # LA LÍNEA is_artistic_preview=False SE ELIMINA
                     ),
-                    personalizar_tarjeta_panel, # El panel simplificado que acabamos de definir
-                    spacing="4", position="sticky", top="0", width="350px", # Ajusta el width si es necesario
-                    # Sincroniza el modo de preview con el modo de color del navegador al montar
+                    personalizar_tarjeta_panel, # El panel de apariencia
+                    spacing="4", position="sticky", top="0", width="350px",
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
-                columns={"initial": "1", "lg": "auto 350px"}, # Ajusta las columnas si es necesario
+                
+                columns={"initial": "1", "lg": "auto 350px"},
                 spacing="6", width="100%", padding_top="1em",
             ),
-            # Estilos del modal principal
-            style={"max_width": "1400px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
+            style={"max_width": "1400px", "width": "95%", "max_height": "90vh"},
         ),
         open=AppState.is_editing_post,
         on_open_change=AppState.cancel_editing_post,
