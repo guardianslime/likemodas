@@ -1848,6 +1848,42 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self.new_variants[self.selected_variant_index]["attributes"] = attributes
         return rx.toast.success(f"Atributos guardados para la imagen #{self.selected_variant_index + 1}")
+    
+    # --- ✨ INICIO: AÑADE ESTA FUNCIÓN HELPER COMPLETA ✨ ---
+    def _build_attributes_from_post(self, p: BlogPostModel) -> dict:
+        """
+        Helper que construye el diccionario de atributos para un DTO ProductCardData,
+        extrayendo datos de la raíz del modelo (tipo, material) y de las variantes (tallas, colores).
+        """
+        attributes = {}
+        
+        # 1. Añade Tipo (desde la raíz del modelo)
+        if p.attr_tipo:
+            attributes["Tipo"] = p.attr_tipo
+        
+        # 2. Añade Material/Tela (desde la raíz del modelo)
+        if p.attr_material:
+            key = "Tela" if p.category == Category.ROPA.value else "Material"
+            attributes[key] = p.attr_material
+        
+        # 3. Extrae atributos únicos de todas las variantes
+        colors, tallas, numeros, tamanos = set(), set(), set(), set()
+        if p.variants:
+            for v in p.variants:
+                attrs = v.get("attributes", {})
+                if "Color" in attrs: colors.add(attrs["Color"])
+                if "Talla" in attrs: tallas.add(attrs["Talla"])
+                if "Número" in attrs: numeros.add(attrs["Número"])
+                if "Tamaño" in attrs: tamanos.add(attrs["Tamaño"])
+        
+        # 4. Añade los sets convertidos a listas (si no están vacíos)
+        if colors: attributes["Color"] = list(colors)
+        if tallas: attributes["Talla"] = list(tallas)
+        if numeros: attributes["Número"] = list(numeros)
+        if tamanos: attributes["Tamaño"] = list(tamanos)
+        
+        return attributes
+    # --- ✨ FIN: FUNCIÓN HELPER COMPLETA ✨ ---
 
     def _set_default_attributes_from_variant(self, variant: dict):
         """Función auxiliar para establecer la selección por defecto en el modal."""
@@ -2617,6 +2653,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price_includes_iva=self.price_includes_iva,
                 category=category,
                 attr_material=self.attr_material,
+                # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+                attr_tipo=self.attr_tipo,
                 variants=all_variants_for_db, # Incluye los fondos del lightbox
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
@@ -2655,27 +2693,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
         """
-        [VERSIÓN COMPLETA Y CORREGIDA]
-        Variable computada que filtra y busca en tiempo real.
-        Es la única fuente de verdad para la galería de productos.
+        [VERSIÓN FINAL CORREGIDA]
+        Variable computada que filtra y busca en tiempo real, con la lógica
+        de atributos correcta para listas (Color, Talla) y strings (Tipo, Material).
         """
-        # Se inicia con la lista completa de todos los posts
         source_posts = self.posts
 
-        # 1. APLICA LA BÚSQUEDA EN TIEMPO REAL
-        # Si hay algo escrito en la barra de búsqueda, se filtra la lista primero por el título.
         if self.search_term.strip():
             query = self.search_term.strip().lower()
             source_posts = [
                 p for p in source_posts if query in p.title.lower()
             ]
 
-        # 2. APLICA LOS FILTROS DEL PANEL LATERAL
-        # El resto de la lógica de filtrado se aplica sobre la lista
-        # que ya ha sido (o no) acotada por la búsqueda.
         posts_to_filter = source_posts
         
-        # Filtro por Rango de Precios
+        # --- (Filtros de Precio, Envío Gratis, Moda Completa no cambian) ---
         if self.min_price:
             try:
                 min_p = float(self.min_price)
@@ -2688,15 +2720,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                 posts_to_filter = [p for p in posts_to_filter if p.price <= max_p]
             except ValueError:
                 pass
+        if self.filter_free_shipping:
+            posts_to_filter = [
+                p for p in posts_to_filter 
+                if p.shipping_cost == 0.0
+            ]
+        if self.filter_complete_fashion:
+            posts_to_filter = [
+                p for p in posts_to_filter 
+                if p.is_moda_completa_eligible
+            ]
+        
+        # --- ✨ INICIO: LÓGICA DE FILTROS DE ATRIBUTOS CORREGIDA ✨ ---
 
-        # Filtro por Colores
+        # Filtro por Colores (Comprueba si ALGÚN color del producto está en el filtro)
         if self.filter_colors:
             posts_to_filter = [
                 p for p in posts_to_filter 
-                if p.attributes.get("Color") in self.filter_colors
+                if any(color in self.filter_colors for color in p.attributes.get("Color", []))
             ]
 
-        # Filtro por Material o Tela
+        # Filtro por Material o Tela (Comprueba si el material/tela está en el filtro)
         if self.filter_materiales_tela:
             posts_to_filter = [
                 p for p in posts_to_filter 
@@ -2704,36 +2748,25 @@ class AppState(reflex_local_auth.LocalAuthState):
                    (p.attributes.get("Tela") in self.filter_materiales_tela)
             ]
 
-        # Filtro por Tallas
-        if self.filter_tallas:
+        # Filtro por Tallas/Números/Tamaños (Comprueba si ALGUNA medida está en el filtro)
+        if self.filter_tallas: 
             posts_to_filter = [
                 p for p in posts_to_filter
                 if any(
-                    size in self.filter_tallas 
-                    for size in p.attributes.get("Talla", [])
+                    (size in self.filter_tallas for size in p.attributes.get("Talla", [])) or
+                    (num in self.filter_tallas for num in p.attributes.get("Número", [])) or
+                    (tam in self.filter_tallas for tam in p.attributes.get("Tamaño", []))
                 )
             ]
 
-        # Filtro por Tipo de Prenda/Calzado (General)
+        # Filtro por Tipo de Prenda/Calzado (Comprueba si el tipo está en el filtro)
         if self.filter_tipos_general:
             posts_to_filter = [
                 p for p in posts_to_filter
                 if p.attributes.get("Tipo") in self.filter_tipos_general
             ]
-
-        # Filtro de Envío Gratis
-        if self.filter_free_shipping:
-            posts_to_filter = [
-                p for p in posts_to_filter 
-                if p.shipping_cost == 0.0
-            ]
-
-        # Filtro de Moda Completa
-        if self.filter_complete_fashion:
-            posts_to_filter = [
-                p for p in posts_to_filter 
-                if p.is_moda_completa_eligible
-            ]
+            
+        # --- ✨ FIN: LÓGICA DE FILTROS DE ATRIBUTOS CORREGIDA ✨ ---
 
         return posts_to_filter
     
@@ -2742,6 +2775,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_attr_material: str = ""
     search_attr_numero_calzado: str = ""
     search_attr_tamano_mochila: str = ""
+
+    # --- ✨ INICIO: AÑADE ESTE BLOQUE COMPLETO ✨ ---
+    def set_edit_attr_tipo(self, new_value: str):
+        self.edit_attr_tipo = new_value
+
+    def set_edit_search_attr_tipo(self, new_value: str):
+        self.edit_search_attr_tipo = new_value
+
+    @rx.var
+    def edit_available_types(self) -> list[str]:
+        """Devuelve los tipos disponibles para la categoría de EDICIÓN."""
+        if self.edit_category == Category.ROPA.value:
+            return LISTA_TIPOS_ROPA
+        if self.edit_category == Category.CALZADO.value:
+            return LISTA_TIPOS_ZAPATOS
+        if self.edit_category == Category.MOCHILAS.value:
+            return LISTA_TIPOS_MOCHILAS
+        return []
+
+    @rx.var
+    def edit_filtered_attr_tipos(self) -> list[str]:
+        """Filtra los tipos disponibles para el selector de EDICIÓN."""
+        if not self.edit_search_attr_tipo.strip():
+            return self.edit_available_types
+        return [
+            o for o in self.edit_available_types 
+            if self.edit_search_attr_tipo.lower() in o.lower()
+        ]
+    # --- ✨ FIN ✨ ---
 
     def set_search_attr_color(self, query: str): self.search_attr_color = query
     def set_search_attr_talla_ropa(self, query: str): self.search_attr_talla_ropa = query
@@ -3591,7 +3653,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     price=p.price,
                     price_cop=p.price_cop,
                     variants=p.variants or [],
-                    attributes={},
+                    attributes=self._build_attributes_from_post(p),
                     average_rating=p.average_rating,
                     rating_count=p.rating_count,
                     main_image_url=main_image,
@@ -3966,6 +4028,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_attr_numeros_calzado: list[str] = []
     edit_temp_tamano: str = ""
     edit_attr_tamanos_mochila: list[str] = []
+    edit_attr_tipo: str = ""
+    edit_search_attr_tipo: str = ""
     # --- FIN ---
 
     # --- ✨ AÑADE ESTAS DOS LÍNEAS QUE FALTAN AQUÍ ✨ ---
@@ -4156,6 +4220,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_profit_str = str(db_post.profit or "")
             self.edit_category = db_post.category
             self.edit_attr_material = db_post.attr_material or ""
+            # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+            self.edit_attr_tipo = db_post.attr_tipo or ""
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
@@ -4509,6 +4575,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.profit = profit
             post_to_update.category = self.edit_category
             post_to_update.attr_material = self.edit_attr_material
+            # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+            post_to_update.attr_tipo = self.edit_attr_tipo
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
             post_to_update.shipping_cost = shipping_cost
@@ -5752,6 +5820,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.category = value
         self.attr_tipo = "" # Reinicia tipo
         self.attr_material = "" # Reinicia material
+        # --- ✨ INICIO: AÑADE ESTAS LÍNEAS ✨ ---
+        self.edit_attr_tipo = ""
+        self.edit_search_attr_tipo = ""
+        # --- ✨ FIN ✨ ---
         # --- ✨ INICIO DE LA CORRECCIÓN: Limpia las variables del nuevo sistema ✨ ---
         self.variant_groups = []
         self.generated_variants_map = {}
@@ -8272,7 +8344,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price=p.price,
                         price_cop=p.price_cop,
                         variants=p.variants or [],
-                        attributes={},
+                        attributes=self._build_attributes_from_post(p),
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         main_image_url=main_image,
@@ -9128,7 +9200,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price=p.price,
                         price_cop=p.price_cop,
                         variants=p.variants or [],
-                        attributes={},
+                        attributes=self._build_attributes_from_post(p),
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         main_image_url=main_image,
@@ -9489,7 +9561,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 price=p.price,
                                 price_cop=p.price_cop,
                                 variants=p.variants or [],
-                                attributes={},
+                                attributes=self._build_attributes_from_post(p),
                                 average_rating=p.average_rating,
                                 rating_count=p.rating_count,
                                 shipping_cost=p.shipping_cost,

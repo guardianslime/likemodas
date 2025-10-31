@@ -330,6 +330,10 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     attr_material: Optional[str] = Field(default=None)
+
+# --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+    attr_tipo: Optional[str] = Field(default=None)
+
     shipping_cost: Optional[float] = Field(default=None)
     is_moda_completa_eligible: bool = Field(default=True, nullable=False)
 

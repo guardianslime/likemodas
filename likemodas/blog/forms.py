@@ -484,16 +484,54 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 # Sección Categoría, Tipo, Material/Tela para EDITAR
                 rx.grid(
-                    rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, name="category", required=True, value=AppState.edit_category, on_change=AppState.set_edit_category), align_items="stretch"),
-                    # Selector de Tipo (Si lo tienes, usa AppState.edit_attr_tipo, etc.)
-                    # rx.vstack(rx.text("Tipo"), searchable_select(... usa AppState.edit_attr_tipo etc. ...)),
+                    rx.vstack(
+                        rx.text("Categoría"), 
+                        rx.select(
+                            AppState.categories, 
+                            name="category", 
+                            required=True, 
+                            value=AppState.edit_category, 
+                            on_change=AppState.set_edit_category
+                        ), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Tipo"), 
+                        searchable_select(
+                            placeholder="Selecciona un Tipo", 
+                            options=AppState.edit_filtered_attr_tipos, 
+                            value_select=AppState.edit_attr_tipo, 
+                            on_change_select=AppState.set_edit_attr_tipo, 
+                            search_value=AppState.edit_search_attr_tipo, 
+                            on_change_search=AppState.set_edit_search_attr_tipo, 
+                            filter_name="edit_tipo_filter", 
+                            is_disabled=~AppState.edit_category
+                        ), 
+                        align_items="stretch"
+                    ),
                     rx.vstack(
                         rx.text(AppState.edit_material_label),
-                        searchable_select(placeholder=rx.cond(AppState.edit_category, f"Selecciona {AppState.edit_material_label}", "Elige categoría"), options=AppState.edit_filtered_attr_materiales, value_select=AppState.edit_attr_material, on_change_select=AppState.set_edit_attr_material, search_value=AppState.edit_search_attr_material, on_change_search=AppState.set_edit_search_attr_material, filter_name="edit_material_filter", is_disabled=~AppState.edit_category)
-                    , align_items="stretch"),
-                    columns={"initial": "1", "md": "3"}, # Ajusta según si tienes Tipo
-                    spacing="4", width="100%"
+                        searchable_select(
+                            placeholder=rx.cond(
+                                AppState.edit_category, 
+                                f"Selecciona {AppState.edit_material_label}", 
+                                "Elige categoría"
+                            ), 
+                            options=AppState.edit_filtered_attr_materiales, 
+                            value_select=AppState.edit_attr_material, 
+                            on_change_select=AppState.set_edit_attr_material, 
+                            search_value=AppState.edit_search_attr_material, 
+                            on_change_search=AppState.set_edit_search_attr_material, 
+                            filter_name="edit_material_filter", 
+                            is_disabled=~AppState.edit_category
+                        ), 
+                        align_items="stretch"
+                    ),
+                    columns={"initial": "1", "md": "3"}, # 3 columnas
+                    spacing="4", 
+                    width="100%"
                 ),
+                # --- ✨ FIN: SECCIÓN CORREGIDA Y COMPLETA ✨ ---
                 # Resto de campos (Precio, Ganancia, IVA, Origen, Envío, etc. - usan variables edit_)
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.edit_price_str, on_change=AppState.set_edit_price_str, on_blur=AppState.validate_price_on_blur_edit, type="number", required=True), align_items="stretch"),
