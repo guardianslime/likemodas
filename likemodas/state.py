@@ -5548,7 +5548,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         attributes = {}
         if self.edit_temp_color: attributes["Color"] = self.edit_temp_color
         
-        # --- 👇 CORRECCIÓN: Lógica de categoría añadida 👇 ---
         if self.edit_category == Category.ROPA.value and self.edit_attr_tallas_ropa:
             attributes["Talla"] = self.edit_attr_tallas_ropa
         elif self.edit_category == Category.CALZADO.value and self.edit_attr_numeros_calzado:
