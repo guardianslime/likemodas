@@ -5123,9 +5123,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def select_group_for_editing(self, group_index: int):
-        """[CORREGIDO] Selecciona un grupo (CREAR) y carga sus atributos Y fondos lightbox."""
+        """
+        [CORREGIDO] Selecciona un grupo (CREAR) y carga sus atributos Y fondos lightbox.
+        YA NO CAMBIA LA IMAGEN DE PREVISUALIZACIÓN.
+        """
         
-        # --- ✨ INICIO: CORRECCIÓN DE INDEXERROR ✨ ---
+        # --- (Corrección de IndexError, se mantiene) ---
         if not (0 <= group_index < len(self.variant_groups)):
             self.selected_group_index = -1
             self.temp_color = ""
@@ -5135,7 +5138,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.temp_lightbox_bg_light = "dark"
             self.temp_lightbox_bg_dark = "dark"
             return
-        # --- ✨ FIN: CORRECCIÓN DE INDEXERROR ✨ ---
+        # --- (Fin de la corrección de IndexError) ---
 
         self.selected_group_index = group_index
         group = self.variant_groups[group_index] 
@@ -5148,10 +5151,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.temp_lightbox_bg_light = group.lightbox_bg_light
         self.temp_lightbox_bg_dark = group.lightbox_bg_dark
 
-        if not self.live_preview_image_url and group.image_urls:
-            self.set_main_image_url_for_editing(group.image_urls[0])
-        elif group.image_urls and self.live_preview_image_url not in group.image_urls:
-            self.set_main_image_url_for_editing(group.image_urls[0])
+        # --- ✨ LÓGICA DE CAMBIO DE IMAGEN ELIMINADA DE AQUÍ ✨ ---
+        # (El bloque if/elif que cambiaba self.live_preview_image_url se ha quitado)
 
         self._update_live_colors()
 
@@ -5509,9 +5510,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def select_edit_group_for_editing(self, group_index: int):
         """
         [CORREGIDO] Selecciona un grupo (EDITAR) y carga sus atributos Y fondos lightbox.
+        YA NO CAMBIA LA IMAGEN DE PREVISUALIZACIÓN.
         """
         
-        # --- ✨ INICIO: CORRECCIÓN DE INDEXERROR ✨ ---
+        # --- (Corrección de IndexError, se mantiene) ---
         if not (0 <= group_index < len(self.edit_variant_groups)):
             self.edit_selected_group_index = -1
             self.edit_temp_color = ""
@@ -5521,7 +5523,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_temp_lightbox_bg_light = "dark"
             self.edit_temp_lightbox_bg_dark = "dark"
             return
-        # --- ✨ FIN: CORRECCIÓN DE INDEXERROR ✨ ---
+        # --- (Fin de la corrección de IndexError) ---
 
         self.edit_selected_group_index = group_index
         group = self.edit_variant_groups[group_index]
@@ -5533,6 +5535,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self.edit_temp_lightbox_bg_light = group.lightbox_bg_light
         self.edit_temp_lightbox_bg_dark = group.lightbox_bg_dark
+        
+        # --- ✨ LÓGICA DE CAMBIO DE IMAGEN ELIMINADA DE AQUÍ ✨ ---
+        
+        self._update_live_colors()
 
     @rx.event
     def update_edit_group_attributes(self):
