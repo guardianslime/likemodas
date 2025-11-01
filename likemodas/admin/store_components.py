@@ -1,4 +1,4 @@
-# En: likemodas/admin/store_components.py (CORREGIDO Y UNIFICADO)
+# En: likemodas/admin/store_components.py (Archivo COMPLETO y CORREGIDO)
 
 import reflex as rx
 from ..state import AppState, ProductCardData
@@ -7,7 +7,9 @@ from ..ui.components import TITLE_CLAMP_STYLE, star_rating_display_safe
 # Se importan los colores por defecto para asegurar la consistencia visual
 from ..state import (
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_TITLE, DEFAULT_LIGHT_PRICE,
-    DEFAULT_DARK_BG, DEFAULT_DARK_TITLE, DEFAULT_DARK_PRICE
+    DEFAULT_DARK_BG, DEFAULT_DARK_TITLE, DEFAULT_DARK_PRICE,
+    # --- ✨ INCLUYE ESTAS CONSTANTES ✨ ---
+    DEFAULT_LIGHT_IMAGE_BG, DEFAULT_DARK_IMAGE_BG
 )
 
 def admin_product_card(post: ProductCardData) -> rx.Component:
@@ -23,34 +25,64 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
     offset_y = image_styles.get("offsetY", 0)
     transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-    # 2. Lógica de colores idéntica a la tarjeta pública para total consistencia
-    card_bg_color = rx.cond(
-        post.use_default_style,
-        rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-        rx.cond(
-            post.light_card_bg_color & post.dark_card_bg_color,
-            rx.color_mode_cond(post.light_card_bg_color, post.dark_card_bg_color),
-            post.light_card_bg_color | post.dark_card_bg_color | rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
-        )
+    # --- ✨ INICIO: LÓGICA DE COLOR UNIFICADA (COPIADA DE UI/COMPONENTS) ✨ ---
+    
+    # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
+    site_theme = rx.color_mode_cond("light", "dark")
+    
+    # 2. Determina la APARIENCIA OBJETIVO ("light" o "dark")
+    card_target_appearance = rx.cond(
+        site_theme == "light",
+        post.light_mode_appearance, # Si sitio es claro, usa config clara
+        post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
     )
-    title_color = rx.cond(
-        post.use_default_style,
-        rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-        rx.cond(
-            post.light_title_color & post.dark_title_color,
-            rx.color_mode_cond(post.light_title_color, post.dark_title_color),
-            post.light_title_color | post.dark_title_color | rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
-        )
+    
+    # 3. Determina los colores por DEFECTO basados en la APARIENCIA OBJETIVO (usando HEX)
+    default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+    default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+    default_price_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+
+    # 4. Determina los colores PERSONALIZADOS (Modo Artista)
+    custom_bg = rx.cond(
+        site_theme == "light",
+        post.light_card_bg_color | default_bg_by_appearance,
+        post.dark_card_bg_color | default_bg_by_appearance
     )
-    price_color = rx.cond(
-        post.use_default_style,
-        rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-        rx.cond(
-            post.light_price_color & post.dark_price_color,
-            rx.color_mode_cond(post.light_price_color, post.dark_price_color),
-            post.light_price_color | post.dark_price_color | rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
-        )
+    custom_title = rx.cond(
+        site_theme == "light",
+        post.light_title_color | default_title_by_appearance,
+        post.dark_title_color | default_title_by_appearance
     )
+    custom_price = rx.cond(
+        site_theme == "light",
+        post.light_price_color | default_price_by_appearance,
+        post.dark_price_color | default_price_by_appearance
+    )
+    
+    # 5. Asigna los colores FINALES
+    card_bg_color = rx.cond(post.use_default_style, default_bg_by_appearance, custom_bg)
+    title_color = rx.cond(post.use_default_style, default_title_by_appearance, custom_title)
+    price_color = rx.cond(post.use_default_style, default_price_by_appearance, custom_price)
+    
+    # --- ✨ ESTA ES LA CORRECCIÓN CLAVE PARA EL FONDO DE IMAGEN ✨ ---
+    image_bg = rx.cond(
+        card_target_appearance == "light",
+        DEFAULT_LIGHT_IMAGE_BG,
+        DEFAULT_DARK_IMAGE_BG
+    )
+    # --- ✨ FIN DE LA LÓGICA DE COLOR UNIFICADA ✨ ---
+
+    # (La función _card_badge usa card_target_appearance y es correcta)
+    def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
+        dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+        colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        return rx.box(
+            rx.text(text_content, size="2", weight="medium"),
+            bg=colors["bg"], color=colors["text"], padding="1px 10px",
+            border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
+        )
+
     
     return rx.box(
         rx.vstack(
@@ -62,7 +94,10 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                         post.main_image_url != "",
                         rx.image(
                             src=rx.get_upload_url(post.main_image_url),
-                            width="100%", height="260px",
+                            # --- ✨ INICIO: CORRECCIÓN DE TAMAÑO ✨ ---
+                            width="100%", 
+                            height="260px",
+                            # --- ✨ FIN: CORRECCIÓN DE TAMAÑO ✨ ---
                             object_fit="contain",
                             transform=transform_style,
                             transition="transform 0.2s ease-out",
@@ -78,7 +113,9 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                     position="relative",
                     width="100%", height="260px",
                     overflow="hidden",
-                    bg=rx.color_mode_cond("white", rx.color("gray", 3)),
+                    # --- ✨ INICIO: CORRECCIÓN DE FONDO DE IMAGEN ✨ ---
+                    bg=image_bg,
+                    # --- ✨ FIN: CORRECCIÓN DE FONDO DE IMAGEN ✨ ---
                 ),
                 # Sección de información del producto
                 rx.vstack(
@@ -88,23 +125,27 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                         size="6", 
                         width="100%", 
                         color=title_color,
-                        style=TITLE_CLAMP_STYLE  # <--- REEMPLAZA no_of_lines CON ESTO
+                        style=TITLE_CLAMP_STYLE
                     ),
                     star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                     rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                     rx.spacer(),
                     rx.vstack(
-                        rx.hstack(
-                            rx.badge(post.shipping_display_text, color_scheme="gray", variant="soft", size="2"),
+                        rx.grid( # <-- Usamos grid para alinear
+                            _card_badge(post.shipping_display_text, "gray"),
                             rx.cond(
                                 post.is_moda_completa_eligible,
-                                rx.tooltip(rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"), content=post.moda_completa_tooltip_text),
+                                rx.tooltip(_card_badge("Moda Completa", "violet"), content=post.moda_completa_tooltip_text),
                             ),
-                            spacing="3", align="center",
+                            columns="auto auto", 
+                            spacing="2", 
+                            align="center", 
+                            justify="start", 
+                            width="100%",
                         ),
                         rx.cond(
                             post.combines_shipping,
-                            rx.tooltip(rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"), content=post.envio_combinado_tooltip_text),
+                            rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                         ),
                         spacing="1", align_items="start", width="100%",
                     ),

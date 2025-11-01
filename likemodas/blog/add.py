@@ -398,7 +398,7 @@ def post_preview(
     envio_combinado_tooltip_text: rx.Var[str],
 ) -> rx.Component:
     """
-    [VERSIÓN FINAL CON HEX Y SELECCIÓN DE IMAGEN PRINCIPAL]
+    [VERSIÓN FINAL CON TAMAÑO UNIFICADO]
     Muestra la previsualización de la tarjeta de producto, asegurando que TODOS
     sus elementos (fondo imagen, badges) respeten la apariencia seleccionada
     y la imagen principal seleccionada.
@@ -435,14 +435,11 @@ def post_preview(
     title_color = AppState.live_title_color
     price_color = AppState.live_price_color
 
-    # --- ✨ INICIO: CORRECCIÓN DEL FONDO DE IMAGEN ✨ ---
-    # Usar las nuevas constantes que definimos en state.py
     image_bg = rx.cond(
         card_target_appearance == "light",
         DEFAULT_LIGHT_IMAGE_BG,
         DEFAULT_DARK_IMAGE_BG
     )
-    # --- ✨ FIN: CORRECCIÓN DEL FONDO DE IMAGEN ✨ ---
 
     return rx.box(
          rx.vstack(
@@ -452,8 +449,10 @@ def post_preview(
                     rx.image(
                         src=rx.get_upload_url(AppState.live_preview_image_url), 
                         alt="Previsualización del Producto",
-                        width="280px",
-                        height="280px",
+                        # --- ✨ INICIO: CORRECCIÓN DE TAMAÑO ✨ ---
+                        width="100%",  # <-- Cambiado de 280px a 100%
+                        height="260px", # <-- Cambiado de 280px a 260px
+                        # --- ✨ FIN: CORRECCIÓN DE TAMAÑO ✨ ---
                         object_fit="contain",
                         transform=rx.cond(
                             AppState.is_hydrated,
@@ -470,7 +469,7 @@ def post_preview(
                             align="center"
                         ),
                         width="100%", 
-                        height="260px", 
+                        height="260px", # <-- Coincide con el contenedor de imagen
                         display="flex", 
                         align_items="center", 
                         justify_content="center"
@@ -481,7 +480,7 @@ def post_preview(
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                  ),
-                 position="relative", width="100%", height="260px",
+                 position="relative", width="100%", height="260px", # <-- Contenedor coincide
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
                  bg=image_bg,

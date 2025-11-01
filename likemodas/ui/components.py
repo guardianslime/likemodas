@@ -153,27 +153,19 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
     
     def _render_single_card(post: ProductCardData) -> rx.Component:
         
-        # --- ✨ INICIO DE LA LÓGICA DE COLOR UNIFICADA (CORREGIDA) ✨ ---
-        
-        # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
+        # --- (Lógica de color unificada - esta ya era correcta) ---
         site_theme = rx.color_mode_cond("light", "dark")
         
-        # 2. Determina la APARIENCIA OBJETIVO ("light" o "dark")
-        #    Esta lógica es para los BADGES y el FONDO DE IMAGEN
-        #    La apariencia SIEMPRE sigue los toggles que guardó el vendedor.
         card_target_appearance = rx.cond(
             site_theme == "light",
-            post.light_mode_appearance, # Si sitio es claro, usa config clara
-            post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
+            post.light_mode_appearance,
+            post.dark_mode_appearance
         )
         
-        # 3. Determina los colores por DEFECTO basados en la APARIENCIA OBJETIVO (usando HEX)
         default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
         default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
         default_price_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
 
-        # 4. Determina los colores PERSONALIZADOS (Modo Artista)
-        #    (Usa el color guardado para el tema actual, o el default de apariencia como fallback)
         custom_bg = rx.cond(
             site_theme == "light",
             post.light_card_bg_color | default_bg_by_appearance,
@@ -190,23 +182,17 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             post.dark_price_color | default_price_by_appearance
         )
         
-        # 5. Asigna los colores FINALES
-        #    Si es "default" (Simple Mode), usa los colores del paso 3.
-        #    Si NO es "default" (Artistic Mode), usa los colores del paso 4.
         card_bg_color = rx.cond(post.use_default_style, default_bg_by_appearance, custom_bg)
         title_color = rx.cond(post.use_default_style, default_title_by_appearance, custom_title)
         price_color = rx.cond(post.use_default_style, default_price_by_appearance, custom_price)
         
-        # El fondo de la imagen SÍ usa la apariencia simple (con HEX)
         image_bg = rx.cond(
             card_target_appearance == "light",
             DEFAULT_LIGHT_IMAGE_BG,
             DEFAULT_DARK_IMAGE_BG
         )
         
-        # --- ✨ FIN DE LA LÓGICA DE COLOR UNIFICADA ✨ ---
-
-        # (La función _card_badge usa card_target_appearance y es correcta)
+        # --- (La función _card_badge es correcta) ---
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -225,7 +211,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # --- Renderizado de la tarjeta (SIN CAMBIOS, AHORA ES CORRECTO) ---
+        # --- Renderizado de la tarjeta (CON TAMAÑO DE IMAGEN UNIFICADO) ---
         return rx.box(
             rx.vstack(
                 rx.vstack( # Contenedor clickeable
@@ -234,8 +220,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             post.main_image_url != "",
                             rx.image(
                                 src=rx.get_upload_url(post.main_image_url),
-                                width="100%", height="260px", object_fit="contain",
-                                transform=transform_style, transition="transform 0.2s ease-out",
+                                # --- ✨ INICIO: CORRECCIÓN DE TAMAÑO ✨ ---
+                                width="100%", 
+                                height="260px", 
+                                object_fit="contain",
+                                # --- ✨ FIN: CORRECCIÓN DE TAMAÑO ✨ ---
+                                transform=transform_style, 
+                                transition="transform 0.2s ease-out",
                             ),
                             rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                         ),
