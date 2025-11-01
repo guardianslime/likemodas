@@ -25,7 +25,7 @@ def blog_post_add_form() -> rx.Component:
         con el selector de imagen principal integrado (adaptado de 'editar').
         """
         unassigned_images_display = rx.vstack(
-            rx.text("2. Selecciona imágenes para crear un nuevo grupo:", size="3", weight="medium"),
+            rx.text("2. Selecciona imágenes no asignadas:", size="3", weight="medium"),
             rx.cond(
                 AppState.unassigned_uploaded_images.length() == 0,
                 rx.text("Todas las imágenes están en grupos o no hay imágenes subidas.", color_scheme="gray", size="2"),
@@ -53,7 +53,17 @@ def blog_post_add_form() -> rx.Component:
                 ),
             ),
             rx.button(
-                "Crear Grupo de Color", 
+                "Añadir imágenes a Grupo Seleccionado", 
+                rx.icon("arrow-down-to-line", size=16),
+                on_click=AppState.add_selected_images_to_group,
+                is_disabled=~((AppState.image_selection_for_grouping.length() > 0) & (AppState.selected_group_index >= 0)),
+                variant="soft",
+                width="100%",
+                margin_top="0.5em",
+            ),
+            rx.button(
+                "Crear Nuevo Grupo de Color", 
+                rx.icon("plus", size=16),
                 on_click=AppState.create_variant_group, 
                 margin_top="0.5em", 
                 width="100%", 
@@ -188,10 +198,10 @@ def blog_post_add_form() -> rx.Component:
             rx.text("Talla"),
             rx.hstack(
                 rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button")
+                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button") 
             ),
             rx.flex(
-                 rx.foreach(AppState.attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")),
+                rx.foreach(AppState.attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")), 
                 wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
             ),
             spacing="3", align_items="stretch", width="100%"
@@ -200,10 +210,10 @@ def blog_post_add_form() -> rx.Component:
             rx.text("Número"),
             rx.hstack(
                 rx.select(LISTA_NUMEROS_CALZADO, placeholder="Añadir número...", value=AppState.temp_numero, on_change=AppState.set_temp_numero),
-                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero), type="button")
+                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero), type="button") 
             ),
             rx.flex(
-                 rx.foreach(AppState.attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")),
+                 rx.foreach(AppState.attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")), 
                 wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
             ),
             spacing="3", align_items="stretch", width="100%"
@@ -212,10 +222,10 @@ def blog_post_add_form() -> rx.Component:
             rx.text("Tamaño"),
             rx.hstack(
                 rx.select(LISTA_TAMANOS_MOCHILAS, placeholder="Añadir tamaño...", value=AppState.temp_tamano, on_change=AppState.set_temp_tamano),
-                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano), type="button")
+                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano), type="button") 
             ),
             rx.flex(
-                 rx.foreach(AppState.attr_tamanos_mochila, lambda tam: rx.badge(tam, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Tamaño", tam), cursor="pointer"), variant="soft", color_scheme="gray")),
+                 rx.foreach(AppState.attr_tamanos_mochila, lambda tam: rx.badge(tam, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Tamaño", tam), cursor="pointer"), variant="soft", color_scheme="gray")), 
                 wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
             ),
             spacing="3", align_items="stretch", width="100%"
@@ -375,13 +385,13 @@ def blog_post_edit_form() -> rx.Component:
         
         # --- ✨ INICIO: MODIFICACIÓN (Igual que en add.py) ✨ ---
         unassigned_images_display = rx.vstack(
-            rx.text("2. Selecciona imágenes para crear un nuevo grupo:", size="3", weight="medium"),
+            rx.text("2. Selecciona imágenes no asignadas:", size="3", weight="medium"),
             rx.cond(
-                AppState.unassigned_uploaded_images.length() == 0,
+                AppState.edit_unassigned_uploaded_images.length() == 0,
                 rx.text("Todas las imágenes están en grupos.", color_scheme="gray", size="2"),
                 rx.flex(
                     rx.foreach(
-                        AppState.unassigned_uploaded_images,
+                        AppState.edit_unassigned_uploaded_images,
                         lambda img_name: rx.box(
                             rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                             rx.cond(
@@ -403,7 +413,17 @@ def blog_post_edit_form() -> rx.Component:
                 ),
             ),
             rx.button(
-                "Crear Grupo de Color", 
+                "Añadir imágenes a Grupo Seleccionado", 
+                rx.icon("arrow-down-to-line", size=16),
+                on_click=AppState.add_selected_images_to_edit_group,
+                is_disabled=~((AppState.edit_image_selection_for_grouping.length() > 0) & (AppState.edit_selected_group_index >= 0)),
+                variant="soft",
+                width="100%",
+                margin_top="0.5em",
+            ),
+            rx.button(
+                "Crear Nuevo Grupo de Color", 
+                rx.icon("plus", size=16),
                 on_click=AppState.create_edit_variant_group, 
                 margin_top="0.5em", 
                 width="100%", 

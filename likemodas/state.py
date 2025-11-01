@@ -3506,7 +3506,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             # Usa variables de CREACIÓN
             target_appearance = self.light_mode_appearance if is_light_preview else self.dark_mode_appearance
             use_default = self.use_default_style
-            # Asumimos que la creación también usa los 'theme_colors' para el modo artístico
             light_colors = self.light_theme_colors 
             dark_colors = self.dark_theme_colors
         # --- ✨ FIN LÓGICA CONSCIENTE DEL CONTEXTO ✨ ---
@@ -4886,32 +4885,52 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: CORRECCIÓN DE IMÁGENES NO ASIGNADAS (Añadir esta variable) ✨ ---
     unassigned_uploaded_images: List[str] = []
 
+    # --- ✨ INICIO: NUEVAS PROPIEDADES COMPUTADAS PARA IMÁGENES NO ASIGNADAS ✨ ---
+    @rx.var
+    def unassigned_uploaded_images(self) -> list[str]:
+        """Devuelve imágenes que están subidas pero no en un grupo (para CREAR)."""
+        if not self.uploaded_images:
+            return []
+        images_in_groups = set()
+        for group in self.variant_groups:
+            images_in_groups.update(group.image_urls)
+        return [img for img in self.uploaded_images if img not in images_in_groups]
+
+    @rx.var
+    def edit_unassigned_uploaded_images(self) -> list[str]:
+        """Devuelve imágenes que están subidas pero no en un grupo (para EDITAR)."""
+        if not self.edit_uploaded_images:
+            return []
+        images_in_groups = set()
+        for group in self.edit_variant_groups:
+            images_in_groups.update(group.image_urls)
+        return [img for img in self.edit_uploaded_images if img not in images_in_groups]
+    # --- ✨ FIN: NUEVAS PROPIEDADES COMPUTADAS ✨ ---
+
+
+    # --- ✨ MODIFICAR LA FUNCIÓN handle_add_upload ✨ ---
     @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
         """
         [VERSIÓN CORREGIDA]
         Maneja la subida de imágenes, las guarda en el disco y las añade
-        a la lista de imágenes "no asignadas" para el formulario de CREACIÓN.
+        a la lista de imágenes "uploaded_images" para el formulario de CREACIÓN.
         """
         for file in files:
             try:
                 upload_data = await file.read()
-                # Genera un nombre de archivo único
                 unique_filename = f"{secrets.token_hex(8)}-{file.name}"
                 outfile = rx.get_upload_dir() / unique_filename
                 outfile.write_bytes(upload_data)
                 
-                # Añadir el nombre de archivo único a las listas de estado
                 if unique_filename not in self.uploaded_images:
                     self.uploaded_images.append(unique_filename)
-                    # --- ESTA ES LA LÍNEA CLAVE QUE FALTABA ---
-                    self.unassigned_uploaded_images.append(unique_filename)
+                    # No se añade a unassigned_uploaded_images, se calculará solo
 
             except Exception as e:
                 logger.error(f"Error al guardar archivo subido: {e}")
                 yield rx.toast.error(f"Error al procesar el archivo {file.name}")
         
-        # Limpiar la selección temporal para crear un nuevo grupo
         self.image_selection_for_grouping = []
         self.selection_order_map = {}
 
@@ -4969,13 +4988,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         [VERSIÓN ACTUALIZADA]
         Crea un nuevo grupo de variantes con las imágenes seleccionadas.
-        Después de crear el grupo, las imágenes ya no estarán en "unassigned_uploaded_images".
         """
         if not self.image_selection_for_grouping:
             yield rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
             return
 
-        # Crea un nuevo DTO de grupo con la selección actual
         new_group = VariantGroupDTO(
             image_urls=self.image_selection_for_grouping,
             attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, 
@@ -4984,26 +5001,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         )
         self.variant_groups.append(new_group)
 
-        # Actualiza el preview si es el primer grupo
         if len(self.variant_groups) == 1 and self.image_selection_for_grouping:
             self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
-            self.select_group_for_editing(0) # Selecciona el primer grupo automáticamente
+            yield self.select_group_for_editing(0)
 
-        # --- Elimina las imágenes del grupo de "no asignadas" ---
-        self.unassigned_uploaded_images = [
-            img for img in self.unassigned_uploaded_images 
-            if img not in self.image_selection_for_grouping
-        ]
-        # --- Fin de la modificación ---
-
-        self.image_selection_for_grouping = [] # Limpia la selección
-        self.selection_order_map = {} # Limpia el mapa de orden
+        # Limpia la selección
+        self.image_selection_for_grouping = [] 
+        self.selection_order_map = {} 
         
-        # Limpiar atributos temporales de color y lightbox para la siguiente creación de grupo
         self.temp_color = ""
         self.search_attr_color = ""
-        self.temp_lightbox_bg_light = "dark" # Default para el siguiente
-        self.temp_lightbox_bg_dark = "dark" # Default para el siguiente
+        self.temp_lightbox_bg_light = "dark" 
+        self.temp_lightbox_bg_dark = "dark" 
 
         yield rx.toast.success("Grupo de imágenes creado exitosamente.")
 
@@ -5024,65 +5033,121 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.edit_image_selection_for_grouping:
             return rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
 
-        # Asegúrate de que las URLs de imagen del nuevo grupo estén ordenadas para consistencia
         sorted_image_urls = sorted(self.edit_image_selection_for_grouping)
 
-        # Verificar si el grupo ya existe
         for existing_group in self.edit_variant_groups:
             if sorted(existing_group.image_urls) == sorted_image_urls:
                 return rx.toast.warning("Ya existe un grupo con estas imágenes.")
 
-        new_group_dto = VariantGroupDTO(image_urls=sorted_image_urls, attributes={})
+        # Hereda los fondos del grupo seleccionado anteriormente (o usa defaults)
+        new_group_dto = VariantGroupDTO(
+            image_urls=sorted_image_urls, 
+            attributes={},
+            lightbox_bg_light=self.edit_temp_lightbox_bg_light,
+            lightbox_bg_dark=self.edit_temp_lightbox_bg_dark
+        )
         self.edit_variant_groups.append(new_group_dto)
 
-        # Limpiar la selección actual para el próximo grupo
         self.edit_image_selection_for_grouping = []
         self.edit_selection_order_map = {}
 
-        # --- ✨ INICIO: Lógica para preseleccionar la imagen principal ✨ ---
-        # Si es el primer grupo creado o no hay ninguna imagen principal ya definida,
-        # establece la primera imagen del nuevo grupo como la imagen principal de la tarjeta.
         if not self.edit_main_image_url_variant and sorted_image_urls:
-             # Usa la primera imagen del nuevo grupo como la imagen principal por defecto.
             self.edit_main_image_url_variant = sorted_image_urls[0]
             self.live_preview_image_url = sorted_image_urls[0]
-        # --- ✨ FIN ✨ ---
 
-        # Seleccionar el nuevo grupo para edición
         yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
-        rx.toast.success("Grupo de imágenes creado con éxito.")
+        yield rx.toast.success("Grupo de imágenes creado con éxito.")
 
     @rx.event
-    def select_group_for_editing(self, index: int):
+    def add_selected_images_to_group(self):
         """
-        [VERSIÓN ACTUALIZADA]
-        Selecciona un grupo para editar sus atributos y previsualización.
+        Añade las imágenes actualmente en 'image_selection_for_grouping'
+        al grupo actualmente seleccionado en 'selected_group_index'.
         """
-        self.selected_group_index = index
-        group = self.variant_groups[index]
+        if self.selected_group_index < 0:
+            return rx.toast.error("Por favor, selecciona un grupo primero.")
+        
+        if not self.image_selection_for_grouping:
+            return rx.toast.error("Por favor, selecciona imágenes no asignadas para añadir.")
+        
+        if not (0 <= self.selected_group_index < len(self.variant_groups)):
+            return rx.toast.error("El grupo seleccionado ya no es válido.")
 
-        # Cargar atributos del grupo a los temporales del formulario
+        group = self.variant_groups[self.selected_group_index]
+        newly_added_count = 0
+        for img_url in self.image_selection_for_grouping:
+            if img_url not in group.image_urls:
+                group.image_urls.append(img_url)
+                newly_added_count += 1
+        
+        self.image_selection_for_grouping = []
+        self.selection_order_map = {}
+        
+        if newly_added_count > 0:
+            yield rx.toast.success(f"{newly_added_count} imagen(es) añadidas al grupo.")
+        else:
+            yield rx.toast.info("Las imágenes ya estaban en este grupo.")
+
+    @rx.event
+    def add_selected_images_to_edit_group(self):
+        """Añade imágenes al grupo seleccionado en el modal de EDICIÓN."""
+        if self.edit_selected_group_index < 0:
+            return rx.toast.error("Por favor, selecciona un grupo primero.")
+        
+        if not self.edit_image_selection_for_grouping:
+            return rx.toast.error("Por favor, selecciona imágenes no asignadas para añadir.")
+        
+        if not (0 <= self.edit_selected_group_index < len(self.edit_variant_groups)):
+            return rx.toast.error("El grupo seleccionado ya no es válido.")
+
+        group = self.edit_variant_groups[self.edit_selected_group_index]
+        newly_added_count = 0
+        for img_url in self.edit_image_selection_for_grouping:
+            if img_url not in group.image_urls:
+                group.image_urls.append(img_url)
+                newly_added_count += 1
+        
+        self.edit_image_selection_for_grouping = []
+        self.edit_selection_order_map = {}
+        
+        if newly_added_count > 0:
+            yield rx.toast.success(f"{newly_added_count} imagen(es) añadidas al grupo.")
+        else:
+            yield rx.toast.info("Las imágenes ya estaban en este grupo.")
+
+    @rx.event
+    def select_group_for_editing(self, group_index: int):
+        """[CORREGIDO] Selecciona un grupo (CREAR) y carga sus atributos Y fondos lightbox."""
+        
+        # --- ✨ INICIO: CORRECCIÓN DE INDEXERROR ✨ ---
+        if not (0 <= group_index < len(self.variant_groups)):
+            self.selected_group_index = -1
+            self.temp_color = ""
+            self.attr_tallas_ropa = []
+            self.attr_numeros_calzado = []
+            self.attr_tamanos_mochila = []
+            self.temp_lightbox_bg_light = "dark"
+            self.temp_lightbox_bg_dark = "dark"
+            return
+        # --- ✨ FIN: CORRECCIÓN DE INDEXERROR ✨ ---
+
+        self.selected_group_index = group_index
+        group = self.variant_groups[group_index] 
+        
         self.temp_color = group.attributes.get("Color", "")
-        self.temp_talla = ""
         self.attr_tallas_ropa = group.attributes.get("Talla", [])
-        self.temp_numero = ""
         self.attr_numeros_calzado = group.attributes.get("Número", [])
-        self.temp_tamano = ""
         self.attr_tamanos_mochila = group.attributes.get("Tamaño", [])
-
-        # --- Cargar fondos del lightbox del grupo seleccionado ---
+        
         self.temp_lightbox_bg_light = group.lightbox_bg_light
         self.temp_lightbox_bg_dark = group.lightbox_bg_dark
-        # --- Fin de la modificación ---
 
-        # Actualizar la previsualización con la primera imagen del grupo si no hay una principal ya
         if not self.live_preview_image_url and group.image_urls:
             self.set_main_image_url_for_editing(group.image_urls[0])
         elif group.image_urls and self.live_preview_image_url not in group.image_urls:
-            # Si la imagen actual no pertenece al grupo seleccionado, cámbiala a la primera del grupo
             self.set_main_image_url_for_editing(group.image_urls[0])
 
-        self._update_live_colors() # Asegura que la preview se actualice con los colores del grupo
+        self._update_live_colors()
 
     def update_group_attributes(self):
         """Guarda los atributos del formulario en el grupo seleccionado."""
@@ -5160,7 +5225,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         [VERSIÓN ACTUALIZADA]
         Remueve una imagen de la lista general, de la selección,
-        de la lista de no asignadas y de cualquier grupo.
+        y de cualquier grupo.
         """
         if image_name in self.uploaded_images:
             self.uploaded_images.remove(image_name)
@@ -5169,35 +5234,44 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.image_selection_for_grouping.remove(image_name)
             self.selection_order_map = {img: i + 1 for i, img in enumerate(self.image_selection_for_grouping)}
 
-        # --- Lógica crucial para la UI ---
-        if image_name in self.unassigned_uploaded_images:
-            self.unassigned_uploaded_images.remove(image_name)
-        # --- Fin ---
-
-        # También elimina la imagen de CUALQUIER grupo de variantes
         for group in self.variant_groups:
             if image_name in group.image_urls:
                 group.image_urls = [url for url in group.image_urls if url != image_name]
         
-        # Si la imagen principal era la eliminada, resetea la preview
         if self.live_preview_image_url == image_name:
             self.live_preview_image_url = ""
-            # Opcional: buscar la siguiente imagen disponible para la preview
             if self.variant_groups and self.variant_groups[0].image_urls:
                 self.live_preview_image_url = self.variant_groups[0].image_urls[0]
             elif self.unassigned_uploaded_images:
                 self.live_preview_image_url = self.unassigned_uploaded_images[0]
             
-            self._update_live_colors() # Refrescar la preview
+            self._update_live_colors() 
             self.reset_image_styles()
 
         yield rx.toast.info(f"Imagen eliminada.")
 
+    # --- ✨ MODIFICAR LA FUNCIÓN remove_edit_uploaded_image ✨ ---
     @rx.event
     def remove_edit_uploaded_image(self, image_name: str):
         """Elimina una imagen de la lista de imágenes subidas en el form de edición."""
         if image_name in self.edit_uploaded_images:
             self.edit_uploaded_images.remove(image_name)
+        
+        if image_name in self.edit_image_selection_for_grouping:
+            self.edit_image_selection_for_grouping.remove(image_name)
+            self.edit_selection_order_map = {img: i + 1 for i, img in enumerate(self.edit_image_selection_for_grouping)}
+
+        for group in self.edit_variant_groups:
+            if image_name in group.image_urls:
+                group.image_urls = [url for url in group.image_urls if url != image_name]
+
+        if self.edit_main_image_url_variant == image_name:
+            self.edit_main_image_url_variant = ""
+            if self.edit_variant_groups and self.edit_variant_groups[0].image_urls:
+                self.edit_main_image_url_variant = self.edit_variant_groups[0].image_urls[0]
+            elif self.edit_unassigned_uploaded_images:
+                self.edit_main_image_url_variant = self.edit_unassigned_uploaded_images[0]
+            self.live_preview_image_url = self.edit_main_image_url_variant
 
     @rx.event
     def remove_image_from_group(self, group_index: int, image_url: str):
@@ -5211,44 +5285,37 @@ class AppState(reflex_local_auth.LocalAuthState):
         group = self.variant_groups[group_index]
         if image_url in group.image_urls:
             group.image_urls.remove(image_url)
-            self.unassigned_uploaded_images.append(image_url) # Devuelve la imagen a "no asignadas"
 
             # Si la imagen eliminada era la principal, busca un reemplazo
             if self.live_preview_image_url == image_url:
+                new_main_image = ""
                 if group.image_urls: # Si quedan imágenes en el grupo
-                    self.live_preview_image_url = group.image_urls[0]
+                    new_main_image = group.image_urls[0]
                 elif self.unassigned_uploaded_images: # Si no, usa una no asignada
-                    self.live_preview_image_url = self.unassigned_uploaded_images[0]
-                else: # Si no queda nada
-                    self.live_preview_image_url = ""
+                    new_main_image = self.unassigned_uploaded_images[0]
+                self.set_main_image_url_for_editing(new_main_image)
             
             # Si el grupo quedó vacío, elimínalo
             if not group.image_urls:
                 yield from self.remove_variant_group(group_index)
-                yield rx.toast.info("Grupo vacío eliminado.")
             else:
                 yield rx.toast.info("Imagen eliminada del grupo.")
 
     @rx.event
     def remove_variant_group(self, group_index: int):
         """
-        [CORREGIDO] Elimina un grupo de variantes (CREAR), devuelve sus imágenes
-        a "no asignadas" y limpia los estados asociados.
+        [CORREGIDO] Elimina un grupo de variantes (CREAR), y
+        limpia los estados asociados. Las imágenes se mostrarán automáticamente
+        en "no asignadas" gracias a la variable computada.
         """
         if not (0 <= group_index < len(self.variant_groups)):
             return rx.toast.error("Error: Grupo no encontrado.")
 
-        # Obtiene el grupo antes de eliminarlo
         group_to_remove = self.variant_groups.pop(group_index)
         
-        # Devuelve todas sus imágenes a la lista de "no asignadas"
-        self.unassigned_uploaded_images.extend(group_to_remove.image_urls)
-
-        # Elimina las variantes generadas para ese grupo
         if group_index in self.generated_variants_map:
             del self.generated_variants_map[group_index]
         
-        # Reajusta los índices del mapa de variantes
         new_generated_map = {}
         for k, v in self.generated_variants_map.items():
             if k > group_index:
@@ -5257,23 +5324,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 new_generated_map[k] = v
         self.generated_variants_map = new_generated_map
 
-        # Reinicia la selección si el grupo eliminado era el seleccionado
         if self.selected_group_index == group_index:
             self.selected_group_index = -1
         elif self.selected_group_index > group_index:
             self.selected_group_index -= 1
 
-        # Resetea la imagen principal si pertenecía al grupo eliminado
         if self.live_preview_image_url in group_to_remove.image_urls:
             self.live_preview_image_url = ""
-            if self.variant_groups:
-                self.live_preview_image_url = self.variant_groups[0].image_urls[0]
-            elif self.unassigned_uploaded_images:
+            if self.unassigned_uploaded_images:
                 self.live_preview_image_url = self.unassigned_uploaded_images[0]
+            elif self.variant_groups:
+                self.live_preview_image_url = self.variant_groups[0].image_urls[0]
 
-            yield rx.toast.success("Grupo de variantes eliminado.")
-        else:
-            yield rx.toast.error("Error al eliminar el grupo. Índice inválido.")
+        yield rx.toast.success("Grupo de variantes eliminado.")
 
     @rx.event
     def remove_image_from_edit_group(self, group_index: int, image_url: str):
@@ -5287,24 +5350,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         group = self.edit_variant_groups[group_index]
         if image_url in group.image_urls:
             group.image_urls.remove(image_url)
-            self.unassigned_uploaded_images.append(image_url) # Devuelve a "no asignadas"
 
             # Actualiza la imagen principal si fue eliminada
             if self.edit_main_image_url_variant == image_url:
                 new_main_image = ""
-                if group.image_urls: # Prioriza otra imagen del mismo grupo
+                if group.image_urls:
                     new_main_image = group.image_urls[0]
-                elif self.edit_variant_groups: # Si no, la primera de otro grupo
-                    new_main_image = self.edit_variant_groups[0].image_urls[0]
-                elif self.unassigned_uploaded_images: # Si no, una no asignada
-                    new_main_image = self.unassigned_uploaded_images[0]
+                elif self.edit_unassigned_uploaded_images:
+                    new_main_image = self.edit_unassigned_uploaded_images[0]
                 
                 self.set_main_image_url_for_editing(new_main_image)
 
-            # Si el grupo queda vacío, elimínalo
             if not group.image_urls:
                 yield from self.remove_edit_variant_group(group_index)
-                yield rx.toast.info("Grupo vacío eliminado.")
             else:
                 yield rx.toast.info("Imagen eliminada del grupo.")
 
@@ -5386,40 +5444,30 @@ class AppState(reflex_local_auth.LocalAuthState):
                 outfile = rx.get_upload_dir() / unique_filename
                 outfile.write_bytes(upload_data)
 
-                # Añade a las listas de "edición"
                 if unique_filename not in self.edit_uploaded_images:
                     self.edit_uploaded_images.append(unique_filename)
-                    # Añade también a la lista de "no asignadas" de la edición
-                    self.unassigned_uploaded_images.append(unique_filename)
 
             except Exception as e:
                 logger.error(f"Error al guardar archivo subido (edit): {e}")
                 yield rx.toast.error(f"Error al procesar el archivo {file.name}")
 
-        # Limpiar la selección temporal de edición
         self.edit_image_selection_for_grouping = []
         self.edit_selection_order_map = {}
 
     @rx.event
     def remove_edit_variant_group(self, group_index: int):
         """
-        [CORREGIDO] Elimina un grupo de variantes (EDITAR), devuelve sus imágenes
-        a "no asignadas" y limpia los estados asociados.
+        [CORREGIDO] Elimina un grupo de variantes (EDITAR), y
+        limpia los estados asociados.
         """
         if not (0 <= group_index < len(self.edit_variant_groups)):
             return rx.toast.error("Error: Grupo no encontrado.")
 
-        # Obtiene el grupo antes de eliminarlo
         group_to_remove = self.edit_variant_groups.pop(group_index)
         
-        # Devuelve todas sus imágenes a la lista de "no asignadas"
-        self.unassigned_uploaded_images.extend(group_to_remove.image_urls)
-
-        # Elimina las variantes generadas para ese grupo
         if group_index in self.edit_generated_variants_map:
             del self.edit_generated_variants_map[group_index]
         
-        # Reajusta los índices del mapa de variantes
         new_generated_map = {}
         for k, v in self.edit_generated_variants_map.items():
             if k > group_index:
@@ -5428,19 +5476,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 new_generated_map[k] = v
         self.edit_generated_variants_map = new_generated_map
 
-        # Reinicia la selección si el grupo eliminado era el seleccionado
         if self.edit_selected_group_index == group_index:
             self.edit_selected_group_index = -1
         elif self.edit_selected_group_index > group_index:
             self.edit_selected_group_index -= 1
 
-        # Resetea la imagen principal si pertenecía al grupo eliminado
         if self.edit_main_image_url_variant in group_to_remove.image_urls:
             new_main_image = ""
-            if self.edit_variant_groups:
+            if self.edit_unassigned_uploaded_images:
+                new_main_image = self.edit_unassigned_uploaded_images[0]
+            elif self.edit_variant_groups:
                 new_main_image = self.edit_variant_groups[0].image_urls[0]
-            elif self.unassigned_uploaded_images:
-                new_main_image = self.unassigned_uploaded_images[0]
             self.set_main_image_url_for_editing(new_main_image)
 
         yield rx.toast.success("Grupo de variantes eliminado.")
@@ -5450,29 +5496,29 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         [CORREGIDO] Selecciona un grupo (EDITAR) y carga sus atributos Y fondos lightbox.
         """
-        self.edit_selected_group_index = group_index
-        if 0 <= group_index < len(self.edit_variant_groups):
-            group = self.edit_variant_groups[group_index] # <-- Obtiene el DTO del grupo
-            group_attrs = group.attributes
-            
-            # Carga atributos
-            self.edit_temp_color = group_attrs.get("Color", "")
-            self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
-            self.edit_attr_numeros_calzado = group_attrs.get("Número", [])
-            self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
+        
+        # --- ✨ INICIO: CORRECCIÓN DE INDEXERROR ✨ ---
+        if not (0 <= group_index < len(self.edit_variant_groups)):
+            self.edit_selected_group_index = -1
+            self.edit_temp_color = ""
+            self.edit_attr_tallas_ropa = []
+            self.edit_attr_numeros_calzado = []
+            self.edit_attr_tamanos_mochila = []
+            self.edit_temp_lightbox_bg_light = "dark"
+            self.edit_temp_lightbox_bg_dark = "dark"
+            return
+        # --- ✨ FIN: CORRECCIÓN DE INDEXERROR ✨ ---
 
-            # --- ✨ INICIO: LÓGICA AÑADIDA ✨ ---
-            # Carga los fondos lightbox guardados de ESE grupo en los selectores
-            self.edit_temp_lightbox_bg_light = group.lightbox_bg_light
-            self.edit_temp_lightbox_bg_dark = group.lightbox_bg_dark
-            # --- ✨ FIN: LÓGICA AÑADIDA ✨ ---
-        else:
-             self.edit_temp_color = ""
-             self.edit_attr_tallas_ropa = []
-             self.edit_attr_numeros_calzado = []
-             self.edit_attr_tamanos_mochila = []
-             self.edit_temp_lightbox_bg_light = "dark"
-             self.edit_temp_lightbox_bg_dark = "dark"
+        self.edit_selected_group_index = group_index
+        group = self.edit_variant_groups[group_index]
+        
+        self.edit_temp_color = group.attributes.get("Color", "")
+        self.edit_attr_tallas_ropa = group.attributes.get("Talla", [])
+        self.edit_attr_numeros_calzado = group.attributes.get("Número", [])
+        self.edit_attr_tamanos_mochila = group.attributes.get("Tamaño", [])
+
+        self.edit_temp_lightbox_bg_light = group.lightbox_bg_light
+        self.edit_temp_lightbox_bg_dark = group.lightbox_bg_dark
 
     @rx.event
     def update_edit_group_attributes(self):

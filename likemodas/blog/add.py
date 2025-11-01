@@ -52,6 +52,7 @@ moveable = Moveable.create
 
 # --- Componente del formulario (CORREGIDO) ---
 # --- Componente del formulario (CORREGIDO) ---
+# --- Componente del formulario (CORREGIDO) ---
 def blog_post_add_form() -> rx.Component:
     """
     [VERSIÓN CORREGIDA]
@@ -65,14 +66,15 @@ def blog_post_add_form() -> rx.Component:
         con el selector de imagen principal integrado (adaptado de 'editar').
         """
         
+        # --- ✨ INICIO: MODIFICACIÓN PRINCIPAL DE ESTA FUNCIÓN ✨ ---
         unassigned_images_display = rx.vstack(
-            rx.text("2. Selecciona imágenes para crear un nuevo grupo:", size="3", weight="medium"),
+            rx.text("2. Selecciona imágenes no asignadas:", size="3", weight="medium"),
             rx.cond(
-                AppState.unassigned_uploaded_images.length() == 0,
+                AppState.unassigned_uploaded_images.length() == 0, # <-- MODIFICADO
                 rx.text("Todas las imágenes están en grupos o no hay imágenes subidas.", color_scheme="gray", size="2"),
                 rx.flex(
                     rx.foreach(
-                        AppState.unassigned_uploaded_images,
+                        AppState.unassigned_uploaded_images, # <-- MODIFICADO
                         lambda img_name: rx.box(
                             rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                             rx.cond(
@@ -83,6 +85,7 @@ def blog_post_add_form() -> rx.Component:
                                     display="flex", align_items="center", justify_content="center"
                                 )
                             ),
+                            # Botón para eliminar la imagen de todos lados
                             rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                             position="relative", border="2px solid",
                             border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
@@ -93,8 +96,20 @@ def blog_post_add_form() -> rx.Component:
                     wrap="wrap", spacing="3", padding_top="0.5em",
                 ),
             ),
+            # --- ✨ INICIO: BOTÓN AÑADIR A GRUPO (para CREAR) ✨ ---
             rx.button(
-                "Crear Grupo de Color", 
+                "Añadir imágenes a Grupo Seleccionado", 
+                rx.icon("arrow-down-to-line", size=16),
+                on_click=AppState.add_selected_images_to_group,
+                is_disabled=~((AppState.image_selection_for_grouping.length() > 0) & (AppState.selected_group_index >= 0)),
+                variant="soft",
+                width="100%",
+                margin_top="0.5em",
+            ),
+            # --- ✨ FIN: BOTÓN AÑADIR A GRUPO ✨ ---
+            rx.button(
+                "Crear Nuevo Grupo de Color", 
+                rx.icon("plus", size=16),
                 on_click=AppState.create_variant_group, 
                 margin_top="0.5em", 
                 width="100%", 
@@ -192,7 +207,7 @@ def blog_post_add_form() -> rx.Component:
                                 AppState.select_group_for_editing(index) 
                             ],
                             cursor="pointer",
-                            position="relative", # <-- Necesario para el botón X del grupo
+                            position="relative",
                         )
                     ),
                     spacing="3",
@@ -226,8 +241,12 @@ def blog_post_add_form() -> rx.Component:
             
             spacing="3", width="100%", align_items="stretch",
         )
+    # --- ✨ FIN: MODIFICACIÓN PRINCIPAL DE ESTA FUNCIÓN ✨ ---
     
     def attributes_and_stock_section() -> rx.Component:
+        """
+        Sección para atributos y stock del formulario de CREACIÓN.
+        """
         ropa_attributes = rx.vstack(
             rx.text("Talla"),
             rx.hstack(
