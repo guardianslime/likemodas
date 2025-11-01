@@ -4887,18 +4887,31 @@ class AppState(reflex_local_auth.LocalAuthState):
     unassigned_uploaded_images: List[str] = []
 
     @rx.event
-    def handle_add_upload(self, files: List[str]):
+    async def handle_add_upload(self, files: list[rx.UploadFile]):
         """
-        [VERSIÓN ACTUALIZADA]
-        Maneja la carga de archivos, añadiéndolos a la lista principal
-        y a la de "no asignadas" para la interfaz.
+        [VERSIÓN CORREGIDA]
+        Maneja la subida de imágenes, las guarda en el disco y las añade
+        a la lista de imágenes "no asignadas" para el formulario de CREACIÓN.
         """
         for file in files:
-            if file not in self.uploaded_images:
-                self.uploaded_images.append(file)
-                self.unassigned_uploaded_images.append(file) # Añadir también a no asignadas
+            try:
+                upload_data = await file.read()
+                # Genera un nombre de archivo único
+                unique_filename = f"{secrets.token_hex(8)}-{file.name}"
+                outfile = rx.get_upload_dir() / unique_filename
+                outfile.write_bytes(upload_data)
+                
+                # Añadir el nombre de archivo único a las listas de estado
+                if unique_filename not in self.uploaded_images:
+                    self.uploaded_images.append(unique_filename)
+                    # --- ESTA ES LA LÍNEA CLAVE QUE FALTABA ---
+                    self.unassigned_uploaded_images.append(unique_filename)
+
+            except Exception as e:
+                logger.error(f"Error al guardar archivo subido: {e}")
+                yield rx.toast.error(f"Error al procesar el archivo {file.name}")
         
-        # Después de añadir, resetea la selección y el orden
+        # Limpiar la selección temporal para crear un nuevo grupo
         self.image_selection_for_grouping = []
         self.selection_order_map = {}
 
@@ -4965,14 +4978,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Crea un nuevo DTO de grupo con la selección actual
         new_group = VariantGroupDTO(
             image_urls=self.image_selection_for_grouping,
-            attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, # Asigna el color temporal al grupo
+            attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, 
             lightbox_bg_light=self.temp_lightbox_bg_light,
             lightbox_bg_dark=self.temp_lightbox_bg_dark,
         )
         self.variant_groups.append(new_group)
 
         # Actualiza el preview si es el primer grupo
-        if len(self.variant_groups) == 1:
+        if len(self.variant_groups) == 1 and self.image_selection_for_grouping:
             self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
             self.select_group_for_editing(0) # Selecciona el primer grupo automáticamente
 
@@ -5146,31 +5159,39 @@ class AppState(reflex_local_auth.LocalAuthState):
     def remove_uploaded_image(self, image_name: str):
         """
         [VERSIÓN ACTUALIZADA]
-        Remueve una imagen de la lista general y de cualquier grupo al que pertenezca,
-        y de la lista de no asignadas.
+        Remueve una imagen de la lista general, de la selección,
+        de la lista de no asignadas y de cualquier grupo.
         """
         if image_name in self.uploaded_images:
             self.uploaded_images.remove(image_name)
 
         if image_name in self.image_selection_for_grouping:
             self.image_selection_for_grouping.remove(image_name)
-            # Reconstruir el orden si se elimina una imagen seleccionada
             self.selection_order_map = {img: i + 1 for i, img in enumerate(self.image_selection_for_grouping)}
 
+        # --- Lógica crucial para la UI ---
         if image_name in self.unassigned_uploaded_images:
             self.unassigned_uploaded_images.remove(image_name)
+        # --- Fin ---
 
         # También elimina la imagen de CUALQUIER grupo de variantes
         for group in self.variant_groups:
-            group.image_urls = [url for url in group.image_urls if url != image_name]
+            if image_name in group.image_urls:
+                group.image_urls = [url for url in group.image_urls if url != image_name]
         
         # Si la imagen principal era la eliminada, resetea la preview
         if self.live_preview_image_url == image_name:
             self.live_preview_image_url = ""
+            # Opcional: buscar la siguiente imagen disponible para la preview
+            if self.variant_groups and self.variant_groups[0].image_urls:
+                self.live_preview_image_url = self.variant_groups[0].image_urls[0]
+            elif self.unassigned_uploaded_images:
+                self.live_preview_image_url = self.unassigned_uploaded_images[0]
+            
             self._update_live_colors() # Refrescar la preview
             self.reset_image_styles()
 
-        yield rx.toast.info(f"Imagen {image_name.split('/')[-1]} eliminada.")
+        yield rx.toast.info(f"Imagen eliminada.")
 
     @rx.event
     def remove_edit_uploaded_image(self, image_name: str):
@@ -5274,14 +5295,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- Manejadores de Eventos para Edición (TODOS CON @rx.event) ---
     @rx.event
     async def handle_edit_upload(self, files: list[rx.UploadFile]):
+        """
+        [VERSIÓN CORREGIDA]
+        Maneja la subida de imágenes para el modal de EDICIÓN.
+        """
         for file in files:
-            upload_data = await file.read()
-            unique_filename = f"{secrets.token_hex(8)}-{file.name}"
-            outfile = rx.get_upload_dir() / unique_filename
-            outfile.write_bytes(upload_data)
-            self.edit_uploaded_images.append(unique_filename)
-        # Actualizar la previsualización con la primera imagen del primer grupo si se añaden imágenes
-        self._update_edit_preview_image()
+            try:
+                upload_data = await file.read()
+                unique_filename = f"{secrets.token_hex(8)}-{file.name}"
+                outfile = rx.get_upload_dir() / unique_filename
+                outfile.write_bytes(upload_data)
+
+                # Añade a las listas de "edición"
+                if unique_filename not in self.edit_uploaded_images:
+                    self.edit_uploaded_images.append(unique_filename)
+                    # Añade también a la lista de "no asignadas" de la edición
+                    self.unassigned_uploaded_images.append(unique_filename)
+
+            except Exception as e:
+                logger.error(f"Error al guardar archivo subido (edit): {e}")
+                yield rx.toast.error(f"Error al procesar el archivo {file.name}")
+
+        # Limpiar la selección temporal de edición
+        self.edit_image_selection_for_grouping = []
+        self.edit_selection_order_map = {}
 
     @rx.event
     def remove_edit_variant_group(self, group_index: int):
