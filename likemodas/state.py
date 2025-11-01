@@ -4213,8 +4213,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def start_editing_post(self, post_id: int):
         """
-        [VERSIÓN CORREGIDA] Carga los datos para editar, incluyendo la URL
-        de la imagen principal y los fondos del lightbox.
+        [VERSIÓN OPTIMIZADA] Carga los datos para editar de forma más eficiente.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
@@ -4225,7 +4224,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not db_post or db_post.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para editar esta publicación.")
 
-            # Cargar datos básicos
+            # Cargar datos básicos (estas asignaciones son rápidas)
             self.post_to_edit_id = db_post.id
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
@@ -4233,19 +4232,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_profit_str = str(db_post.profit or "")
             self.edit_category = db_post.category
             self.edit_attr_material = db_post.attr_material or ""
-            self.edit_attr_tipo = db_post.attr_tipo or "" # Carga el tipo
+            self.edit_attr_tipo = db_post.attr_tipo or ""
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
-            
-            # --- ✨ INICIO: Carga la URL de la imagen principal para el editor ✨ ---
-            # Si no hay ninguna guardada, usa la primera imagen del primer grupo como fallback
-            default_first_image = ""
-            if db_post.variants and db_post.variants[0].get("image_urls") and db_post.variants[0]["image_urls"]:
-                default_first_image = db_post.variants[0]["image_urls"][0]
-
-            self.edit_main_image_url_variant = db_post.main_image_url_variant or default_first_image
-            self.live_preview_image_url = self.edit_main_image_url_variant # Asegura que la previsualización se inicialice correctamente
-            # --- ✨ FIN ✨ ---
-
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
             self.edit_combines_shipping = db_post.combines_shipping
@@ -4253,22 +4241,38 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_is_imported = db_post.is_imported
             self.edit_price_includes_iva = db_post.price_includes_iva
 
-            # Reconstruir la estructura de grupos y variantes
-            groups_map = defaultdict(lambda: {"variants": []})
-            for variant_db in (db_post.variants or []):
-                urls_tuple = tuple(sorted(variant_db.get("image_urls", [])))
-                groups_map[urls_tuple]["variants"].append(variant_db)
+            # --- ✨ INICIO: Carga la URL de la imagen principal para el editor ✨ ---
+            default_first_image = ""
+            if db_post.variants and db_post.variants[0].get("image_urls") and db_post.variants[0]["image_urls"]:
+                default_first_image = db_post.variants[0]["image_urls"][0]
+            self.edit_main_image_url_variant = db_post.main_image_url_variant or default_first_image
+            self.live_preview_image_url = self.edit_main_image_url_variant # Asegura que la previsualización se inicialice correctamente
+            # --- ✨ FIN ✨ ---
 
+            # --- ✨ INICIO: Lógica OPTIMIZADA para reconstruir grupos y variantes ✨ ---
             temp_variant_groups = []
             temp_generated_variants = {}
-            for group_index, (urls_tuple, group_data) in enumerate(groups_map.items()):
-                group_dto = VariantGroupDTO(image_urls=list(urls_tuple), attributes={})
+            all_images_set = set() # Usar un conjunto para evitar duplicados en imágenes cargadas
+
+            # Agrupa variantes por sus URLs de imagen (clave única para el grupo)
+            groups_dict = defaultdict(list)
+            for variant_db in (db_post.variants or []):
+                # Usar una tupla de URLs ordenadas para una clave de grupo consistente
+                urls_key = tuple(sorted(variant_db.get("image_urls", [])))
+                groups_dict[urls_key].append(variant_db)
+                all_images_set.update(urls_key) # Añadir todas las imágenes al conjunto
+
+            # Procesa cada grupo de variantes
+            for group_index, (urls_key, variants_in_group) in enumerate(groups_dict.items()):
+                group_dto = VariantGroupDTO(image_urls=list(urls_key), attributes={})
                 generated_variants_list = []
+                
+                # Para atributos dinámicos (Talla, Número, Tamaño)
                 tallas_en_grupo = set()
                 numeros_en_grupo = set()
                 tamanos_en_grupo = set()
 
-                for variant_db in group_data["variants"]:
+                for variant_db in variants_in_group:
                     attrs = variant_db.get("attributes", {})
                     variant_form_data = VariantFormData(
                         attributes=attrs,
@@ -4279,33 +4283,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                     generated_variants_list.append(variant_form_data)
 
+                    # Recolectar atributos del grupo
                     if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
                     if "Talla" in attrs: tallas_en_grupo.add(attrs["Talla"])
                     if "Número" in attrs: numeros_en_grupo.add(attrs["Número"])
                     if "Tamaño" in attrs: tamanos_en_grupo.add(attrs["Tamaño"])
 
+                # Asignar atributos recolectados al grupo DTO
                 if tallas_en_grupo: group_dto.attributes["Talla"] = sorted(list(tallas_en_grupo))
                 if numeros_en_grupo: group_dto.attributes["Número"] = sorted(list(numeros_en_grupo))
                 if tamanos_en_grupo: group_dto.attributes["Tamaño"] = sorted(list(tamanos_en_grupo))
 
                 temp_variant_groups.append(group_dto)
+                # Ordenar las variantes generadas para una visualización consistente
                 temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: list(v.attributes.values())[1] if len(v.attributes) > 1 else "")
 
             self.edit_variant_groups = temp_variant_groups
             self.edit_generated_variants_map = temp_generated_variants
-            all_images_in_groups = {url for group in temp_variant_groups for url in group.image_urls}
-            self.edit_uploaded_images = list(all_images_in_groups)
-            self.edit_image_selection_for_grouping = []
-            self.edit_selected_group_index = -1
+            self.edit_uploaded_images = list(all_images_set) # Asignar las imágenes únicas
+            self.edit_image_selection_for_grouping = [] # Resetear selección para el nuevo grupo
+            self.edit_selected_group_index = -1 # No seleccionar ningún grupo inicialmente
 
-            # Cargar estilos de tarjeta e imagen
+            # --- ✨ FIN: Lógica OPTIMIZADA ✨ ---
+
+            # Cargar estilos de tarjeta e imagen (ya están optimizados en funciones separadas)
             self._load_card_styles_from_db(db_post)
             self._load_image_styles_from_db(db_post)
 
             # Selecciona el primer grupo para empezar a editarlo, si existe
+            # ESTE PASO PUEDE CAUSAR UN LAG ADICIONAL SI EL RENDERIZADO DEL GRUPO ES COMPLEJO.
+            # CONSIDERA MOVER ESTA SELECCIÓN A UN MOMENTO POSTERIOR O HACERLA LA PRIMERA VEZ QUE EL USUARIO HACE CLIC.
             if self.edit_variant_groups:
+                 # Esta llamada puede ser lenta si 'select_edit_group_for_editing' fuerza un renderizado grande.
+                 # Para la optimización inicial, la mantenemos, pero es un punto a observar.
                  yield self.select_edit_group_for_editing(0)
             else:
+                 # Limpiar temporales si no hay grupos para editar
                  self.edit_temp_color = ""
                  self.edit_attr_tallas_ropa = []
                  self.edit_attr_numeros_calzado = []
@@ -4313,6 +4326,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                  self.edit_temp_lightbox_bg_light = "dark"
                  self.edit_temp_lightbox_bg_dark = "dark"
 
+            # Sincroniza el modo de previsualización (ya es un evento separado)
             yield self.toggle_preview_mode(self.card_theme_mode)
 
             self.is_editing_post = True
