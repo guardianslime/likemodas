@@ -286,39 +286,33 @@ def blog_post_add_form() -> rx.Component:
 def blog_post_edit_form() -> rx.Component:
     """
     [VERSIÓN OPTIMIZADA] Formulario para EDITAR una publicación.
-    El selector de imagen principal está integrado en la sección de imágenes.
+    Las secciones "Grupos existentes" y "Seleccionar Imagen Principal" se han
+    fusionado en una sola para mejorar el rendimiento.
     """
     def image_and_group_section() -> rx.Component:
         """
         [OPTIMIZADO] Sección para gestionar imágenes y grupos de color
         con el selector de imagen principal integrado.
         """
-        def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
-            """Renderiza una tarjeta para un grupo de variantes existente en EDICIÓN."""
-            is_selected = AppState.edit_selected_group_index == index
-            return rx.box(
-                rx.flex(
-                    rx.foreach(group.image_urls, lambda url: rx.image(src=rx.get_upload_url(url), width="40px", height="40px", object_fit="cover", border_radius="sm")),
-                    wrap="wrap", spacing="2",
-                ),
-                rx.icon("trash-2", on_click=AppState.remove_edit_variant_group(index), style={"position": "absolute", "top": "-8px", "right": "-8px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "20px", "height": "20px"}),
-                position="relative", border_width="2px",
-                border_color=rx.cond(is_selected, "var(--violet-9)", "transparent"),
-                padding="0.25em", border_radius="md", cursor="pointer",
-                on_click=AppState.select_edit_group_for_editing(index),
-            )
+        
+        # --- (Esta función interna 'render_group_card' ya no es necesaria) ---
+        # def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
+        #    ... (ELIMINADA)
 
-        # --- ✨ INICIO: NUEVO COMPONENTE INTEGRADO PARA SELECCIÓN DE IMAGEN PRINCIPAL ✨ ---
-        integrated_main_image_selector = rx.vstack(
+        # --- ✨ INICIO: NUEVO COMPONENTE INTEGRADO (FUSIONADO) ✨ ---
+        integrated_group_and_image_selector = rx.vstack(
             rx.divider(margin_y="1em"),
-            rx.text("Seleccionar Imagen Principal", weight="bold", size="4"),
-            rx.text("Elige la imagen que se mostrará en la galería principal.", size="2", color_scheme="gray"),
+            rx.text("3. Grupos y Selección de Imagen Principal", weight="bold", size="4"),
+            rx.text("Haz clic en una imagen para seleccionarla como principal Y para editar los atributos de su grupo.", size="2", color_scheme="gray"),
             rx.scroll_area(
                 rx.vstack(
                     rx.foreach(
                         AppState.edit_variant_groups,
                         lambda group_data, index: rx.vstack(
+                            # Título del Grupo (ej: "Grupo 1 (Rojo oscuro)")
                             rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
+                            
+                            # Contenedor de imágenes
                             rx.flex(
                                 rx.foreach(
                                     group_data.image_urls,
@@ -330,6 +324,7 @@ def blog_post_edit_form() -> rx.Component:
                                             height="70px",
                                             object_fit="contain",
                                             bg="var(--gray-5)",
+                                            # Borde si es la IMAGEN PRINCIPAL seleccionada
                                             border=rx.cond(
                                                 AppState.edit_main_image_url_variant == image_url,
                                                 "3px solid var(--violet-9)",
@@ -337,7 +332,13 @@ def blog_post_edit_form() -> rx.Component:
                                             ),
                                             border_radius="md",
                                             cursor="pointer",
-                                            on_click=AppState.set_main_image_url_for_editing(image_url),
+                                            
+                                            # --- ✨ CAMBIO CLAVE: ACCIÓN DOBLE ✨ ---
+                                            # Al hacer clic, establece la imagen principal Y selecciona el grupo para edición
+                                            on_click=[
+                                                AppState.set_main_image_url_for_editing(image_url),
+                                                AppState.select_edit_group_for_editing(index)
+                                            ],
                                         ),
                                         padding="0.25em",
                                     ),
@@ -350,6 +351,13 @@ def blog_post_edit_form() -> rx.Component:
                             align_items="start",
                             width="100%",
                             margin_bottom="0.5em",
+                            
+                            # --- ✨ NUEVO: Resaltado del GRUPO seleccionado para edición ✨ ---
+                            border=rx.cond(AppState.edit_selected_group_index == index, "2px solid var(--violet-7)", "1px solid var(--gray-5)"),
+                            padding="0.75em",
+                            border_radius="var(--radius-3)",
+                            bg=rx.cond(AppState.edit_selected_group_index == index, rx.color("violet", 2), "transparent"),
+                            transition="background-color 0.2s, border-color 0.2s",
                         )
                     ),
                     spacing="3",
@@ -357,15 +365,13 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 type="auto",
                 scrollbars="vertical",
-                max_height="250px",
+                max_height="300px", # Un poco más de altura
                 width="100%",
                 style={"border": "1px solid var(--gray-6)", "border_radius": "var(--radius-3)", "padding": "0.5em"}
             ),
             spacing="2",
             align_items="stretch",
             width="100%",
-            # Solo mostrar si hay al menos un grupo de variantes para seleccionar
-            # rx.cond(AppState.edit_variant_groups.length() > 0, ...)
         )
         # --- ✨ FIN: NUEVO COMPONENTE INTEGRADO ✨ ---
 
@@ -377,15 +383,10 @@ def blog_post_edit_form() -> rx.Component:
                 on_drop=AppState.handle_edit_upload(rx.upload_files("edit_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            rx.text("2. Selecciona y ordena las imágenes para crear/editar un grupo:"),
+            rx.text("2. Selecciona imágenes para crear un nuevo grupo:"),
             rx.flex(
                  rx.foreach(
-                    # Mostrar solo las imágenes del grupo seleccionado si existe, de lo contrario todas las cargadas
-                    rx.cond(
-                        AppState.edit_selected_group_index != -1,
-                        AppState.edit_variant_groups[AppState.edit_selected_group_index].image_urls,
-                        AppState.edit_uploaded_images # Fallback a todas las imágenes si no hay grupo seleccionado
-                    ),
+                    AppState.edit_uploaded_images, # Muestra solo imágenes NO agrupadas
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
@@ -406,20 +407,19 @@ def blog_post_edit_form() -> rx.Component:
                 wrap="wrap", spacing="3", padding_top="0.5em",
              ),
             rx.button("Crear Grupo de Color", on_click=AppState.create_edit_variant_group, margin_top="0.5em", width="100%", type="button"),
-            rx.divider(margin_y="1em"),
-            rx.text("3. Grupos existentes:"),
-            rx.flex(rx.foreach(AppState.edit_variant_groups, render_group_card), wrap="wrap", spacing="2"),
-            
-            # --- ✨ INICIO: AHORA ESTÁ AQUÍ EL SELECTOR DE IMAGEN PRINCIPAL ✨ ---
+
+            # --- ✨ INICIO: SECCIÓN FUSIONADA ✨ ---
+            # "3. Grupos existentes:" y "Seleccionar Imagen Principal" ahora son uno solo.
             rx.cond(
                 AppState.edit_variant_groups.length() > 0, # Solo lo muestra si hay grupos
-                integrated_main_image_selector
+                integrated_group_and_image_selector
             ),
             # --- ✨ FIN ✨ ---
             
             spacing="3", width="100%", align_items="stretch",
         ) # Fin vstack de image_and_group_section
 
+    # ... (La función attributes_and_stock_section() no cambia) ...
     def attributes_and_stock_section() -> rx.Component:
         """Sección para definir atributos y stock del grupo seleccionado en EDICIÓN."""
         # --- Define los componentes de atributos dinámicos (usando variables 'edit_') ---
@@ -547,20 +547,20 @@ def blog_post_edit_form() -> rx.Component:
     # --- Estructura principal del formulario de EDICIÓN ---
     return rx.form(
         rx.grid(
-            # Columna izquierda (Imágenes y Variantes - usa variables edit_)
+            # Columna izquierda (Imágenes y Variantes)
              rx.vstack(
-                image_and_group_section(), # Ya usa las variables edit_ internamente
-                attributes_and_stock_section(), # Ya usa las variables edit_ y el grid corregido
+                image_and_group_section(), # Ahora incluye el selector de imagen principal
+                attributes_and_stock_section(),
                 spacing="5", width="100%",
             ),
-            # Columna derecha (Detalles del Producto - usa variables edit_)
+            # Columna derecha (Detalles del Producto)
             rx.vstack(
                  rx.vstack(
                     rx.text("Título del Producto"),
                     rx.input(name="title", value=AppState.edit_post_title, on_change=AppState.set_edit_post_title, required=True, max_length=40),
                     align_items="stretch"
                 ),
-                # --- ✨ SECCIÓN CORREGIDA Y COMPLETA ✨ ---
+                # Sección Categoría, Tipo, Material/Tela para EDITAR
                 rx.grid(
                     rx.vstack(
                         rx.text("Categoría"), 
@@ -609,9 +609,8 @@ def blog_post_edit_form() -> rx.Component:
                     spacing="4", 
                     width="100%"
                 ),
-                # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
                 
-                # Resto de campos (Precio, Ganancia, IVA, Origen, Envío, etc. - usan variables edit_)
+                # Resto de campos (Precio, Ganancia, IVA, Origen, Envío, etc.)
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.edit_price_str, on_change=AppState.set_edit_price_str, on_blur=AppState.validate_price_on_blur_edit, type="number", required=True), align_items="stretch"),
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.edit_profit_str, on_change=AppState.set_edit_profit_str, on_blur=AppState.validate_profit_on_blur_edit, type="number"), align_items="stretch"),
