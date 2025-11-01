@@ -5199,34 +5199,114 @@ class AppState(reflex_local_auth.LocalAuthState):
         if image_name in self.edit_uploaded_images:
             self.edit_uploaded_images.remove(image_name)
 
-    def remove_variant_group(self, group_index: int):
-        """Elimina un grupo de variantes y sus imágenes asociadas."""
-        if 0 <= group_index < len(self.variant_groups):
-            # Elimina el grupo de la lista
-            del self.variant_groups[group_index]
-            
-            # También elimina las variantes generadas para ese grupo
-            if group_index in self.generated_variants_map:
-                del self.generated_variants_map[group_index]
-            
-            # Ajusta los índices de los mapas si es necesario (cuando eliminas de en medio)
-            new_generated_variants_map = {}
-            for k, v in self.generated_variants_map.items():
-                if k > group_index:
-                    new_generated_variants_map[k - 1] = v
-                else:
-                    new_generated_variants_map[k] = v
-            self.generated_variants_map = new_generated_variants_map
+    @rx.event
+    def remove_image_from_group(self, group_index: int, image_url: str):
+        """
+        Elimina una sola imagen de un grupo en el formulario de CREACIÓN.
+        Si el grupo queda vacío, lo elimina.
+        """
+        if not (0 <= group_index < len(self.variant_groups)):
+            return rx.toast.error("Error: Grupo no encontrado.")
 
-            # Reinicia la selección de grupo si el eliminado era el seleccionado
-            if self.selected_group_index == group_index:
-                self.selected_group_index = -1
-            elif self.selected_group_index > group_index:
-                self.selected_group_index -= 1 # Ajusta el índice si se eliminó un grupo anterior
+        group = self.variant_groups[group_index]
+        if image_url in group.image_urls:
+            group.image_urls.remove(image_url)
+            self.unassigned_uploaded_images.append(image_url) # Devuelve la imagen a "no asignadas"
+
+            # Si la imagen eliminada era la principal, busca un reemplazo
+            if self.live_preview_image_url == image_url:
+                if group.image_urls: # Si quedan imágenes en el grupo
+                    self.live_preview_image_url = group.image_urls[0]
+                elif self.unassigned_uploaded_images: # Si no, usa una no asignada
+                    self.live_preview_image_url = self.unassigned_uploaded_images[0]
+                else: # Si no queda nada
+                    self.live_preview_image_url = ""
             
+            # Si el grupo quedó vacío, elimínalo
+            if not group.image_urls:
+                yield from self.remove_variant_group(group_index)
+                yield rx.toast.info("Grupo vacío eliminado.")
+            else:
+                yield rx.toast.info("Imagen eliminada del grupo.")
+
+    @rx.event
+    def remove_variant_group(self, group_index: int):
+        """
+        [CORREGIDO] Elimina un grupo de variantes (CREAR), devuelve sus imágenes
+        a "no asignadas" y limpia los estados asociados.
+        """
+        if not (0 <= group_index < len(self.variant_groups)):
+            return rx.toast.error("Error: Grupo no encontrado.")
+
+        # Obtiene el grupo antes de eliminarlo
+        group_to_remove = self.variant_groups.pop(group_index)
+        
+        # Devuelve todas sus imágenes a la lista de "no asignadas"
+        self.unassigned_uploaded_images.extend(group_to_remove.image_urls)
+
+        # Elimina las variantes generadas para ese grupo
+        if group_index in self.generated_variants_map:
+            del self.generated_variants_map[group_index]
+        
+        # Reajusta los índices del mapa de variantes
+        new_generated_map = {}
+        for k, v in self.generated_variants_map.items():
+            if k > group_index:
+                new_generated_map[k - 1] = v
+            else:
+                new_generated_map[k] = v
+        self.generated_variants_map = new_generated_map
+
+        # Reinicia la selección si el grupo eliminado era el seleccionado
+        if self.selected_group_index == group_index:
+            self.selected_group_index = -1
+        elif self.selected_group_index > group_index:
+            self.selected_group_index -= 1
+
+        # Resetea la imagen principal si pertenecía al grupo eliminado
+        if self.live_preview_image_url in group_to_remove.image_urls:
+            self.live_preview_image_url = ""
+            if self.variant_groups:
+                self.live_preview_image_url = self.variant_groups[0].image_urls[0]
+            elif self.unassigned_uploaded_images:
+                self.live_preview_image_url = self.unassigned_uploaded_images[0]
+
             yield rx.toast.success("Grupo de variantes eliminado.")
         else:
             yield rx.toast.error("Error al eliminar el grupo. Índice inválido.")
+
+    @rx.event
+    def remove_image_from_edit_group(self, group_index: int, image_url: str):
+        """
+        Elimina una sola imagen de un grupo en el modal de EDICIÓN.
+        Si el grupo queda vacío, lo elimina.
+        """
+        if not (0 <= group_index < len(self.edit_variant_groups)):
+            return rx.toast.error("Error: Grupo no encontrado.")
+
+        group = self.edit_variant_groups[group_index]
+        if image_url in group.image_urls:
+            group.image_urls.remove(image_url)
+            self.unassigned_uploaded_images.append(image_url) # Devuelve a "no asignadas"
+
+            # Actualiza la imagen principal si fue eliminada
+            if self.edit_main_image_url_variant == image_url:
+                new_main_image = ""
+                if group.image_urls: # Prioriza otra imagen del mismo grupo
+                    new_main_image = group.image_urls[0]
+                elif self.edit_variant_groups: # Si no, la primera de otro grupo
+                    new_main_image = self.edit_variant_groups[0].image_urls[0]
+                elif self.unassigned_uploaded_images: # Si no, una no asignada
+                    new_main_image = self.unassigned_uploaded_images[0]
+                
+                self.set_main_image_url_for_editing(new_main_image)
+
+            # Si el grupo queda vacío, elimínalo
+            if not group.image_urls:
+                yield from self.remove_edit_variant_group(group_index)
+                yield rx.toast.info("Grupo vacío eliminado.")
+            else:
+                yield rx.toast.info("Imagen eliminada del grupo.")
 
     # --- ✨ FIN: CÓDIGO A AÑADIR (FUNCIONES PARA ELIMINAR) ✨ ---
     
@@ -5322,18 +5402,48 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_edit_variant_group(self, group_index: int):
-        if 0 <= group_index < len(self.edit_variant_groups):
-            del self.edit_variant_groups[group_index]
-            if group_index in self.edit_generated_variants_map:
-                del self.edit_generated_variants_map[group_index]
-            new_map = {k - 1 if k > group_index else k: v for k, v in self.edit_generated_variants_map.items()}
-            self.edit_generated_variants_map = new_map
-            if self.edit_selected_group_index == group_index:
-                self.edit_selected_group_index = -1
-            elif self.edit_selected_group_index > group_index:
-                self.edit_selected_group_index -= 1
-            yield rx.toast.success("Grupo de variantes eliminado.")
-            self._update_edit_preview_image() # Actualizar previsualización al eliminar grupo
+        """
+        [CORREGIDO] Elimina un grupo de variantes (EDITAR), devuelve sus imágenes
+        a "no asignadas" y limpia los estados asociados.
+        """
+        if not (0 <= group_index < len(self.edit_variant_groups)):
+            return rx.toast.error("Error: Grupo no encontrado.")
+
+        # Obtiene el grupo antes de eliminarlo
+        group_to_remove = self.edit_variant_groups.pop(group_index)
+        
+        # Devuelve todas sus imágenes a la lista de "no asignadas"
+        self.unassigned_uploaded_images.extend(group_to_remove.image_urls)
+
+        # Elimina las variantes generadas para ese grupo
+        if group_index in self.edit_generated_variants_map:
+            del self.edit_generated_variants_map[group_index]
+        
+        # Reajusta los índices del mapa de variantes
+        new_generated_map = {}
+        for k, v in self.edit_generated_variants_map.items():
+            if k > group_index:
+                new_generated_map[k - 1] = v
+            else:
+                new_generated_map[k] = v
+        self.edit_generated_variants_map = new_generated_map
+
+        # Reinicia la selección si el grupo eliminado era el seleccionado
+        if self.edit_selected_group_index == group_index:
+            self.edit_selected_group_index = -1
+        elif self.edit_selected_group_index > group_index:
+            self.edit_selected_group_index -= 1
+
+        # Resetea la imagen principal si pertenecía al grupo eliminado
+        if self.edit_main_image_url_variant in group_to_remove.image_urls:
+            new_main_image = ""
+            if self.edit_variant_groups:
+                new_main_image = self.edit_variant_groups[0].image_urls[0]
+            elif self.unassigned_uploaded_images:
+                new_main_image = self.unassigned_uploaded_images[0]
+            self.set_main_image_url_for_editing(new_main_image)
+
+        yield rx.toast.success("Grupo de variantes eliminado.")
 
     @rx.event
     def select_edit_group_for_editing(self, group_index: int):

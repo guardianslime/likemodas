@@ -51,6 +51,7 @@ moveable = Moveable.create
 
 
 # --- Componente del formulario (CORREGIDO) ---
+# --- Componente del formulario (CORREGIDO) ---
 def blog_post_add_form() -> rx.Component:
     """
     [VERSIÓN CORREGIDA]
@@ -58,14 +59,12 @@ def blog_post_add_form() -> rx.Component:
     nueva lógica de gestión de grupos de imágenes y selección de imagen principal.
     """
     
-    # --- ✨ INICIO: SECCIÓN DE IMÁGENES REEMPLAZADA (COPIADA DE EDITAR) ✨ ---
     def image_and_group_section() -> rx.Component:
         """
         [NUEVO] Sección para gestionar imágenes y grupos de color
         con el selector de imagen principal integrado (adaptado de 'editar').
         """
         
-        # --- ✨ INICIO: MODIFICACIÓN PRINCIPAL DE ESTA FUNCIÓN ✨ ---
         unassigned_images_display = rx.vstack(
             rx.text("2. Selecciona imágenes para crear un nuevo grupo:", size="3", weight="medium"),
             rx.cond(
@@ -100,7 +99,7 @@ def blog_post_add_form() -> rx.Component:
                 margin_top="0.5em", 
                 width="100%", 
                 type="button",
-                is_disabled=AppState.image_selection_for_grouping.length() == 0 # Deshabilita si no hay selección
+                is_disabled=AppState.image_selection_for_grouping.length() == 0 
             ),
             spacing="3", width="100%", align_items="stretch",
         )
@@ -112,9 +111,24 @@ def blog_post_add_form() -> rx.Component:
             rx.scroll_area(
                 rx.vstack(
                     rx.foreach(
-                        AppState.variant_groups, # <-- Adaptado: usa variant_groups
+                        AppState.variant_groups, 
                         lambda group_data, index: rx.vstack(
-                            rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
+                            rx.hstack(
+                                rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
+                                rx.spacer(),
+                                # --- ✨ INICIO: BOTÓN ELIMINAR GRUPO ✨ ---
+                                rx.icon_button(
+                                    rx.icon("x", size=12),
+                                    color_scheme="red",
+                                    variant="soft",
+                                    size="1",
+                                    on_click=AppState.remove_variant_group(index),
+                                    style={"cursor": "pointer"},
+                                ),
+                                # --- ✨ FIN: BOTÓN ELIMINAR GRUPO ✨ ---
+                                width="100%",
+                                justify="between",
+                            ),
                             rx.flex(
                                 rx.foreach(
                                     group_data.image_urls,
@@ -126,21 +140,36 @@ def blog_post_add_form() -> rx.Component:
                                             height="70px",
                                             object_fit="contain",
                                             bg="var(--gray-5)",
-                                            # Borde si es la IMAGEN PRINCIPAL seleccionada
                                             border=rx.cond(
-                                                AppState.live_preview_image_url == image_url, # <-- Adaptado: usa live_preview_image_url
+                                                AppState.live_preview_image_url == image_url, 
                                                 "3px solid var(--violet-9)",
                                                 "1px solid var(--gray-7)"
                                             ),
                                             border_radius="md",
                                             cursor="pointer",
-                                            
-                                            # --- ✨ CORRECCIÓN 1 (IMAGEN) ✨ ---
-                                            # Este clic AHORA SOLO selecciona la imagen principal
                                             on_click=[
-                                                AppState.set_main_image_url_for_editing(image_url), # <-- Setea 'live_preview_image_url'
+                                                AppState.set_main_image_url_for_editing(image_url), 
                                             ],
                                         ),
+                                        # --- ✨ INICIO: BOTÓN ELIMINAR IMAGEN ✨ ---
+                                        rx.icon_button(
+                                            rx.icon("x", size=10),
+                                            color_scheme="red",
+                                            variant="solid",
+                                            size="1",
+                                            on_click=AppState.remove_image_from_group(index, image_url),
+                                            style={
+                                                "position": "absolute", 
+                                                "top": "-5px", 
+                                                "right": "-5px",
+                                                "cursor": "pointer",
+                                                "height": "18px",
+                                                "width": "18px",
+                                                "border_radius": "50%",
+                                            },
+                                        ),
+                                        # --- ✨ FIN: BOTÓN ELIMINAR IMAGEN ✨ ---
+                                        position="relative",
                                         padding="0.25em",
                                     ),
                                 ),
@@ -153,19 +182,17 @@ def blog_post_add_form() -> rx.Component:
                             width="100%",
                             margin_bottom="0.5em",
                             
-                            # Resaltado del GRUPO seleccionado para edición
-                            border=rx.cond(AppState.selected_group_index == index, "2px solid var(--violet-7)", "1px solid var(--gray-5)"), # <-- Adaptado: usa selected_group_index
+                            border=rx.cond(AppState.selected_group_index == index, "2px solid var(--violet-7)", "1px solid var(--gray-5)"),
                             padding="0.75em",
                             border_radius="var(--radius-3)",
                             bg=rx.cond(AppState.selected_group_index == index, rx.color("violet", 2), "transparent"),
                             transition="background-color 0.2s, border-color 0.2s",
 
-                            # --- ✨ CORRECCIÓN 2 (GRUPO) ✨ ---
-                            # Este clic AHORA SOLO selecciona el grupo para edición
                             on_click=[
-                                AppState.select_group_for_editing(index) # <-- Usa el setter de 'crear'
+                                AppState.select_group_for_editing(index) 
                             ],
                             cursor="pointer",
+                            position="relative", # <-- Necesario para el botón X del grupo
                         )
                     ),
                     spacing="3",
@@ -186,11 +213,11 @@ def blog_post_add_form() -> rx.Component:
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
             rx.upload(
                  rx.vstack(rx.icon("upload"), rx.text("Añadir más imágenes")),
-                 id="blog_upload", multiple=True, max_files=10, # <-- Adaptado: usa 'blog_upload'
-                on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")), # <-- Adaptado: usa 'handle_add_upload'
+                 id="blog_upload", multiple=True, max_files=10, 
+                on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")), 
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            unassigned_images_display, # Aquí se inserta la nueva sección de imágenes no agrupadas
+            unassigned_images_display, 
             
             rx.cond(
                 AppState.variant_groups.length() > 0, 
@@ -199,13 +226,8 @@ def blog_post_add_form() -> rx.Component:
             
             spacing="3", width="100%", align_items="stretch",
         )
-    # --- ✨ FIN: SECCIÓN DE IMÁGENES REEMPLAZADA ✨ ---
-
+    
     def attributes_and_stock_section() -> rx.Component:
-        """
-        Sección para atributos y stock del formulario de CREACIÓN.
-        Define los atributos dinámicos (ropa, calzado, mochila) y corrige el layout del grid.
-        """
         ropa_attributes = rx.vstack(
             rx.text("Talla"),
             rx.hstack(
