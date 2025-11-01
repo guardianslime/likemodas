@@ -2547,39 +2547,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                 userinfo_id=owner_id,
                 creator_id=creator_id_to_save,
                 title=title,
-                content=self.content,
+                content=content,
                 price=price_float,
                 profit=profit_float,
                 price_includes_iva=self.price_includes_iva,
                 category=category,
-                attr_material=self.attr_material,
-                attr_tipo=self.attr_tipo,
                 variants=all_variants_for_db,
-                
-                main_image_url_variant=self.live_preview_image_url,
-                
-                # --- ✨ INICIO: CORRECCIÓN DE ATTRIBUTEERROR ✨ ---
-                publish_active=True, # Publica directamente
-                publish_date=self.publish_date_as_datetime, # Usa la nueva helper var
-                # --- ✨ FIN: CORRECCIÓN DE ATTRIBUTEERROR ✨ ---
-
-                shipping_cost=shipping_cost_float, # Asegúrate de usar la variable correcta
+                publish_active=True,
+                publish_date=datetime.now(timezone.utc),
                 is_moda_completa_eligible=self.is_moda_completa,
                 free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
-                
                 use_default_style=self.use_default_style,
-                light_mode_appearance=self.light_mode_appearance,
-                dark_mode_appearance=self.dark_mode_appearance,
-                light_card_bg_color=self.light_card_bg_color, # <-- Asegúrate que sea light_card_bg_color
-                light_title_color=self.light_title_color,
-                light_price_color=self.light_price_color,
-                dark_card_bg_color=self.dark_card_bg_color,
-                dark_title_color=self.dark_title_color,
-                dark_price_color=self.dark_price_color,
-                image_styles=image_styles_to_save,
+                light_card_bg_color=self.light_theme_colors.get("bg"),
+                light_title_color=self.light_theme_colors.get("title"),
+                light_price_color=self.light_theme_colors.get("price"),
+                dark_card_bg_color=self.dark_theme_colors.get("bg"),
+                dark_title_color=self.dark_theme_colors.get("title"),
+                dark_price_color=self.dark_theme_colors.get("price"),
+                image_styles=image_styles_to_save
             )
             session.add(new_post)
 
@@ -2638,7 +2626,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price_float = float(price_str)
             profit_float = float(self.profit_str) if self.profit_str else None
+            
+            # --- ✅ AQUÍ ES DONDE SE DEFINE CORRECTAMENTE ✅ ---
             shipping_cost_float = float(self.shipping_cost_str) if self.shipping_cost_str else None
+            # --- ✅ ---
+            
             limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
 
@@ -2651,10 +2643,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             if group_index >= len(self.variant_groups):
                 continue
 
-            # --- ✨ INICIO: CORRECCIÓN DE GUARDADO ✨ ---
-            group_dto = self.variant_groups[group_index] # <-- Obtiene el DTO del grupo
+            group_dto = self.variant_groups[group_index]
             image_urls_for_group = group_dto.image_urls
-            # --- ✨ FIN: CORRECCIÓN DE GUARDADO ✨ ---
 
             for variant_data in generated_list:
                 variant_dict = {
@@ -2662,11 +2652,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": str(uuid.uuid4()),
-                    # --- ✨ INICIO: LÓGICA DE GUARDADO CORREGIDA ✨ ---
-                    # Lee las configuraciones guardadas del DTO del GRUPO
                     "lightbox_bg_light": group_dto.lightbox_bg_light,
                     "lightbox_bg_dark": group_dto.lightbox_bg_dark,
-                    # --- ✨ FIN: LÓGICA DE GUARDADO CORREGIDA ✨ ---
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -2695,29 +2682,30 @@ class AppState(reflex_local_auth.LocalAuthState):
                 attr_tipo=self.attr_tipo,
                 variants=all_variants_for_db,
                 
-                # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
-                main_image_url_variant=self.live_preview_image_url, # Guarda la URL de la imagen que se muestra en la previsualización
-                # --- ✨ FIN ✨ ---
+                main_image_url_variant=self.live_preview_image_url,
                 
+                # --- ✅ ESTAS LÍNEAS AHORA FUNCIONARÁN ✅ ---
                 publish_active=self.publish_active,
                 publish_date=self.publish_date_as_datetime,
-                shipping_cost=self.shipping_cost,
+                # --- ✅ ---
+
+                shipping_cost=shipping_cost_float,
                 is_moda_completa_eligible=self.is_moda_completa,
-                free_shipping_threshold=self.free_shipping_threshold,
+                free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=self.shipping_combination_limit,
+                shipping_combination_limit=limit,
                 is_imported=self.is_imported,
-                # ... (resto de campos de estilo) ...
+                
                 use_default_style=self.use_default_style,
                 light_mode_appearance=self.light_mode_appearance,
                 dark_mode_appearance=self.dark_mode_appearance,
-                light_card_bg_color=self.light_card_bg_color,
-                light_title_color=self.light_title_color,
-                light_price_color=self.light_price_color,
-                dark_card_bg_color=self.dark_card_bg_color,
-                dark_title_color=self.dark_title_color,
-                dark_price_color=self.dark_price_color,
-                image_styles=self.image_styles,
+                light_card_bg_color=self.light_theme_colors.get("bg"),
+                light_title_color=self.light_theme_colors.get("title"),
+                light_price_color=self.light_theme_colors.get("price"),
+                dark_card_bg_color=self.dark_theme_colors.get("bg"),
+                dark_title_color=self.dark_theme_colors.get("title"),
+                dark_price_color=self.dark_theme_colors.get("price"),
+                image_styles=image_styles_to_save,
             )
             session.add(new_post)
 
@@ -2728,9 +2716,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 description=f"Creó la publicación '{new_post.title}'"
             )
             session.add(log_entry)
+            
             session.commit()
 
-        self._clear_add_form() # Limpia todo, incluyendo los temp_lightbox_bg
+        self._clear_add_form() 
         yield rx.toast.success("Producto publicado exitosamente.")
         yield rx.redirect("/blog")
     
