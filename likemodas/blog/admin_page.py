@@ -392,21 +392,18 @@ def artist_edit_dialog() -> rx.Component:
                 ),
                 # Columna Derecha: Previsualización
                 rx.vstack(
-                    
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # La previsualización artística (SIN is_artistic_preview=True)
                     post_preview( # Llamada SIN el parámetro
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
-                        
-                        # --- ELIMINA ESTA LÍNEA ---
-                        # first_image_url=AppState.edit_main_image_url_for_preview, 
-                        
+                        first_image_url=AppState.edit_main_image_url_for_preview,
                         is_imported=AppState.edit_is_imported,
                         shipping_cost_badge_text=AppState.edit_shipping_cost_badge_text_preview,
                         is_moda_completa=AppState.edit_is_moda_completa,
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
+                        # LA LÍNEA is_artistic_preview=True SE ELIMINA
                     ),
                     rx.button( # Botón de guardar cambios artísticos
                         "Guardar Cambios Artísticos",

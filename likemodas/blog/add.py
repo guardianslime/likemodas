@@ -521,11 +521,16 @@ def blog_post_add_content() -> rx.Component:
             padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
         ),
         rx.vstack(
-            rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+            
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
             post_preview(
                 title=AppState.title,
                 price_cop=AppState.price_cop_preview,
-                first_image_url=first_image_url,
+                
+                # --- ELIMINA ESTA LÍNEA ---
+                # first_image_url=first_image_url,
+                
                 is_imported=AppState.is_imported,
                 shipping_cost_badge_text=AppState.shipping_cost_badge_text_preview,
                 is_moda_completa=AppState.is_moda_completa,
@@ -533,6 +538,8 @@ def blog_post_add_content() -> rx.Component:
                 combines_shipping=AppState.combines_shipping,
                 envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
             ),
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             image_editor_panel,
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
             on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
