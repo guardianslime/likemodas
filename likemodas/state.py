@@ -4883,7 +4883,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._update_edit_preview_image()
     
     # --- ✨ INICIO: CORRECCIÓN DE IMÁGENES NO ASIGNADAS (Añadir esta variable) ✨ ---
-    unassigned_uploaded_images: List[str] = []
+    # unassigned_uploaded_images: List[str] = []
 
     # --- ✨ INICIO: NUEVAS PROPIEDADES COMPUTADAS PARA IMÁGENES NO ASIGNADAS ✨ ---
     @rx.var
@@ -4919,18 +4919,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         for file in files:
             try:
                 upload_data = await file.read()
+                # Genera un nombre de archivo único
                 unique_filename = f"{secrets.token_hex(8)}-{file.name}"
                 outfile = rx.get_upload_dir() / unique_filename
                 outfile.write_bytes(upload_data)
                 
+                # Añadir el nombre de archivo único a las listas de estado
                 if unique_filename not in self.uploaded_images:
                     self.uploaded_images.append(unique_filename)
-                    # No se añade a unassigned_uploaded_images, se calculará solo
+                    # --- La línea que modificaba unassigned_uploaded_images se ha eliminado ---
 
             except Exception as e:
                 logger.error(f"Error al guardar archivo subido: {e}")
                 yield rx.toast.error(f"Error al procesar el archivo {file.name}")
         
+        # Limpiar la selección temporal para crear un nuevo grupo
         self.image_selection_for_grouping = []
         self.selection_order_map = {}
 
@@ -4993,6 +4996,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
             return
 
+        # Crea un nuevo DTO de grupo con la selección actual
         new_group = VariantGroupDTO(
             image_urls=self.image_selection_for_grouping,
             attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, 
@@ -5001,18 +5005,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         )
         self.variant_groups.append(new_group)
 
+        # Actualiza el preview si es el primer grupo
         if len(self.variant_groups) == 1 and self.image_selection_for_grouping:
             self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
             yield self.select_group_for_editing(0)
 
-        # Limpia la selección
-        self.image_selection_for_grouping = [] 
-        self.selection_order_map = {} 
+        # --- La sección que modificaba unassigned_uploaded_images se ha eliminado ---
+
+        self.image_selection_for_grouping = [] # Limpia la selección
+        self.selection_order_map = {} # Limpia el mapa de orden
         
         self.temp_color = ""
         self.search_attr_color = ""
-        self.temp_lightbox_bg_light = "dark" 
-        self.temp_lightbox_bg_dark = "dark" 
+        self.temp_lightbox_bg_light = "dark" # Default para el siguiente
+        self.temp_lightbox_bg_dark = "dark" # Default para el siguiente
 
         yield rx.toast.success("Grupo de imágenes creado exitosamente.")
 
@@ -5234,18 +5240,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.image_selection_for_grouping.remove(image_name)
             self.selection_order_map = {img: i + 1 for i, img in enumerate(self.image_selection_for_grouping)}
 
+        # --- La sección que modificaba unassigned_uploaded_images se ha eliminado ---
+
+        # También elimina la imagen de CUALQUIER grupo de variantes
         for group in self.variant_groups:
             if image_name in group.image_urls:
                 group.image_urls = [url for url in group.image_urls if url != image_name]
         
+        # Si la imagen principal era la eliminada, resetea la preview
         if self.live_preview_image_url == image_name:
             self.live_preview_image_url = ""
+            # Opcional: buscar la siguiente imagen disponible para la preview
             if self.variant_groups and self.variant_groups[0].image_urls:
                 self.live_preview_image_url = self.variant_groups[0].image_urls[0]
             elif self.unassigned_uploaded_images:
                 self.live_preview_image_url = self.unassigned_uploaded_images[0]
             
-            self._update_live_colors() 
+            self._update_live_colors() # Refrescar la preview
             self.reset_image_styles()
 
         yield rx.toast.info(f"Imagen eliminada.")
@@ -5285,6 +5296,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         group = self.variant_groups[group_index]
         if image_url in group.image_urls:
             group.image_urls.remove(image_url)
+            # --- La línea que modificaba unassigned_uploaded_images se ha eliminado ---
 
             # Si la imagen eliminada era la principal, busca un reemplazo
             if self.live_preview_image_url == image_url:
@@ -5312,6 +5324,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Error: Grupo no encontrado.")
 
         group_to_remove = self.variant_groups.pop(group_index)
+        
+        # --- La línea que modificaba unassigned_uploaded_images se ha eliminado ---
         
         if group_index in self.generated_variants_map:
             del self.generated_variants_map[group_index]

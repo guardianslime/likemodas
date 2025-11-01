@@ -383,7 +383,6 @@ def blog_post_edit_form() -> rx.Component:
         con el selector de imagen principal integrado.
         """
         
-        # --- ✨ INICIO: MODIFICACIÓN (Igual que en add.py) ✨ ---
         unassigned_images_display = rx.vstack(
             rx.text("2. Selecciona imágenes no asignadas:", size="3", weight="medium"),
             rx.cond(
@@ -445,7 +444,6 @@ def blog_post_edit_form() -> rx.Component:
                             rx.hstack(
                                 rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
                                 rx.spacer(),
-                                # --- ✨ INICIO: BOTÓN ELIMINAR GRUPO (EDITAR) ✨ ---
                                 rx.icon_button(
                                     rx.icon("x", size=12),
                                     color_scheme="red",
@@ -454,7 +452,6 @@ def blog_post_edit_form() -> rx.Component:
                                     on_click=AppState.remove_edit_variant_group(index),
                                     style={"cursor": "pointer"},
                                 ),
-                                # --- ✨ FIN: BOTÓN ELIMINAR GRUPO (EDITAR) ✨ ---
                                 width="100%",
                                 justify="between",
                             ),
@@ -480,7 +477,6 @@ def blog_post_edit_form() -> rx.Component:
                                                 AppState.set_main_image_url_for_editing(image_url),
                                             ],
                                         ),
-                                        # --- ✨ INICIO: BOTÓN ELIMINAR IMAGEN (EDITAR) ✨ ---
                                         rx.icon_button(
                                             rx.icon("x", size=10),
                                             color_scheme="red",
@@ -497,7 +493,6 @@ def blog_post_edit_form() -> rx.Component:
                                                 "border_radius": "50%",
                                             },
                                         ),
-                                        # --- ✨ FIN: BOTÓN ELIMINAR IMAGEN (EDITAR) ✨ ---
                                         position="relative",
                                         padding="0.25em",
                                     ),
@@ -554,7 +549,6 @@ def blog_post_edit_form() -> rx.Component:
             
             spacing="3", width="100%", align_items="stretch",
         )
-        # --- ✨ FIN: MODIFICACIÓN ✨ ---
 
     def attributes_and_stock_section() -> rx.Component:
         """Sección para definir atributos y stock del grupo seleccionado en EDICIÓN."""
