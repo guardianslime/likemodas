@@ -511,8 +511,8 @@ DEFAULT_DARK_TITLE = "#F5F5F7" # Un blanco sutil
 DEFAULT_DARK_PRICE = "#A0A0A0" # Un gris claro
 
 # Nuevas constantes para el fondo de la imagen
-DEFAULT_LIGHT_IMAGE_BG = "#FFFFFF"
-DEFAULT_DARK_IMAGE_BG = "#2C2C2E" # Un gris más claro que el fondo
+DEFAULT_LIGHT_IMAGE_BG: str = "#F8F9FA" # Blanco sutil para la imagen en modo claro
+DEFAULT_DARK_IMAGE_BG: str = "#222529" # Un gris más claro que el fondo
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -4882,15 +4882,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_generated_variants_map[group_index] = generated
         yield rx.toast.info(f"{len(generated)} variantes generadas.") 
         self._update_edit_preview_image()
+    
+    # --- ✨ INICIO: CORRECCIÓN DE IMÁGENES NO ASIGNADAS (Añadir esta variable) ✨ ---
+    unassigned_uploaded_images: List[str] = []
 
-    async def handle_add_upload(self, files: list[rx.UploadFile]):
-        """Maneja la subida de imágenes y las añade a la lista de imágenes disponibles para agrupar."""
+    @rx.event
+    def handle_add_upload(self, files: List[str]):
+        """
+        [VERSIÓN ACTUALIZADA]
+        Maneja la carga de archivos, añadiéndolos a la lista principal
+        y a la de "no asignadas" para la interfaz.
+        """
         for file in files:
-            upload_data = await file.read()
-            unique_filename = f"{secrets.token_hex(8)}-{file.name}"
-            outfile = rx.get_upload_dir() / unique_filename
-            outfile.write_bytes(upload_data)
-            self.uploaded_images.append(unique_filename)
+            if file not in self.uploaded_images:
+                self.uploaded_images.append(file)
+                self.unassigned_uploaded_images.append(file) # Añadir también a no asignadas
+        
+        # Después de añadir, resetea la selección y el orden
+        self.image_selection_for_grouping = []
+        self.selection_order_map = {}
 
     @rx.var
     def selection_order_map(self) -> dict[str, int]:
@@ -4943,22 +4953,46 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def create_variant_group(self):
-        """Crea un nuevo grupo de variantes con las imágenes ordenadas."""
+        """
+        [VERSIÓN ACTUALIZADA]
+        Crea un nuevo grupo de variantes con las imágenes seleccionadas.
+        Después de crear el grupo, las imágenes ya no estarán en "unassigned_uploaded_images".
+        """
         if not self.image_selection_for_grouping:
-            return rx.toast.error("Debes seleccionar al menos una imagen.")
+            yield rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
+            return
 
-        new_group = VariantGroupDTO(image_urls=list(self.image_selection_for_grouping)) # Crea copia
+        # Crea un nuevo DTO de grupo con la selección actual
+        new_group = VariantGroupDTO(
+            image_urls=self.image_selection_for_grouping,
+            attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, # Asigna el color temporal al grupo
+            lightbox_bg_light=self.temp_lightbox_bg_light,
+            lightbox_bg_dark=self.temp_lightbox_bg_dark,
+        )
         self.variant_groups.append(new_group)
 
-        # Elimina las imágenes usadas de uploaded_images
-        current_uploaded = list(self.uploaded_images)
-        for filename in self.image_selection_for_grouping:
-            if filename in current_uploaded:
-                current_uploaded.remove(filename)
-        self.uploaded_images = current_uploaded # Reasigna la lista modificada
+        # Actualiza el preview si es el primer grupo
+        if len(self.variant_groups) == 1:
+            self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
+            self.select_group_for_editing(0) # Selecciona el primer grupo automáticamente
 
-        self.image_selection_for_grouping = [] # Resetea a una lista vacía
-        self.select_group_for_editing(len(self.variant_groups) - 1)
+        # --- Elimina las imágenes del grupo de "no asignadas" ---
+        self.unassigned_uploaded_images = [
+            img for img in self.unassigned_uploaded_images 
+            if img not in self.image_selection_for_grouping
+        ]
+        # --- Fin de la modificación ---
+
+        self.image_selection_for_grouping = [] # Limpia la selección
+        self.selection_order_map = {} # Limpia el mapa de orden
+        
+        # Limpiar atributos temporales de color y lightbox para la siguiente creación de grupo
+        self.temp_color = ""
+        self.search_attr_color = ""
+        self.temp_lightbox_bg_light = "dark" # Default para el siguiente
+        self.temp_lightbox_bg_dark = "dark" # Default para el siguiente
+
+        yield rx.toast.success("Grupo de imágenes creado exitosamente.")
 
 
     @rx.event
@@ -5005,26 +5039,37 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
         rx.toast.success("Grupo de imágenes creado con éxito.")
 
+    @rx.event
+    def select_group_for_editing(self, index: int):
+        """
+        [VERSIÓN ACTUALIZADA]
+        Selecciona un grupo para editar sus atributos y previsualización.
+        """
+        self.selected_group_index = index
+        group = self.variant_groups[index]
 
-    def select_group_for_editing(self, group_index: int):
-        """[CORREGIDO] Selecciona un grupo (CREAR) y carga sus atributos Y fondos lightbox."""
-        self.selected_group_index = group_index
-        
-        if 0 <= group_index < len(self.variant_groups):
-            group = self.variant_groups[group_index] # <-- Obtiene el DTO del grupo
-            group_attrs = group.attributes
-            
-            # Carga atributos
-            self.temp_color = group_attrs.get("Color", "")
-            self.attr_tallas_ropa = group_attrs.get("Talla", [])
-            self.attr_numeros_calzado = group_attrs.get("Número", [])
-            self.attr_tamanos_mochila = group_attrs.get("Tamaño", [])
-            
-            # --- ✨ INICIO: LÓGICA AÑADIDA ✨ ---
-            # Carga los fondos lightbox guardados de ESE grupo en los selectores
-            self.temp_lightbox_bg_light = group.lightbox_bg_light
-            self.temp_lightbox_bg_dark = group.lightbox_bg_dark
-            # --- ✨ FIN: LÓGICA AÑADIDA ✨ ---
+        # Cargar atributos del grupo a los temporales del formulario
+        self.temp_color = group.attributes.get("Color", "")
+        self.temp_talla = ""
+        self.attr_tallas_ropa = group.attributes.get("Talla", [])
+        self.temp_numero = ""
+        self.attr_numeros_calzado = group.attributes.get("Número", [])
+        self.temp_tamano = ""
+        self.attr_tamanos_mochila = group.attributes.get("Tamaño", [])
+
+        # --- Cargar fondos del lightbox del grupo seleccionado ---
+        self.temp_lightbox_bg_light = group.lightbox_bg_light
+        self.temp_lightbox_bg_dark = group.lightbox_bg_dark
+        # --- Fin de la modificación ---
+
+        # Actualizar la previsualización con la primera imagen del grupo si no hay una principal ya
+        if not self.live_preview_image_url and group.image_urls:
+            self.set_main_image_url_for_editing(group.image_urls[0])
+        elif group.image_urls and self.live_preview_image_url not in group.image_urls:
+            # Si la imagen actual no pertenece al grupo seleccionado, cámbiala a la primera del grupo
+            self.set_main_image_url_for_editing(group.image_urls[0])
+
+        self._update_live_colors() # Asegura que la preview se actualice con los colores del grupo
 
     def update_group_attributes(self):
         """Guarda los atributos del formulario en el grupo seleccionado."""
@@ -5099,9 +5144,33 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_uploaded_image(self, image_name: str):
-        """Elimina una imagen de la lista de imágenes subidas."""
+        """
+        [VERSIÓN ACTUALIZADA]
+        Remueve una imagen de la lista general y de cualquier grupo al que pertenezca,
+        y de la lista de no asignadas.
+        """
         if image_name in self.uploaded_images:
             self.uploaded_images.remove(image_name)
+
+        if image_name in self.image_selection_for_grouping:
+            self.image_selection_for_grouping.remove(image_name)
+            # Reconstruir el orden si se elimina una imagen seleccionada
+            self.selection_order_map = {img: i + 1 for i, img in enumerate(self.image_selection_for_grouping)}
+
+        if image_name in self.unassigned_uploaded_images:
+            self.unassigned_uploaded_images.remove(image_name)
+
+        # También elimina la imagen de CUALQUIER grupo de variantes
+        for group in self.variant_groups:
+            group.image_urls = [url for url in group.image_urls if url != image_name]
+        
+        # Si la imagen principal era la eliminada, resetea la preview
+        if self.live_preview_image_url == image_name:
+            self.live_preview_image_url = ""
+            self._update_live_colors() # Refrescar la preview
+            self.reset_image_styles()
+
+        yield rx.toast.info(f"Imagen {image_name.split('/')[-1]} eliminada.")
 
     @rx.event
     def remove_edit_uploaded_image(self, image_name: str):
