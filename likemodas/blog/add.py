@@ -97,10 +97,10 @@ def blog_post_add_form() -> rx.Component:
                                             border_radius="md",
                                             cursor="pointer",
                                             
-                                            # --- ✨ CAMBIO CLAVE: ACCIÓN DOBLE ADAPTADA ✨ ---
+                                            # --- ✨ CORRECCIÓN 1 (IMAGEN) ✨ ---
+                                            # Este clic AHORA SOLO selecciona la imagen principal
                                             on_click=[
                                                 AppState.set_main_image_url_for_editing(image_url), # <-- Setea 'live_preview_image_url'
-                                                AppState.select_group_for_editing(index) # <-- Usa el setter de 'crear'
                                             ],
                                         ),
                                         padding="0.25em",
@@ -121,6 +121,13 @@ def blog_post_add_form() -> rx.Component:
                             border_radius="var(--radius-3)",
                             bg=rx.cond(AppState.selected_group_index == index, rx.color("violet", 2), "transparent"),
                             transition="background-color 0.2s, border-color 0.2s",
+                            
+                            # --- ✨ CORRECCIÓN 2 (GRUPO) ✨ ---
+                            # Este clic AHORA SOLO selecciona el grupo para edición
+                            on_click=[
+                                AppState.select_group_for_editing(index) # <-- Usa el setter de 'crear'
+                            ],
+                            cursor="pointer",
                         )
                     ),
                     spacing="3",

@@ -495,6 +495,10 @@ class VariantGroupDTO(rx.Base):
     """DTO para un grupo de variantes en el formulario de creación."""
     image_urls: list[str] = []
     attributes: dict = {}
+    # --- ✨ INICIO: CAMPOS AÑADIDOS ✨ ---
+    # Cada grupo ahora almacena sus propias preferencias de lightbox
+    lightbox_bg_light: str = "dark"
+    lightbox_bg_dark: str = "dark"
 
 # --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
 # Forzamos colores HEX absolutos para que no dependan del tema
@@ -2635,17 +2639,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             if group_index >= len(self.variant_groups):
                 continue
 
-            image_urls_for_group = self.variant_groups[group_index].image_urls
+            # --- ✨ INICIO: CORRECCIÓN DE GUARDADO ✨ ---
+            group_dto = self.variant_groups[group_index] # <-- Obtiene el DTO del grupo
+            image_urls_for_group = group_dto.image_urls
+            # --- ✨ FIN: CORRECCIÓN DE GUARDADO ✨ ---
+
             for variant_data in generated_list:
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": str(uuid.uuid4()),
-                    # --- ✨ GUARDADO DE FONDOS LIGHTBOX (CREAR) ✨ ---
-                    "lightbox_bg_light": self.temp_lightbox_bg_light,
-                    "lightbox_bg_dark": self.temp_lightbox_bg_dark,
-                    # --- FIN ✨ ---
+                    # --- ✨ INICIO: LÓGICA DE GUARDADO CORREGIDA ✨ ---
+                    # Lee las configuraciones guardadas del DTO del GRUPO
+                    "lightbox_bg_light": group_dto.lightbox_bg_light,
+                    "lightbox_bg_dark": group_dto.lightbox_bg_dark,
+                    # --- ✨ FIN: LÓGICA DE GUARDADO CORREGIDA ✨ ---
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -4270,22 +4279,33 @@ class AppState(reflex_local_auth.LocalAuthState):
             # --- ✨ INICIO: Lógica OPTIMIZADA para reconstruir grupos y variantes ✨ ---
             temp_variant_groups = []
             temp_generated_variants = {}
-            all_images_set = set() # Usar un conjunto para evitar duplicados en imágenes cargadas
+            all_images_set = set()
 
-            # Agrupa variantes por sus URLs de imagen (clave única para el grupo)
             groups_dict = defaultdict(list)
             for variant_db in (db_post.variants or []):
-                # Usar una tupla de URLs ordenadas para una clave de grupo consistente
                 urls_key = tuple(sorted(variant_db.get("image_urls", [])))
                 groups_dict[urls_key].append(variant_db)
-                all_images_set.update(urls_key) # Añadir todas las imágenes al conjunto
+                all_images_set.update(urls_key)
 
-            # Procesa cada grupo de variantes
             for group_index, (urls_key, variants_in_group) in enumerate(groups_dict.items()):
-                group_dto = VariantGroupDTO(image_urls=list(urls_key), attributes={})
+                
+                # --- ✨ INICIO: LÓGICA DE LECTURA DE LIGHTBOX ✨ ---
+                # Lee la config de la *primera* variante (asumimos que todas en el grupo son iguales)
+                first_variant_in_group = variants_in_group[0]
+                bg_light = first_variant_in_group.get("lightbox_bg_light", "dark")
+                bg_dark = first_variant_in_group.get("lightbox_bg_dark", "dark")
+
+                # Crea el DTO del grupo con los fondos lightbox cargados
+                group_dto = VariantGroupDTO(
+                    image_urls=list(urls_key), 
+                    attributes={},
+                    lightbox_bg_light=bg_light, # <-- Campo añadido
+                    lightbox_bg_dark=bg_dark    # <-- Campo añadido
+                )
+                # --- ✨ FIN: LÓGICA DE LECTURA DE LIGHTBOX ✨ ---
+
                 generated_variants_list = []
                 
-                # Para atributos dinámicos (Talla, Número, Tamaño)
                 tallas_en_grupo = set()
                 numeros_en_grupo = set()
                 tamanos_en_grupo = set()
@@ -4296,24 +4316,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attributes=attrs,
                         stock=variant_db.get("stock", 0),
                         variant_uuid=variant_db.get('variant_uuid'),
-                        lightbox_bg_light=variant_db.get("lightbox_bg_light", "dark"),
-                        lightbox_bg_dark=variant_db.get("lightbox_bg_dark", "dark"),
+                        # Guardamos los datos leídos también en la variante individual
+                        lightbox_bg_light=bg_light,
+                        lightbox_bg_dark=bg_dark,
                     )
                     generated_variants_list.append(variant_form_data)
 
-                    # Recolectar atributos del grupo
                     if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
                     if "Talla" in attrs: tallas_en_grupo.add(attrs["Talla"])
                     if "Número" in attrs: numeros_en_grupo.add(attrs["Número"])
                     if "Tamaño" in attrs: tamanos_en_grupo.add(attrs["Tamaño"])
 
-                # Asignar atributos recolectados al grupo DTO
                 if tallas_en_grupo: group_dto.attributes["Talla"] = sorted(list(tallas_en_grupo))
                 if numeros_en_grupo: group_dto.attributes["Número"] = sorted(list(numeros_en_grupo))
                 if tamanos_en_grupo: group_dto.attributes["Tamaño"] = sorted(list(tamanos_en_grupo))
 
                 temp_variant_groups.append(group_dto)
-                # Ordenar las variantes generadas para una visualización consistente
                 temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: list(v.attributes.values())[1] if len(v.attributes) > 1 else "")
 
             self.edit_variant_groups = temp_variant_groups
@@ -4509,47 +4527,52 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
         """
-        Manejador para el fondo lightbox (Crear - Sitio Claro).
-        Acepta Union[str, list[str]] para coincidir con la firma del evento on_change.
+        [CORREGIDO] Actualiza el estado temporal Y el grupo seleccionado.
         """
-        # El componente (sin multiple=True) enviará un str.
-        # Si fuera una lista (por algún motivo), tomamos el primer valor.
         actual_value = value[0] if isinstance(value, list) and value else (value if isinstance(value, str) else "dark")
         self.temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
+        
+        # --- ✨ INICIO: LÓGICA DE GUARDADO EN GRUPO ✨ ---
+        # Guarda el valor en el DTO del grupo que está seleccionado
+        if 0 <= self.selected_group_index < len(self.variant_groups):
+            self.variant_groups[self.selected_group_index].lightbox_bg_light = actual_value
+        # --- ✨ FIN: LÓGICA DE GUARDADO EN GRUPO ✨ ---
 
     def set_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
         """
-        Manejador para el fondo lightbox (Crear - Sitio Oscuro).
-        Acepta Union[str, list[str]] para coincidir con la firma del evento on_change.
+        [CORREGIDO] Actualiza el estado temporal Y el grupo seleccionado.
         """
         actual_value = value[0] if isinstance(value, list) and value else (value if isinstance(value, str) else "dark")
         self.temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
 
+        # --- ✨ INICIO: LÓGICA DE GUARDADO EN GRUPO ✨ ---
+        if 0 <= self.selected_group_index < len(self.variant_groups):
+            self.variant_groups[self.selected_group_index].lightbox_bg_dark = actual_value
+        # --- ✨ FIN: LÓGICA DE GUARDADO EN GRUPO ✨ ---
+
     def set_edit_temp_lightbox_bg_light(self, value: Union[str, list[str]]):
         """
-        [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
-        del grupo seleccionado. Acepta Union[str, list[str]].
+        [CORREGIDO] Actualiza el estado temporal Y el grupo de EDICIÓN seleccionado.
         """
         actual_value = value[0] if isinstance(value, list) and value else (value if isinstance(value, str) else "dark")
         self.edit_temp_lightbox_bg_light = actual_value if actual_value in ["dark", "white"] else "dark"
         
-        # Actualiza todas las variantes en el mapa para este grupo
-        if self.edit_selected_group_index in self.edit_generated_variants_map:
-            for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
-                variant_data.lightbox_bg_light = actual_value
+        # --- ✨ INICIO: LÓGICA DE GUARDADO EN GRUPO (EDICIÓN) ✨ ---
+        if 0 <= self.edit_selected_group_index < len(self.edit_variant_groups):
+            self.edit_variant_groups[self.edit_selected_group_index].lightbox_bg_light = actual_value
+        # --- ✨ FIN: LÓGICA DE GUARDADO EN GRUPO (EDICIÓN) ✨ ---
 
     def set_edit_temp_lightbox_bg_dark(self, value: Union[str, list[str]]):
         """
-        [CORREGIDO] Actualiza el estado temporal Y las variantes generadas
-        del grupo seleccionado. Acepta Union[str, list[str]].
+        [CORREGIDO] Actualiza el estado temporal Y el grupo de EDICIÓN seleccionado.
         """
         actual_value = value[0] if isinstance(value, list) and value else (value if isinstance(value, str) else "dark")
         self.edit_temp_lightbox_bg_dark = actual_value if actual_value in ["dark", "white"] else "dark"
         
-        # Actualiza todas las variantes en el mapa para este grupo
-        if self.edit_selected_group_index in self.edit_generated_variants_map:
-            for variant_data in self.edit_generated_variants_map[self.edit_selected_group_index]:
-                variant_data.lightbox_bg_dark = actual_value
+        # --- ✨ INICIO: LÓGICA DE GUARDADO EN GRUPO (EDICIÓN) ✨ ---
+        if 0 <= self.edit_selected_group_index < len(self.edit_variant_groups):
+            self.edit_variant_groups[self.edit_selected_group_index].lightbox_bg_dark = actual_value
+        # --- ✨ FIN: LÓGICA DE GUARDADO EN GRUPO (EDICIÓN) ✨ ---
 
     # Dentro de la clase AppState
     def set_edit_temp_lightbox_bg(self, value: Union[str, list[str]]):
@@ -4588,7 +4611,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         all_variants_for_db = []
         for group_index, generated_list in self.edit_generated_variants_map.items():
             if group_index >= len(self.edit_variant_groups): continue
-            image_urls_for_group = self.edit_variant_groups[group_index].image_urls
+            
+            # --- ✨ INICIO: CORRECCIÓN DE GUARDADO ✨ ---
+            group_dto = self.edit_variant_groups[group_index] # <-- Obtiene el DTO del grupo
+            image_urls_for_group = group_dto.image_urls
+            # --- ✨ FIN: CORRECCIÓN DE GUARDADO ✨ ---
             
             for variant_data in generated_list:
                 variant_uuid = getattr(variant_data, 'variant_uuid', None) or str(uuid.uuid4())
@@ -4598,8 +4625,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "stock": variant_data.stock,
                     "image_urls": image_urls_for_group,
                     "variant_uuid": variant_uuid,
-                    "lightbox_bg_light": variant_data.lightbox_bg_light,
-                    "lightbox_bg_dark": variant_data.lightbox_bg_dark,
+                    # --- ✨ INICIO: LÓGICA DE GUARDADO CORREGIDA ✨ ---
+                    # Lee las configuraciones guardadas del DTO del GRUPO
+                    "lightbox_bg_light": group_dto.lightbox_bg_light,
+                    "lightbox_bg_dark": group_dto.lightbox_bg_dark,
+                    # --- ✨ FIN: LÓGICA DE GUARDADO CORREGIDA ✨ ---
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -4930,20 +4960,24 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
     def select_group_for_editing(self, group_index: int):
-        """Selecciona un grupo para editar sus atributos."""
+        """[CORREGIDO] Selecciona un grupo (CREAR) y carga sus atributos Y fondos lightbox."""
         self.selected_group_index = group_index
         
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Accedemos al grupo por su índice en la lista y luego a sus atributos.
         if 0 <= group_index < len(self.variant_groups):
-            group_attrs = self.variant_groups[group_index].attributes
+            group = self.variant_groups[group_index] # <-- Obtiene el DTO del grupo
+            group_attrs = group.attributes
             
-            # El resto de la función para cargar los datos en los campos temporales.
+            # Carga atributos
             self.temp_color = group_attrs.get("Color", "")
             self.attr_tallas_ropa = group_attrs.get("Talla", [])
             self.attr_numeros_calzado = group_attrs.get("Número", [])
             self.attr_tamanos_mochila = group_attrs.get("Tamaño", [])
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            
+            # --- ✨ INICIO: LÓGICA AÑADIDA ✨ ---
+            # Carga los fondos lightbox guardados de ESE grupo en los selectores
+            self.temp_lightbox_bg_light = group.lightbox_bg_light
+            self.temp_lightbox_bg_dark = group.lightbox_bg_dark
+            # --- ✨ FIN: LÓGICA AÑADIDA ✨ ---
 
     def update_group_attributes(self):
         """Guarda los atributos del formulario en el grupo seleccionado."""
@@ -5151,32 +5185,25 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def select_edit_group_for_editing(self, group_index: int):
         """
-        [VERSIÓN CORREGIDA] Selecciona un grupo de EDICIÓN para editar sus atributos y fondos de lightbox.
+        [CORREGIDO] Selecciona un grupo (EDITAR) y carga sus atributos Y fondos lightbox.
         """
         self.edit_selected_group_index = group_index
         if 0 <= group_index < len(self.edit_variant_groups):
-            group_attrs = self.edit_variant_groups[group_index].attributes
-            # Carga atributos (Color, Talla, etc.) - Igual que antes
+            group = self.edit_variant_groups[group_index] # <-- Obtiene el DTO del grupo
+            group_attrs = group.attributes
+            
+            # Carga atributos
             self.edit_temp_color = group_attrs.get("Color", "")
             self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
             self.edit_attr_numeros_calzado = group_attrs.get("Número", [])
             self.edit_attr_tamanos_mochila = group_attrs.get("Tamaño", [])
 
-            # --- ✨ CARGA DE FONDOS LIGHTBOX DEL GRUPO SELECCIONADO (EDITAR) ✨ ---
-            variants_in_map = self.edit_generated_variants_map.get(group_index, [])
-            if variants_in_map:
-                # Asume que todas las variantes del grupo tienen el mismo bg guardado
-                self.edit_temp_lightbox_bg_light = variants_in_map[0].lightbox_bg_light
-                self.edit_temp_lightbox_bg_dark = variants_in_map[0].lightbox_bg_dark
-            else:
-                # Valores por defecto si el grupo aún no tiene variantes generadas
-                self.edit_temp_lightbox_bg_light = "dark"
-                self.edit_temp_lightbox_bg_dark = "dark"
-            # --- FIN ✨ ---
-
-            self._update_edit_preview_image() # Actualiza imagen de preview
+            # --- ✨ INICIO: LÓGICA AÑADIDA ✨ ---
+            # Carga los fondos lightbox guardados de ESE grupo en los selectores
+            self.edit_temp_lightbox_bg_light = group.lightbox_bg_light
+            self.edit_temp_lightbox_bg_dark = group.lightbox_bg_dark
+            # --- ✨ FIN: LÓGICA AÑADIDA ✨ ---
         else:
-             # Limpia campos si el índice no es válido
              self.edit_temp_color = ""
              self.edit_attr_tallas_ropa = []
              self.edit_attr_numeros_calzado = []
