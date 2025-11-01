@@ -392,34 +392,39 @@ def artist_edit_dialog() -> rx.Component:
                 ),
                 # Columna Derecha: Previsualización
                 rx.vstack(
-                    # La previsualización artística (SIN is_artistic_preview=True)
+                    
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                     post_preview( # Llamada SIN el parámetro
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
-                        first_image_url=AppState.edit_main_image_url_for_preview,
+                        
+                        # --- ¡ELIMINA ESTA LÍNEA! ---
+                        # first_image_url=AppState.edit_main_image_url_for_preview, 
+                        
                         is_imported=AppState.edit_is_imported,
                         shipping_cost_badge_text=AppState.edit_shipping_cost_badge_text_preview,
                         is_moda_completa=AppState.edit_is_moda_completa,
                         moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
-                        # LA LÍNEA is_artistic_preview=True SE ELIMINA
                     ),
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
                     rx.button( # Botón de guardar cambios artísticos
                         "Guardar Cambios Artísticos",
-                        on_click=AppState.save_artist_customization,
+                         on_click=AppState.save_artist_customization,
                         width="100%",
                         margin_top="1.5em",
                         size="3",
                         color_scheme="violet" # Botón principal
-                    ),
+                   ),
                     spacing="4",
                     width="350px", # Ancho fijo para el contenido centrado
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
                 columns={"initial": "1", "md": "auto 350px"}, # Layout de dos columnas
                 spacing="6", # Espacio entre columnas
-                width="100%",
+                 width="100%",
                 padding_top="1em",
             ),
             style={"max_width": "900px", "width": "95%", "max_height": "90vh"}, # Ajusta max_width
