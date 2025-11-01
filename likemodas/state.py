@@ -4325,6 +4325,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                  self.edit_attr_tamanos_mochila = []
                  self.edit_temp_lightbox_bg_light = "dark"
                  self.edit_temp_lightbox_bg_dark = "dark"
+                 self.edit_main_image_url_variant = "" # Asegura que esté vacío si no hay posts
+                 self.live_preview_image_url = ""      # Asegura que esté vacío si no hay posts
 
             # Sincroniza el modo de previsualización (ya es un evento separado)
             yield self.toggle_preview_mode(self.card_theme_mode)
@@ -4873,34 +4875,40 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def create_edit_variant_group(self):
+        """
+        [VERSIÓN OPTIMIZADA] Crea un nuevo grupo de variantes a partir de las imágenes seleccionadas
+        y, si es el primer grupo, preselecciona la primera imagen como principal de la tarjeta.
+        """
         if not self.edit_image_selection_for_grouping:
-            return rx.toast.error("Debes seleccionar al menos una imagen.")
-        new_group = VariantGroupDTO(image_urls=list(self.edit_image_selection_for_grouping)) # Crea copia
-        self.edit_variant_groups.append(new_group)
+            return rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
 
-        # Elimina las imágenes usadas de edit_uploaded_images
-        current_edit_uploaded = list(self.edit_uploaded_images)
-        for filename in self.edit_image_selection_for_grouping:
-            if filename in current_edit_uploaded:
-                current_edit_uploaded.remove(filename)
-        self.edit_uploaded_images = current_edit_uploaded # Reasigna
+        # Asegúrate de que las URLs de imagen del nuevo grupo estén ordenadas para consistencia
+        sorted_image_urls = sorted(self.edit_image_selection_for_grouping)
 
-        self.edit_image_selection_for_grouping = [] # Resetea a lista vacía
-        yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
-        self._update_edit_preview_image()
-            
-    @rx.event
-    def create_edit_variant_group(self):
-        if not self.edit_image_selection_for_grouping:
-            return rx.toast.error("Debes seleccionar al menos una imagen.")
-        new_group = VariantGroupDTO(image_urls=self.edit_image_selection_for_grouping)
-        self.edit_variant_groups.append(new_group)
-        for filename in self.edit_image_selection_for_grouping:
-            if filename in self.edit_uploaded_images:
-                self.edit_uploaded_images.remove(filename)
+        # Verificar si el grupo ya existe
+        for existing_group in self.edit_variant_groups:
+            if sorted(existing_group.image_urls) == sorted_image_urls:
+                return rx.toast.warning("Ya existe un grupo con estas imágenes.")
+
+        new_group_dto = VariantGroupDTO(image_urls=sorted_image_urls, attributes={})
+        self.edit_variant_groups.append(new_group_dto)
+
+        # Limpiar la selección actual para el próximo grupo
         self.edit_image_selection_for_grouping = []
+        self.edit_selection_order_map = {}
+
+        # --- ✨ INICIO: Lógica para preseleccionar la imagen principal ✨ ---
+        # Si es el primer grupo creado o no hay ninguna imagen principal ya definida,
+        # establece la primera imagen del nuevo grupo como la imagen principal de la tarjeta.
+        if not self.edit_main_image_url_variant and sorted_image_urls:
+             # Usa la primera imagen del nuevo grupo como la imagen principal por defecto.
+            self.edit_main_image_url_variant = sorted_image_urls[0]
+            self.live_preview_image_url = sorted_image_urls[0]
+        # --- ✨ FIN ✨ ---
+
+        # Seleccionar el nuevo grupo para edición
         yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
-        self._update_edit_preview_image()
+        rx.toast.success("Grupo de imágenes creado con éxito.")
 
 
     def select_group_for_editing(self, group_index: int):

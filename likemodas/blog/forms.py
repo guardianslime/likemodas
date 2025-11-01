@@ -283,14 +283,16 @@ def blog_post_add_form() -> rx.Component:
 # FORMULARIO DE EDICIÓN (COMPLETAMENTE RECONSTRUIDO Y CORREGIDO)
 # =============================================================================
 # --- ✨ INICIO: LA FIRMA DE LA FUNCIÓN AHORA ACEPTA EL ARGUMENTO ✨ ---
-def blog_post_edit_form(main_image_selector: rx.Component) -> rx.Component:
-# --- ✨ FIN ✨ ---
+def blog_post_edit_form() -> rx.Component:
     """
-    [VERSIÓN FINAL Y CORREGIDA] Formulario para EDITAR una publicación.
-    Ahora acepta el selector de imagen principal como argumento.
+    [VERSIÓN OPTIMIZADA] Formulario para EDITAR una publicación.
+    El selector de imagen principal está integrado en la sección de imágenes.
     """
     def image_and_group_section() -> rx.Component:
-        """Sección para gestionar imágenes y grupos de color en EDICIÓN."""
+        """
+        [OPTIMIZADO] Sección para gestionar imágenes y grupos de color
+        con el selector de imagen principal integrado.
+        """
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             """Renderiza una tarjeta para un grupo de variantes existente en EDICIÓN."""
             is_selected = AppState.edit_selected_group_index == index
@@ -306,6 +308,67 @@ def blog_post_edit_form(main_image_selector: rx.Component) -> rx.Component:
                 on_click=AppState.select_edit_group_for_editing(index),
             )
 
+        # --- ✨ INICIO: NUEVO COMPONENTE INTEGRADO PARA SELECCIÓN DE IMAGEN PRINCIPAL ✨ ---
+        integrated_main_image_selector = rx.vstack(
+            rx.divider(margin_y="1em"),
+            rx.text("Seleccionar Imagen Principal", weight="bold", size="4"),
+            rx.text("Elige la imagen que se mostrará en la galería principal.", size="2", color_scheme="gray"),
+            rx.scroll_area(
+                rx.vstack(
+                    rx.foreach(
+                        AppState.edit_variant_groups,
+                        lambda group_data, index: rx.vstack(
+                            rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
+                            rx.flex(
+                                rx.foreach(
+                                    group_data.image_urls,
+                                    lambda image_url: rx.box(
+                                        rx.image(
+                                            src=rx.get_upload_url(image_url),
+                                            alt=f"Imagen {image_url}",
+                                            width="70px",
+                                            height="70px",
+                                            object_fit="contain",
+                                            bg="var(--gray-5)",
+                                            border=rx.cond(
+                                                AppState.edit_main_image_url_variant == image_url,
+                                                "3px solid var(--violet-9)",
+                                                "1px solid var(--gray-7)"
+                                            ),
+                                            border_radius="md",
+                                            cursor="pointer",
+                                            on_click=AppState.set_main_image_url_for_editing(image_url),
+                                        ),
+                                        padding="0.25em",
+                                    ),
+                                ),
+                                wrap="wrap",
+                                spacing="3",
+                                width="100%",
+                            ),
+                            spacing="2",
+                            align_items="start",
+                            width="100%",
+                            margin_bottom="0.5em",
+                        )
+                    ),
+                    spacing="3",
+                    width="100%",
+                ),
+                type="auto",
+                scrollbars="vertical",
+                max_height="250px",
+                width="100%",
+                style={"border": "1px solid var(--gray-6)", "border_radius": "var(--radius-3)", "padding": "0.5em"}
+            ),
+            spacing="2",
+            align_items="stretch",
+            width="100%",
+            # Solo mostrar si hay al menos un grupo de variantes para seleccionar
+            # rx.cond(AppState.edit_variant_groups.length() > 0, ...)
+        )
+        # --- ✨ FIN: NUEVO COMPONENTE INTEGRADO ✨ ---
+
         return rx.vstack(
             rx.text("1. Imágenes del Producto", weight="bold"),
             rx.upload(
@@ -317,7 +380,12 @@ def blog_post_edit_form(main_image_selector: rx.Component) -> rx.Component:
             rx.text("2. Selecciona y ordena las imágenes para crear/editar un grupo:"),
             rx.flex(
                  rx.foreach(
-                    AppState.edit_uploaded_images,
+                    # Mostrar solo las imágenes del grupo seleccionado si existe, de lo contrario todas las cargadas
+                    rx.cond(
+                        AppState.edit_selected_group_index != -1,
+                        AppState.edit_variant_groups[AppState.edit_selected_group_index].image_urls,
+                        AppState.edit_uploaded_images # Fallback a todas las imágenes si no hay grupo seleccionado
+                    ),
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
@@ -342,9 +410,11 @@ def blog_post_edit_form(main_image_selector: rx.Component) -> rx.Component:
             rx.text("3. Grupos existentes:"),
             rx.flex(rx.foreach(AppState.edit_variant_groups, render_group_card), wrap="wrap", spacing="2"),
             
-            # --- ✨ INICIO: AQUÍ ES DONDE SE USA EL ARGUMENTO ✨ ---
-            # Inserta el componente selector que recibimos como argumento
-            main_image_selector,
+            # --- ✨ INICIO: AHORA ESTÁ AQUÍ EL SELECTOR DE IMAGEN PRINCIPAL ✨ ---
+            rx.cond(
+                AppState.edit_variant_groups.length() > 0, # Solo lo muestra si hay grupos
+                integrated_main_image_selector
+            ),
             # --- ✨ FIN ✨ ---
             
             spacing="3", width="100%", align_items="stretch",

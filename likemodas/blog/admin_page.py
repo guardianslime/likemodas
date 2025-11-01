@@ -167,64 +167,6 @@ def edit_post_dialog() -> rx.Component:
     )
     # --- FIN DEL PANEL SIMPLIFICADO ---
 
-    # --- ✨ INICIO: NUEVA SECCIÓN PARA SELECCIONAR IMAGEN PRINCIPAL ✨ ---
-    # Este componente se insertará en el formulario de edición
-    main_image_selector = rx.vstack(
-        rx.divider(margin_y="1em"),
-        rx.text("Seleccionar Imagen Principal", weight="bold", size="4"),
-        rx.text("Elige la imagen que se mostrará en la galería principal.", size="2", color_scheme="gray"),
-        rx.scroll_area(
-            rx.vstack(
-                rx.foreach(
-                    AppState.edit_variant_groups,
-                    lambda group_data, index: rx.vstack(
-                        rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
-                        rx.flex(
-                            rx.foreach(
-                                group_data.image_urls,
-                                lambda image_url: rx.box(
-                                    rx.image(
-                                        src=rx.get_upload_url(image_url),
-                                        alt=f"Imagen {image_url}",
-                                        width="70px",
-                                        height="70px",
-                                        object_fit="contain",
-                                        bg="var(--gray-5)",
-                                        border=rx.cond(
-                                            AppState.edit_main_image_url_variant == image_url,
-                                            "3px solid var(--violet-9)", # Resalta la imagen seleccionada
-                                            "1px solid var(--gray-7)"
-                                        ),
-                                        border_radius="md",
-                                        cursor="pointer",
-                                        on_click=AppState.set_main_image_url_for_editing(image_url), # Al hacer clic, establece esta como principal
-                                    ),
-                                    padding="0.25em",
-                                ),
-                            ),
-                            wrap="wrap",
-                            spacing="3",
-                            width="100%",
-                        ),
-                        spacing="2",
-                        align_items="start",
-                        width="100%",
-                        margin_bottom="0.5em",
-                    )
-                ),
-                spacing="3",
-                width="100%",
-            ),
-            type="auto",
-            scrollbars="vertical",
-            max_height="250px", # Limita la altura para que no ocupe todo
-            width="100%",
-            style={"border": "1px solid var(--gray-6)", "border_radius": "var(--radius-3)", "padding": "0.5em"}
-        ),
-        spacing="2",
-        align_items="stretch",
-        width="100%"
-    )
     # --- ✨ FIN: NUEVA SECCIÓN ✨ ---
 
     return rx.dialog.root(
@@ -238,23 +180,19 @@ def edit_post_dialog() -> rx.Component:
                 # Columna Izquierda: Formulario de Edición
                 rx.scroll_area(
                     rx.vstack(
-                        # Pasa el selector de imagen principal al formulario de edición
-                        blog_post_edit_form(main_image_selector=main_image_selector),
+                        # --- ✨ INICIO: LLAMADA A LA FUNCIÓN SIN ARGUMENTO ✨ ---
+                        blog_post_edit_form(), # <--- LLAMADA SIN EL ARGUMENTO main_image_selector
+                        # --- ✨ FIN ✨ ---
                     ),
                     type="auto",
                     scrollbars="vertical",
-                    max_height="75vh", # Limita la altura del formulario
+                    max_height="75vh",
                     padding_right="1.5em",
                 ),
                 
-                # Columna Derecha: Previsualización
+                # Columna Derecha: Previsualización (esto no cambia)
                 rx.vstack(
-                    
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # Antes decía: add.post_preview(
-                    post_preview( # Llama a la previsualización (sin el prefijo 'add.')
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-                    
+                    post_preview(
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
                         is_imported=AppState.edit_is_imported,
@@ -264,11 +202,10 @@ def edit_post_dialog() -> rx.Component:
                         combines_shipping=AppState.edit_combines_shipping,
                         envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
                     ),
-                    personalizar_tarjeta_panel, # El panel de apariencia
+                    personalizar_tarjeta_panel,
                     spacing="4", position="sticky", top="0", width="350px",
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
-                
                 columns={"initial": "1", "lg": "auto 350px"},
                 spacing="6", width="100%", padding_top="1em",
             ),
