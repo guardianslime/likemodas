@@ -1,8 +1,7 @@
 # En: likemodas/blog/add.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
-# La importación de color_picker no es necesaria para el panel simplificado
-# from rx_color_picker.color_picker import color_picker
+from typing import Union # <-- Asegúrate de tener esta importación
 
 # Importaciones de datos y modelos
 from likemodas.data.product_options import (
@@ -59,14 +58,12 @@ def blog_post_add_form() -> rx.Component:
     nueva lógica de gestión de grupos de imágenes y selección de imagen principal.
     """
     
-    # --- ✨ INICIO: SECCIÓN DE IMÁGENES REEMPLAZADA (COPIADA DE EDITAR) ✨ ---
     def image_and_group_section() -> rx.Component:
         """
         [NUEVO] Sección para gestionar imágenes y grupos de color
         con el selector de imagen principal integrado (adaptado de 'editar').
         """
         
-        # Componente interno para mostrar los grupos y seleccionar la imagen principal
         integrated_group_and_image_selector = rx.vstack(
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos y Selección de Imagen Principal", weight="bold", size="4"),
@@ -74,7 +71,7 @@ def blog_post_add_form() -> rx.Component:
             rx.scroll_area(
                 rx.vstack(
                     rx.foreach(
-                        AppState.variant_groups, # <-- Adaptado: usa variant_groups
+                        AppState.variant_groups, 
                         lambda group_data, index: rx.vstack(
                             rx.text(f"Grupo {index + 1} ({group_data.attributes.get('Color', 'Sin Color')})", weight="medium", size="3"),
                             rx.flex(
@@ -88,9 +85,8 @@ def blog_post_add_form() -> rx.Component:
                                             height="70px",
                                             object_fit="contain",
                                             bg="var(--gray-5)",
-                                            # Borde si es la IMAGEN PRINCIPAL seleccionada
                                             border=rx.cond(
-                                                AppState.live_preview_image_url == image_url, # <-- Adaptado: usa live_preview_image_url
+                                                AppState.live_preview_image_url == image_url, 
                                                 "3px solid var(--violet-9)",
                                                 "1px solid var(--gray-7)"
                                             ),
@@ -98,9 +94,8 @@ def blog_post_add_form() -> rx.Component:
                                             cursor="pointer",
                                             
                                             # --- ✨ CORRECCIÓN 1 (IMAGEN) ✨ ---
-                                            # Este clic AHORA SOLO selecciona la imagen principal
                                             on_click=[
-                                                AppState.set_main_image_url_for_editing(image_url), # <-- Setea 'live_preview_image_url'
+                                                AppState.set_main_image_url_for_editing(image_url), 
                                             ],
                                         ),
                                         padding="0.25em",
@@ -115,17 +110,15 @@ def blog_post_add_form() -> rx.Component:
                             width="100%",
                             margin_bottom="0.5em",
                             
-                            # Resaltado del GRUPO seleccionado para edición
-                            border=rx.cond(AppState.selected_group_index == index, "2px solid var(--violet-7)", "1px solid var(--gray-5)"), # <-- Adaptado: usa selected_group_index
+                            border=rx.cond(AppState.selected_group_index == index, "2px solid var(--violet-7)", "1px solid var(--gray-5)"),
                             padding="0.75em",
                             border_radius="var(--radius-3)",
                             bg=rx.cond(AppState.selected_group_index == index, rx.color("violet", 2), "transparent"),
                             transition="background-color 0.2s, border-color 0.2s",
-                            
+
                             # --- ✨ CORRECCIÓN 2 (GRUPO) ✨ ---
-                            # Este clic AHORA SOLO selecciona el grupo para edición
                             on_click=[
-                                AppState.select_group_for_editing(index) # <-- Usa el setter de 'crear'
+                                AppState.select_group_for_editing(index) 
                             ],
                             cursor="pointer",
                         )
@@ -144,55 +137,50 @@ def blog_post_add_form() -> rx.Component:
             width="100%",
         )
 
-        # Esta es la estructura principal de la sección de imágenes
         return rx.vstack(
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
             rx.upload(
                  rx.vstack(rx.icon("upload"), rx.text("Añadir más imágenes")),
-                 id="blog_upload", multiple=True, max_files=10, # <-- Adaptado: usa 'blog_upload'
-                on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")), # <-- Adaptado: usa 'handle_add_upload'
+                 id="blog_upload", multiple=True, max_files=10, 
+                on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")), 
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
             rx.text("2. Selecciona imágenes para crear un nuevo grupo:"),
             rx.flex(
                  rx.foreach(
-                    AppState.uploaded_images, # <-- Adaptado: usa 'uploaded_images'
+                    AppState.uploaded_images, 
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            AppState.image_selection_for_grouping.contains(img_name), # <-- Adaptado
+                            AppState.image_selection_for_grouping.contains(img_name), 
                             rx.box(
-                                rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"), # <-- Adaptado
+                                rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"), 
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
                             )
                         ),
-                        rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}), # <-- Adaptado
+                        rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}), 
                         position="relative", border="2px solid",
-                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <-- Adaptado
+                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), 
                         border_radius="lg", cursor="pointer",
-                        on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name), # <-- Adaptado
+                        on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name), 
                     )
                  ),
                 wrap="wrap", spacing="3", padding_top="0.5em",
              ),
-            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"), # <-- Adaptado
+            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"), 
 
-            # Sección fusionada de "Grupos existentes" y "Seleccionar Imagen Principal"
             rx.cond(
-                AppState.variant_groups.length() > 0, # <-- Adaptado
+                AppState.variant_groups.length() > 0, 
                 integrated_group_and_image_selector
             ),
             
             spacing="3", width="100%", align_items="stretch",
         )
-    # --- ✨ FIN: SECCIÓN DE IMÁGENES REEMPLAZADA ✨ ---
-
-    # --- (La función attributes_and_stock_section no necesita cambios) ---
+    
     def attributes_and_stock_section() -> rx.Component:
         """
         Sección para atributos y stock del formulario de CREACIÓN.
-        Define los atributos dinámicos (ropa, calzado, mochila) y corrige el layout del grid.
         """
         ropa_attributes = rx.vstack(
             rx.text("Talla"),
@@ -311,7 +299,7 @@ def blog_post_add_form() -> rx.Component:
             rx.grid(
                 # Columna izquierda (Imágenes y Variantes)
                 rx.vstack(
-                    image_and_group_section(), # <-- Llama a la nueva función
+                    image_and_group_section(), 
                     attributes_and_stock_section(),
                     spacing="5", width="100%",
                 ),
@@ -362,7 +350,7 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.hstack(
                 rx.spacer(),
-                rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"),
+                rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"), 
                 width="100%",
             ),
             spacing="5",
@@ -391,21 +379,32 @@ def post_preview(
     sus elementos (fondo imagen, badges) respeten la apariencia seleccionada
     y la imagen principal seleccionada.
     """
-    # Determina si la PREVISUALIZACIÓN se muestra en modo claro u oscuro
     is_light_preview = AppState.card_theme_mode == "light"
 
-    # Determina la APARIENCIA OBJETIVO ("light" o "dark")
-    # Usa las variables del formulario de CREAR
+    # --- ✨ INICIO: CORRECCIÓN DE PREVISUALIZACIÓN ✨ ---
+    # La apariencia objetivo depende de si estamos en modo "crear" o "editar"
     card_target_appearance = rx.cond(
-        is_light_preview,
-        AppState.light_mode_appearance,  # <-- Adaptado
-        AppState.dark_mode_appearance    # <-- Adaptado
+        AppState.is_in_edit_preview,
+        # Lógica de EDICIÓN
+        rx.cond(
+            is_light_preview,
+            AppState.edit_light_mode_appearance,
+            AppState.edit_dark_mode_appearance
+        ),
+        # Lógica de CREACIÓN
+        rx.cond(
+            is_light_preview,
+            AppState.light_mode_appearance,
+            AppState.dark_mode_appearance
+        )
     )
+    # --- ✨ FIN: CORRECCIÓN DE PREVISUALIZACIÓN ✨ ---
 
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         
+        # Esta lógica es correcta, usa la apariencia objetivo que acabamos de calcular
         colors = rx.cond(card_target_appearance == "light", light_colors[color_scheme], dark_colors[color_scheme])
         
         return rx.box(
@@ -414,13 +413,13 @@ def post_preview(
             border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
         )
 
-    # Usa los colores "live" que se actualizan por los color pickers (si modo artista)
-    # o por los toggles de apariencia (si modo default)
+    # Los colores "live" son calculados por _update_live_colors en el state,
+    # que ahora es consciente del contexto. Esta parte es correcta.
     card_bg_color = AppState.live_card_bg_color
     title_color = AppState.live_title_color
     price_color = AppState.live_price_color
 
-    # El fondo de la imagen usa la APARIENCIA OBJETIVO
+    # El fondo de la imagen también usa la apariencia objetivo
     image_bg = rx.cond(
         card_target_appearance == "light",
         DEFAULT_LIGHT_IMAGE_BG,
@@ -430,11 +429,10 @@ def post_preview(
     return rx.box(
          rx.vstack(
              rx.box( # Contenedor de la imagen
-                # --- ✨ INICIO: LÓGICA DE IMAGEN DE RESPALDO MEJORADA ✨ ---
                 rx.cond(
                     AppState.live_preview_image_url != "",
                     rx.image(
-                        src=rx.get_upload_url(AppState.live_preview_image_url), # <-- ¡CLAVE! Lee la imagen principal en vivo
+                        src=rx.get_upload_url(AppState.live_preview_image_url), 
                         alt="Previsualización del Producto",
                         width="280px",
                         height="280px",
@@ -446,7 +444,6 @@ def post_preview(
                         ),
                         transition="transform 0.2s ease-out",
                     ),
-                    # Caja de respaldo si live_preview_image_url está vacía
                     rx.box(
                         rx.vstack(
                             rx.icon("image-off", size=48, color_scheme="gray"),
@@ -461,8 +458,7 @@ def post_preview(
                         justify_content="center"
                     )
                 ),
-                # --- ✨ FIN: LÓGICA DE IMAGEN DE RESPALDO ✨ ---
-                 rx.badge( # Badge de Origen
+                 rx.badge( 
                     rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
@@ -470,22 +466,22 @@ def post_preview(
                  position="relative", width="100%", height="260px",
                  overflow="hidden",
                  border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                 bg=image_bg, # <-- Fondo de imagen corregido
+                 bg=image_bg,
              ),
              rx.vstack( # Contenedor de la información
-                rx.text( # Título
+                rx.text( 
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    color=title_color, # Color 'live'
+                    color=title_color, 
                     style=TITLE_CLAMP_STYLE
                 ),
-                star_rating_display_safe(0, 0, size=24), # Estrellas
-                rx.text( # Precio
+                star_rating_display_safe(0, 0, size=24), 
+                rx.text( 
                     price_cop, size="5", weight="medium",
-                    color=price_color # Color 'live'
+                    color=price_color
                  ),
                 rx.spacer(),
-                rx.vstack( # Badges de envío (usando _preview_badge corregido)
+                rx.vstack( 
                     rx.grid(
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
@@ -505,7 +501,7 @@ def post_preview(
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=card_bg_color, # Fondo 'live'
+        bg=card_bg_color, 
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
@@ -514,7 +510,6 @@ def post_preview(
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
     
-    # Panel para Zoom/Rotar (Sin cambios)
     image_editor_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack(
@@ -568,7 +563,6 @@ def blog_post_add_content() -> rx.Component:
         width="290px",
     )
     
-    # --- ✨ INICIO: NUEVO PANEL DE APARIENCIA (COPIADO DE EDITAR) ✨ ---
     personalizar_tarjeta_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack(
@@ -598,8 +592,8 @@ def blog_post_add_content() -> rx.Component:
                 rx.segmented_control.root(
                     rx.segmented_control.item("Claro", value="light"),
                     rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.light_mode_appearance, # <-- Adaptado
-                    on_change=AppState.set_light_mode_appearance, # <-- Adaptado
+                    value=AppState.light_mode_appearance, 
+                    on_change=AppState.set_light_mode_appearance, 
                     width="100%", color_scheme="violet",
                 ),
                 rx.divider(margin_top="1em"),
@@ -607,8 +601,8 @@ def blog_post_add_content() -> rx.Component:
                 rx.segmented_control.root(
                     rx.segmented_control.item("Claro", value="light"),
                     rx.segmented_control.item("Oscuro", value="dark"),
-                    value=AppState.dark_mode_appearance, # <-- Adaptado
-                    on_change=AppState.set_dark_mode_appearance, # <-- Adaptado
+                    value=AppState.dark_mode_appearance, 
+                    on_change=AppState.set_dark_mode_appearance, 
                     width="100%", color_scheme="violet",
                 ),
                 spacing="3", width="100%", margin_top="1em"
@@ -627,27 +621,20 @@ def blog_post_add_content() -> rx.Component:
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
-    # --- ✨ FIN: NUEVO PANEL DE APARIENCIA ✨ ---
-
-    # Esta variable 'first_image_url' ya no es necesaria,
-    # la previsualización ahora usa 'live_preview_image_url'
-    # first_image_url = ... (ELIMINADA)
 
     return rx.grid(
         rx.vstack(
             rx.heading("Crear Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em", color_scheme="gray", font_weight="medium"),
-            blog_post_add_form(), # <-- El formulario actualizado
+            blog_post_add_form(),
             width="100%", spacing="4", align_items="center",
             padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
         ),
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
             
-            # La previsualización no cambia, ya lee 'live_preview_image_url'
             post_preview(
                 title=AppState.title,
                 price_cop=AppState.price_cop_preview,
-                # 'first_image_url' se elimina de la llamada
                 is_imported=AppState.is_imported,
                 shipping_cost_badge_text=AppState.shipping_cost_badge_text_preview,
                 is_moda_completa=AppState.is_moda_completa,
@@ -656,12 +643,18 @@ def blog_post_add_content() -> rx.Component:
                 envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
             ),
             
-            image_editor_panel, # Panel de Zoom/Rotar
+            image_editor_panel, 
             
-            personalizar_tarjeta_panel, # <-- ✨ Panel de Apariencia añadido
+            personalizar_tarjeta_panel,
 
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
-            on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
+            
+            # --- ✨ INICIO: CORRECCIÓN DE PREVISUALIZACIÓN (Añadir on_mount) ✨ ---
+            on_mount=[
+                AppState.set_preview_context_to_add, # <-- Pone el flag en modo "Crear"
+                AppState.sync_preview_with_color_mode(rx.color_mode) # Sincroniza el tema
+            ],
+            # --- ✨ FIN: CORRECCIÓN DE PREVISUALIZACIÓN ✨ ---
         ),
         columns={"initial": "1", "lg": "auto auto"},
         justify="center",

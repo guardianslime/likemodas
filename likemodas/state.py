@@ -2547,27 +2547,39 @@ class AppState(reflex_local_auth.LocalAuthState):
                 userinfo_id=owner_id,
                 creator_id=creator_id_to_save,
                 title=title,
-                content=content,
+                content=self.content,
                 price=price_float,
                 profit=profit_float,
                 price_includes_iva=self.price_includes_iva,
                 category=category,
+                attr_material=self.attr_material,
+                attr_tipo=self.attr_tipo,
                 variants=all_variants_for_db,
-                publish_active=True,
-                publish_date=datetime.now(timezone.utc),
+                
+                main_image_url_variant=self.live_preview_image_url,
+                
+                # --- ✨ INICIO: CORRECCIÓN DE ATTRIBUTEERROR ✨ ---
+                publish_active=True, # Publica directamente
+                publish_date=self.publish_date_as_datetime, # Usa la nueva helper var
+                # --- ✨ FIN: CORRECCIÓN DE ATTRIBUTEERROR ✨ ---
+
+                shipping_cost=shipping_cost_float, # Asegúrate de usar la variable correcta
                 is_moda_completa_eligible=self.is_moda_completa,
                 free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
+                
                 use_default_style=self.use_default_style,
-                light_card_bg_color=self.light_theme_colors.get("bg"),
-                light_title_color=self.light_theme_colors.get("title"),
-                light_price_color=self.light_theme_colors.get("price"),
-                dark_card_bg_color=self.dark_theme_colors.get("bg"),
-                dark_title_color=self.dark_theme_colors.get("title"),
-                dark_price_color=self.dark_theme_colors.get("price"),
-                image_styles=image_styles_to_save
+                light_mode_appearance=self.light_mode_appearance,
+                dark_mode_appearance=self.dark_mode_appearance,
+                light_card_bg_color=self.light_card_bg_color, # <-- Asegúrate que sea light_card_bg_color
+                light_title_color=self.light_title_color,
+                light_price_color=self.light_price_color,
+                dark_card_bg_color=self.dark_card_bg_color,
+                dark_title_color=self.dark_title_color,
+                dark_price_color=self.dark_price_color,
+                image_styles=image_styles_to_save,
             )
             session.add(new_post)
 
@@ -3469,34 +3481,58 @@ class AppState(reflex_local_auth.LocalAuthState):
     dark_theme_colors: dict = {"bg": "", "title": "", "price": ""}
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
 
+    # --- ✨ INICIO: CORRECCIÓN DE PREVISUALIZACIÓN (Añadir esta variable) ✨ ---
+    is_in_edit_preview: bool = False
+    # --- ✨ FIN: CORRECCIÓN DE PREVISUALIZACIÓN ✨ ---
+    
+    # --- ✨ INICIO: CORRECCIÓN DE ATTRIBUTEERROR (Añadir estas variables) ✨ ---
+    publish_active: bool = True # Por defecto, un producto se publica activo
+
+    def set_publish_active(self, value: bool):
+        self.publish_active = value
+
+    @rx.var
+    def publish_date_as_datetime(self) -> Optional[datetime]:
+        """Devuelve la fecha actual para la publicación."""
+        return datetime.now(timezone.utc)
+    # --- ✨ FIN: CORRECCIÓN DE ATTRIBUTEERROR ✨ ---
+
     # --- FUNCIÓN INTERNA MODIFICADA ---
     def _update_live_colors(self):
         """
-        [VERSIÓN FINAL - UNIFICADA CON HEX]
-        Calcula y actualiza las variables live_*_color para la previsualización.
+        [VERSIÓN CONSCIENTE DEL CONTEXTO]
+        Calcula y actualiza las variables live_*_color para la previsualización,
+        sabiendo si está en el modo "Crear" o "Editar".
         """
         is_light_preview = self.card_theme_mode == "light"
         
-        # 1. Determina la APARIENCIA OBJETIVO (SIEMPRE sigue los toggles)
-        target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
+        # --- ✨ LÓGICA CONSCIENTE DEL CONTEXTO ✨ ---
+        if self.is_in_edit_preview:
+            # Usa variables de EDICIÓN
+            target_appearance = self.edit_light_mode_appearance if is_light_preview else self.edit_dark_mode_appearance
+            use_default = self.use_default_style
+            light_colors = self.light_theme_colors
+            dark_colors = self.dark_theme_colors
+        else:
+            # Usa variables de CREACIÓN
+            target_appearance = self.light_mode_appearance if is_light_preview else self.dark_mode_appearance
+            use_default = self.use_default_style
+            # Asumimos que la creación también usa los 'theme_colors' para el modo artístico
+            light_colors = self.light_theme_colors 
+            dark_colors = self.dark_theme_colors
+        # --- ✨ FIN LÓGICA CONSCIENTE DEL CONTEXTO ✨ ---
 
-        # 2. Determina los colores por DEFECTO basados en la APARIENCIA (usando HEX)
         default_bg_by_appearance = DEFAULT_LIGHT_BG if target_appearance == "light" else DEFAULT_DARK_BG
         default_title_by_appearance = DEFAULT_LIGHT_TITLE if target_appearance == "light" else DEFAULT_DARK_TITLE
         default_price_by_appearance = DEFAULT_LIGHT_PRICE if target_appearance == "light" else DEFAULT_DARK_PRICE
         
-        # 3. Determina los colores ARTISTICOS (basados en el MODO PREVIEW)
-        #    (Usa el color guardado o el default de apariencia como fallback)
-        custom_bg = (self.light_theme_colors.get("bg") or default_bg_by_appearance) if is_light_preview else (self.dark_theme_colors.get("bg") or default_bg_by_appearance)
-        custom_title = (self.light_theme_colors.get("title") or default_title_by_appearance) if is_light_preview else (self.dark_theme_colors.get("title") or default_title_by_appearance)
-        custom_price = (self.light_theme_colors.get("price") or default_price_by_appearance) if is_light_preview else (self.dark_theme_colors.get("price") or default_price_by_appearance)
+        custom_bg = (light_colors.get("bg") or default_bg_by_appearance) if is_light_preview else (dark_colors.get("bg") or default_bg_by_appearance)
+        custom_title = (light_colors.get("title") or default_title_by_appearance) if is_light_preview else (dark_colors.get("title") or default_title_by_appearance)
+        custom_price = (light_colors.get("price") or default_price_by_appearance) if is_light_preview else (dark_colors.get("price") or default_price_by_appearance)
 
-        # 4. Asigna los colores LIVE
-        #    Si "default" (Simple Mode) está ON, usa los defaults by appearance (Paso 2)
-        #    Si "default" (Artistic Mode) está OFF, usa los artisticos (Paso 3)
-        self.live_card_bg_color = default_bg_by_appearance if self.use_default_style else custom_bg
-        self.live_title_color = default_title_by_appearance if self.use_default_style else custom_title
-        self.live_price_color = default_price_by_appearance if self.use_default_style else custom_price
+        self.live_card_bg_color = default_bg_by_appearance if use_default else custom_bg
+        self.live_title_color = default_title_by_appearance if use_default else custom_title
+        self.live_price_color = default_price_by_appearance if use_default else custom_price
 
     # --- SETTERS MODIFICADOS ---
     # (Llaman a _update_live_colors después de cambiar el valor)
@@ -3569,6 +3605,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.use_default_style = True
         self.card_theme_mode = "light" # Vuelve a preview claro
 
+        # --- ✨ AÑADE ESTAS DOS LÍNEAS ✨ ---
+        self.light_mode_appearance = "light"
+        self.dark_mode_appearance = "dark"
+        # --- ✨ FIN ✨ ---
+
         # Resetea las selecciones de apariencia a los defaults
         self.edit_light_mode_appearance = "light"
         self.edit_dark_mode_appearance = "dark"
@@ -3578,6 +3619,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.dark_theme_colors = {"bg": "", "title": "", "price": ""}
 
         # Actualiza los colores live_ a los defaults del modo claro
+        self._update_live_colors()
+
+    @rx.event
+    def set_preview_context_to_add(self):
+        """
+        Se ejecuta al cargar la página "Crear Producto" para establecer
+        el contexto de previsualización correcto.
+        """
+        self.is_in_edit_preview = False
+        # Limpia los estilos al estado por defecto de "creación"
+        self._clear_card_styles()
+        self._clear_image_styles()
+        # Asegura que los colores live se actualicen para el contexto "Crear"
         self._update_live_colors()
 
     # --- _load_card_styles_from_db MODIFICADO ---
@@ -4242,6 +4296,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         [VERSIÓN OPTIMIZADA] Carga los datos para editar de forma más eficiente.
         """
+        # --- ✨ AÑADE ESTA LÍNEA AL INICIO ✨ ---
+        self.is_in_edit_preview = True 
+        # --- ✨ FIN ✨ ---
+        
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             return rx.toast.error("No se pudo verificar la identidad del usuario.")
