@@ -593,6 +593,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         actual_value = value[0] if isinstance(value, list) else value
         self.edit_dark_mode_appearance = actual_value if actual_value in ["light", "dark"] else "dark"
         self._update_live_colors() # Actualiza los colores live
+
+    def set_light_mode_appearance(self, value: Union[str, list[str]]):
+        """
+        Manejador para el selector de apariencia en MODO CREAR (Sitio Claro).
+        Acepta Union[str, list[str]] para el evento on_change.
+        """
+        actual_value = value[0] if isinstance(value, list) else value
+        self.light_mode_appearance = actual_value if actual_value in ["light", "dark"] else "light"
+        self._update_live_colors() # Actualiza los colores live
+
+    def set_dark_mode_appearance(self, value: Union[str, list[str]]):
+        """
+        Manejador para el selector de apariencia en MODO CREAR (Sitio Oscuro).
+        Acepta Union[str, list[str]] para el evento on_change.
+        """
+        actual_value = value[0] if isinstance(value, list) else value
+        self.dark_mode_appearance = actual_value if actual_value in ["light", "dark"] else "dark"
+        self._update_live_colors() # Actualiza los colores live
     
     # --- INICIO: Nuevos manejadores de eventos para el Modal Artístico ---
 
