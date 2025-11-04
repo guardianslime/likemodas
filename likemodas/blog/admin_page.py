@@ -373,13 +373,34 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """El diálogo modal que muestra los códigos QR para cada variante."""
+
+    # --- ✨ INICIO: CORRECCIÓN DE ESTILOS DE IMPRESIÓN ✨ ---
+    # Este nuevo estilo es más robusto para la impresión.
     printable_area_style = {
         "id": "printable-qr-area",
         "@media print": {
-            "body > *:not(#printable-qr-area)": {"display": "none"},
-            "#printable-qr-area": {"position": "absolute", "left": "0", "top": "0", "width": "100%", "padding": "1em"},
+            # 1. Oculta absolutamente todo en la página.
+            "body *": {
+                "visibility": "hidden !important",
+            },
+            # 2. Vuelve a mostrar SOLAMENTE el área de impresión y todos sus hijos (*).
+            "#printable-qr-area, #printable-qr-area *": {
+                "visibility": "visible !important",
+            },
+            # 3. Posiciona el área de impresión para que ocupe toda la página.
+            "#printable-qr-area": {
+                "position": "absolute !important",
+                "left": "0 !important",
+                "top": "0 !important",
+                "width": "100% !important",
+                "padding": "1em !important",
+                "margin": "0 !important",
+                "box_shadow": "none !important",
+                "border": "none !important",
+            },
         },
     }
+    # --- ✨ FIN: CORRECCIÓN DE ESTILOS DE IMPRESIÓN ✨ ---
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         return rx.box(
@@ -412,6 +433,7 @@ def qr_display_modal() -> rx.Component:
                 rx.hstack(
                     rx.dialog.title("Códigos QR para: ", rx.text(AppState.post_for_qr_display.title, as_="span", color_scheme="violet")),
                     rx.spacer(),
+                    # El botón de imprimir no cambia, solo llama a la función del navegador
                     rx.button("Imprimir", on_click=rx.call_script("window.print()")),
                     justify="between", width="100%"
                 ),
@@ -424,7 +446,10 @@ def qr_display_modal() -> rx.Component:
                     rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
                     spacing="3", margin_top="1em", justify="end",
                 ),
-                align_items="stretch", spacing="4", style=printable_area_style,
+                align_items="stretch", 
+                spacing="4", 
+                # --- ✨ APLICA EL NUEVO ESTILO AQUÍ ✨ ---
+                style=printable_area_style,
             ),
             style={"max_width": "720px"},
         ),
