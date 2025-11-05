@@ -413,12 +413,55 @@ def qr_display_modal() -> rx.Component:
         Renderiza la tarjeta para una sola variante de QR, ahora con un
         botón para copiar la IMAGEN del QR.
         """
-        # --- ✨ INICIO: CORRECCIÓN DE COPIAR IMAGEN ✨ ---
         
         # 1. Define un ID único para el SVG del QR
         qr_svg_id = f"qr-svg-{variant.variant_uuid}"
         
-        # --- ✨ FIN: CORRECCIÓN DE COPIAR IMAGEN ✨ ---
+        # --- ✨ INICIO: LÓGICA DE SCRIPT EN LÍNEA ✨ ---
+        # 2. Define el script JS completo que se ejecutará al hacer clic
+        copy_script = f"""
+(function() {{
+  const svg = document.getElementById('{qr_svg_id}');
+  if (!svg) {{
+    console.error("QR code SVG element not found:", '{qr_svg_id}');
+    return;
+  }}
+
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  const svgBlob = new Blob([svgData], {{ type: "image/svg+xml;charset=utf-8" }});
+  const url = URL.createObjectURL(svgBlob);
+
+  img.onload = () => {{
+    const padding = 20;
+    canvas.width = svg.clientWidth + padding * 2;
+    canvas.height = svg.clientHeight + padding * 2;
+    
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.drawImage(img, padding, padding, svg.clientWidth, svg.clientHeight);
+
+    canvas.toBlob((blob) => {{
+      if (blob) {{
+        try {{
+          navigator.clipboard.write([
+            new ClipboardItem({{ [blob.type]: blob }}),
+          ]);
+        }} catch (err) {{
+          console.error("Error writing to clipboard:", err);
+        }}
+      }}
+      URL.revokeObjectURL(url);
+    }}, "image/png");
+  }};
+  
+  img.src = url;
+}})();
+"""
+        # --- ✨ FIN: LÓGICA DE SCRIPT EN LÍNEA ✨ ---
 
         return rx.box(
             rx.hstack(
@@ -432,21 +475,21 @@ def qr_display_modal() -> rx.Component:
                     rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
                         variant.qr_url != "",
-                        # --- ✨ Pasa el ID único al componente del QR ✨ ---
+                        # Pasa el ID único al componente del QR
                         qr_code_display(value=variant.qr_url, size=120, id=qr_svg_id),
                         rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
                     rx.text(variant.variant_uuid, size="1", color_scheme="gray", no_of_lines=1, max_width="140px"),
                     
-                    # --- ✨ INICIO: BOTÓN DE COPIAR IMAGEN ✨ ---
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
-                            # Llama a la función JS global con el ID del SVG
+                            # --- ✨ INICIO: LLAMADA AL SCRIPT EN LÍNEA ✨ ---
                             on_click=[
-                                rx.call_script(f"copyQrCodeAsImage('{qr_svg_id}')"),
+                                rx.call_script(copy_script), # Llama al script JS definido arriba
                                 rx.toast.success("Imagen QR copiada al portapapeles")
                             ],
+                            # --- ✨ FIN: LLAMADA AL SCRIPT EN LÍNEA ✨ ---
                             variant="soft",
                             color_scheme="gray",
                             size="1",
@@ -454,7 +497,6 @@ def qr_display_modal() -> rx.Component:
                         ),
                         content="Copiar Imagen del QR",
                     ),
-                    # --- ✨ FIN: BOTÓN DE COPIAR IMAGEN ✨ ---
                     
                     align="center",
                 ),
