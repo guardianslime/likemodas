@@ -374,7 +374,7 @@ def artist_edit_dialog() -> rx.Component:
 def qr_display_modal() -> rx.Component:
     """
     [VERSIÓN FINAL CORREGIDA]
-    Modal de QR con estilos de impresión y botón de copiar IMAGEN desde <img>.
+    Modal de QR con estilos de impresión y el script de copiado de imagen correcto.
     """
     
     # --- (Estilos de impresión, no cambian) ---
@@ -410,49 +410,39 @@ def qr_display_modal() -> rx.Component:
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
         [VERSIÓN CORREGIDA]
-        Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>).
+        Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
+        usando el método fetch(DataURI).
         """
         
         # 1. Define un ID único para la ETIQUETA <img>
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- ✨ INICIO: SCRIPT CORRECTO (IMG a IMAGEN) ✨ ---
-        # 2. Define el script JS que copia la imagen <img> a un canvas y luego al portapapeles
+        # --- ✨ INICIO: SCRIPT CORRECTO (Data URI a Blob) ✨ ---
+        # 2. Define el script JS que copia la imagen <img> a un Blob y al portapapeles
         copy_script = f"""
 (async function() {{
   // 1. Encuentra el elemento <img> por su ID
   const img = document.getElementById('{qr_img_id}');
-  if (!img) {{
+  if (!img || !img.src) {{
     console.error("Elemento <img> del QR no encontrado:", '{qr_img_id}');
     return;
   }}
 
   try {{
-    // 2. Crea un canvas en memoria
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext("2d");
-
-    // 3. Dibuja la imagen (que ya está en la página) en el canvas
-    ctx.drawImage(img, 0, 0, img.width, img.height);
-
-    // 4. Convierte el canvas a un Blob (archivo de imagen PNG)
-    canvas.toBlob(async (blob) => {{
-      if (blob) {{
-        try {{
-          // 5. Escribe el Blob de imagen PNG en el portapapeles
-          await navigator.clipboard.write([
-            new ClipboardItem({{ [blob.type]: blob }})
-          ]);
-        }} catch (err) {{
-          console.error("Fallo al copiar la imagen al portapapeles:", err);
-        }}
-      }}
-    }}, "image/png");
-
+    // 2. El 'src' de la imagen es un Data URI (ej: "data:image/png;base64,...")
+    const dataUri = img.src;
+    
+    // 3. Usa fetch() para convertir el Data URI en un Blob
+    const response = await fetch(dataUri);
+    const blob = await response.blob();
+    
+    // 4. Escribe el Blob de imagen PNG en el portapapeles
+    await navigator.clipboard.write([
+      new ClipboardItem({{ [blob.type]: blob }})
+    ]);
+    
   }} catch (err) {{
-    console.error('Error al procesar la imagen para copiar:', err);
+    console.error('Error al copiar la imagen al portapapeles:', err);
   }}
 }})();
 """
@@ -470,7 +460,7 @@ def qr_display_modal() -> rx.Component:
                     rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
                         variant.qr_url != "",
-                        # qr_code_display ahora renderiza un <img> con el Data URI
+                        # qr_code_display renderiza un <img> con el Data URI
                         qr_code_display(value=variant.qr_url, size=120, id=qr_img_id),
                         rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
