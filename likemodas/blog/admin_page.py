@@ -375,12 +375,9 @@ def qr_display_modal() -> rx.Component:
     """
     [VERSIÓN CORREGIDA]
     El diálogo modal que muestra los códigos QR, ahora con estilos de impresión
-    corregidos para evitar que el contenido se corte.
+    corregidos y botón de copiar imagen.
     """
     
-    # --- ✨ INICIO: CORRECCIÓN DE ESTILOS DE IMPRESIÓN ✨ ---
-    # El estilo anterior (printable_area_style) solo ocultaba el fondo.
-    # Ahora, necesitamos un estilo separado para el ÁREA DE DESPLAZAMIENTO.
     scroll_area_print_style = {
         "@media print": {
             "max-height": "none !important",
@@ -388,7 +385,6 @@ def qr_display_modal() -> rx.Component:
         }
     }
     
-    # Mantenemos los estilos del contenedor principal
     printable_area_style = {
         "id": "printable-qr-area",
         "@media print": {
@@ -410,14 +406,20 @@ def qr_display_modal() -> rx.Component:
             },
         },
     }
-    # --- ✨ FIN: CORRECCIÓN DE ESTILOS DE IMPRESIÓN ✨ ---
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
         [VERSIÓN CORREGIDA]
         Renderiza la tarjeta para una sola variante de QR, ahora con un
-        botón para copiar la URL del QR.
+        botón para copiar la IMAGEN del QR.
         """
+        # --- ✨ INICIO: CORRECCIÓN DE COPIAR IMAGEN ✨ ---
+        
+        # 1. Define un ID único para el SVG del QR
+        qr_svg_id = f"qr-svg-{variant.variant_uuid}"
+        
+        # --- ✨ FIN: CORRECCIÓN DE COPIAR IMAGEN ✨ ---
+
         return rx.box(
             rx.hstack(
                 rx.vstack(
@@ -430,27 +432,29 @@ def qr_display_modal() -> rx.Component:
                     rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
                         variant.qr_url != "",
-                        qr_code_display(value=variant.qr_url, size=120),
+                        # --- ✨ Pasa el ID único al componente del QR ✨ ---
+                        qr_code_display(value=variant.qr_url, size=120, id=qr_svg_id),
                         rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
                     rx.text(variant.variant_uuid, size="1", color_scheme="gray", no_of_lines=1, max_width="140px"),
                     
-                    # --- ✨ INICIO: BOTÓN DE COPIAR URL AÑADIDO ✨ ---
+                    # --- ✨ INICIO: BOTÓN DE COPIAR IMAGEN ✨ ---
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
+                            # Llama a la función JS global con el ID del SVG
                             on_click=[
-                                rx.set_clipboard(variant.qr_url),
-                                rx.toast.success("¡URL del QR copiada!")
+                                rx.call_script(f"copyQrCodeAsImage('{qr_svg_id}')"),
+                                rx.toast.success("Imagen QR copiada al portapapeles")
                             ],
                             variant="soft",
                             color_scheme="gray",
                             size="1",
                             margin_top="0.25em",
                         ),
-                        content="Copiar URL del QR",
+                        content="Copiar Imagen del QR",
                     ),
-                    # --- ✨ FIN: BOTÓN DE COPIAR URL AÑADIDO ✨ ---
+                    # --- ✨ FIN: BOTÓN DE COPIAR IMAGEN ✨ ---
                     
                     align="center",
                 ),
@@ -471,15 +475,13 @@ def qr_display_modal() -> rx.Component:
                 ),
                 rx.dialog.description("Cada código QR identifica una variante única de tu producto."),
                 
-                # --- ✨ INICIO: CORRECCIÓN DE IMPRESIÓN (Aplicar estilo) ✨ ---
                 rx.scroll_area(
                     rx.vstack(rx.foreach(AppState.post_for_qr_display.variants, render_variant_qr), spacing="3", width="100%"),
                     max_height="60vh", 
                     type="auto", 
                     scrollbars="vertical",
-                    style=scroll_area_print_style # <-- Estilo aplicado aquí
+                    style=scroll_area_print_style 
                 ),
-                # --- ✨ FIN: CORRECCIÓN DE IMPRESIÓN ✨ ---
 
                 rx.flex(
                     rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
@@ -487,7 +489,7 @@ def qr_display_modal() -> rx.Component:
                 ),
                 align_items="stretch", 
                 spacing="4", 
-                style=printable_area_style, # <-- Estilo principal se mantiene
+                style=printable_area_style,
             ),
             style={"max_width": "720px"},
         ),

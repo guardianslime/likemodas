@@ -59,6 +59,58 @@ app = rx.App(
     api_transformer=fastapi_app
 )
 
+# --- ✨ INICIO: AÑADIR SCRIPT GLOBAL PARA COPIAR QR ✨ ---
+app.add_custom_script(
+    f"""
+function copyQrCodeAsImage(qr_id) {{
+  const svg = document.getElementById(qr_id);
+  if (!svg) {{
+    console.error("QR code SVG element not found:", qr_id);
+    return false;
+  }}
+
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  const svgBlob = new Blob([svgData], {{ type: "image/svg+xml;charset=utf-8" }});
+  const url = URL.createObjectURL(svgBlob);
+
+  img.onload = () => {{
+    const padding = 20; // 20px de relleno blanco alrededor
+    canvas.width = svg.clientWidth + padding * 2;
+    canvas.height = svg.clientHeight + padding * 2;
+    
+    // Rellena el fondo de blanco (importante para PNG)
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Dibuja la imagen del QR centrada
+    ctx.drawImage(img, padding, padding, svg.clientWidth, svg.clientHeight);
+
+    // Convierte el canvas a un Blob PNG
+    canvas.toBlob((blob) => {{
+      if (blob) {{
+        try {{
+          // Escribe el Blob en el portapapeles
+          navigator.clipboard.write([
+            new ClipboardItem({{ [blob.type]: blob }}),
+          ]);
+        }} catch (err) {{
+          console.error("Error writing to clipboard:", err);
+        }}
+      }}
+      // Limpia la URL del objeto
+      URL.revokeObjectURL(url);
+    }}, "image/png");
+  }};
+  
+  img.src = url;
+  return true; // Indica que se inició el proceso
+}}
+"""
+)
+
 # --- REGISTRO DE RUTAS ---
 
 # Rutas Públicas y de Autenticación
