@@ -374,7 +374,7 @@ def artist_edit_dialog() -> rx.Component:
 def qr_display_modal() -> rx.Component:
     """
     [VERSIÓN FINAL CORREGIDA]
-    Modal de QR con estilos de impresión y el script de copiado de imagen correcto.
+    Modal de QR con estilos de impresión y el script de copiado de imagen más robusto.
     """
     
     # --- (Estilos de impresión, no cambian) ---
@@ -411,42 +411,73 @@ def qr_display_modal() -> rx.Component:
         """
         [VERSIÓN CORREGIDA]
         Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
-        usando el método fetch(DataURI).
+        usando un canvas temporal.
         """
         
         # 1. Define un ID único para la ETIQUETA <img>
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- ✨ INICIO: SCRIPT CORRECTO (Data URI a Blob) ✨ ---
+        # --- ✨ INICIO: SCRIPT ROBUSTO (IMG a Canvas a Blob) ✨ ---
         # 2. Define el script JS que copia la imagen <img> a un Blob y al portapapeles
         copy_script = f"""
 (async function() {{
   // 1. Encuentra el elemento <img> por su ID
-  const img = document.getElementById('{qr_img_id}');
-  if (!img || !img.src) {{
+  const imgElement = document.getElementById('{qr_img_id}');
+  if (!imgElement) {{
     console.error("Elemento <img> del QR no encontrado:", '{qr_img_id}');
     return;
   }}
 
   try {{
-    // 2. El 'src' de la imagen es un Data URI (ej: "data:image/png;base64,...")
-    const dataUri = img.src;
-    
-    // 3. Usa fetch() para convertir el Data URI en un Blob
-    const response = await fetch(dataUri);
-    const blob = await response.blob();
-    
-    // 4. Escribe el Blob de imagen PNG en el portapapeles
-    await navigator.clipboard.write([
-      new ClipboardItem({{ [blob.type]: blob }})
-    ]);
-    
+    // Espera a que la imagen esté completamente cargada en el DOM
+    if (!imgElement.complete) {{
+        await new Promise(resolve => {{ imgElement.onload = resolve; }});
+    }}
+
+    // 2. Crea un canvas en memoria
+    const canvas = document.createElement("canvas");
+    // Añadir un pequeño padding blanco alrededor para que se vea mejor al copiar
+    const padding = 20; 
+    canvas.width = imgElement.naturalWidth + (padding * 2);
+    canvas.height = imgElement.naturalHeight + (padding * 2);
+    const ctx = canvas.getContext("2d");
+
+    // 3. Rellena el fondo del canvas de blanco
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 4. Dibuja la imagen en el canvas con el padding
+    ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
+
+    // 5. Convierte el canvas a un Blob (archivo de imagen PNG)
+    canvas.toBlob(async (blob) => {{
+      if (blob) {{
+        try {{
+          // 6. Escribe el Blob de imagen PNG en el portapapeles
+          await navigator.clipboard.write([
+            new ClipboardItem({{ [blob.type]: blob }})
+          ]);
+        }} catch (err) {{
+          console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
+          // Opcional: Fallback si la API del portapapeles falla (ej: sin HTTPS)
+          // Esto intentaría descargar la imagen, pero no la 'copiaría' al portapapeles
+          // const a = document.createElement('a');
+          // a.href = URL.createObjectURL(blob);
+          // a.download = 'qr_code.png';
+          // document.body.appendChild(a);
+          // a.click();
+          // document.body.removeChild(a);
+          // URL.revokeObjectURL(a.href);
+        }}
+      }}
+    }}, "image/png");
+
   }} catch (err) {{
-    console.error('Error al copiar la imagen al portapapeles:', err);
+    console.error('Error al procesar la imagen para copiar:', err);
   }}
 }})();
 """
-        # --- ✨ FIN: SCRIPT CORRECTO ✨ ---
+        # --- ✨ FIN: SCRIPT ROBUSTO ✨ ---
 
         return rx.box(
             rx.hstack(
