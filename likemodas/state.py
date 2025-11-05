@@ -6938,17 +6938,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_mis_publicaciones(self):
         """
-        [VERSIÓN CORREGIDA] Carga las publicaciones,
-        manejando el estado is_loading correctamente.
+        [VERSIÓN CORREGIDA] Carga las publicaciones y GENERA
+        los Data URI de los QR en el backend.
         """
-        self.is_loading = True # <--- AÑADIDO: Pone el spinner [cite: 2006]
+        self.is_loading = True 
         yield
 
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             self.mis_publicaciones_list = []
             self._raw_mis_publicaciones_list = []
-            self.is_loading = False # <--- AÑADIDO: Quita el spinner (en caso de error)
+            self.is_loading = False 
             return
 
         base_url = get_config().deploy_url 
@@ -6967,8 +6967,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             admin_posts = []
             for p in posts_from_db:
-                main_image = ""
-                if p.variants and p.variants[0].get("image_urls"):
+                main_image = p.main_image_url_variant or ""
+                if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0] 
 
                 creator_username = p.creator.user.username if p.creator and p.creator.user else None
@@ -6981,7 +6981,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
-                        unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else "" 
+                        
+                        # --- ✨ INICIO: CORRECCIÓN DE GENERACIÓN DE QR ✨ ---
+                        # Generamos el QR como una imagen Data URI aquí mismo
+                        qr_data_uri = ""
+                        if variant_uuid:
+                            # La URL que el QR debe contener (apuntando al producto en la tienda)
+                            webpage_url = f"{base_url}/?product_id_to_load={p.id}"
+                            try:
+                                img = qrcode.make(webpage_url)
+                                buffer = io.BytesIO()
+                                img.save(buffer, format="PNG")
+                                img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                                qr_data_uri = f"data:image/png;base64,{img_base64}"
+                            except Exception as e:
+                                logger.error(f"Error generando QR para UUID {variant_uuid}: {e}")
+                        # --- ✨ FIN: CORRECCIÓN DE GENERACIÓN DE QR ✨ ---
                         
                         variants_dto_list.append(
                             AdminVariantData(
@@ -6989,7 +7004,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 stock=v.get("stock", 0), 
                                 attributes_str=attrs_str,
                                 attributes=attrs,
-                                qr_url=unified_url 
+                                qr_url=qr_data_uri # <-- Pasamos el Data URI
                             )
                         )
 
@@ -6998,14 +7013,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price_cop=p.price_cop, 
-                        price=p.price, # <--- DATO AÑADIDO
+                        price=p.price, 
                         publish_active=p.publish_active,
                         main_image_url=main_image,
                         variants=variants_dto_list,
                         creator_name=creator_username,
                         owner_name=owner_username,
                         last_modified_by_name=modifier_username, 
-                        # --- DATOS AÑADIDOS PARA FILTRAR ---
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible
                     )
@@ -7014,7 +7028,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.mis_publicaciones_list = admin_posts 
             self._raw_mis_publicaciones_list = admin_posts
 
-        self.is_loading = False # <--- AÑADIDO: Quita el spinner (al finalizar)
+        self.is_loading = False
 
     @rx.event
     def delete_post(self, post_id: int):
