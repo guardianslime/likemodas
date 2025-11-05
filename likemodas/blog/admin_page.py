@@ -373,10 +373,11 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """
-    [VERSIÓN CORREGIDA]
-    Modal de QR con estilos de impresión y botón de copiar IMAGEN.
+    [VERSIÓN FINAL CORREGIDA]
+    Modal de QR con estilos de impresión y botón de copiar IMAGEN desde <img>.
     """
     
+    # --- (Estilos de impresión, no cambian) ---
     scroll_area_print_style = {
         "@media print": {
             "max-height": "none !important",
@@ -409,40 +410,53 @@ def qr_display_modal() -> rx.Component:
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
         [VERSIÓN CORREGIDA]
-        Renderiza la tarjeta de QR con un botón que copia la IMAGEN <img>.
+        Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>).
         """
         
         # 1. Define un ID único para la ETIQUETA <img>
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- ✨ INICIO: NUEVO SCRIPT DE COPIADO DE IMAGEN ✨ ---
+        # --- ✨ INICIO: SCRIPT CORRECTO (IMG a IMAGEN) ✨ ---
+        # 2. Define el script JS que copia la imagen <img> a un canvas y luego al portapapeles
         copy_script = f"""
 (async function() {{
+  // 1. Encuentra el elemento <img> por su ID
   const img = document.getElementById('{qr_img_id}');
-  if (!img || !img.src) {{
-    console.error("QR Image not found or src is empty:", '{qr_img_id}');
+  if (!img) {{
+    console.error("Elemento <img> del QR no encontrado:", '{qr_img_id}');
     return;
   }}
-  
+
   try {{
-    // El 'src' es un Data URI (data:image/png;base64,...)
-    const dataUri = img.src;
-    
-    // Convertir Data URI a Blob
-    const response = await fetch(dataUri);
-    const blob = await response.blob();
-    
-    // Escribir el Blob en el portapapeles
-    await navigator.clipboard.write([
-      new ClipboardItem({{ [blob.type]: blob }})
-    ]);
-    
+    // 2. Crea un canvas en memoria
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+
+    // 3. Dibuja la imagen (que ya está en la página) en el canvas
+    ctx.drawImage(img, 0, 0, img.width, img.height);
+
+    // 4. Convierte el canvas a un Blob (archivo de imagen PNG)
+    canvas.toBlob(async (blob) => {{
+      if (blob) {{
+        try {{
+          // 5. Escribe el Blob de imagen PNG en el portapapeles
+          await navigator.clipboard.write([
+            new ClipboardItem({{ [blob.type]: blob }})
+          ]);
+        }} catch (err) {{
+          console.error("Fallo al copiar la imagen al portapapeles:", err);
+        }}
+      }}
+    }}, "image/png");
+
   }} catch (err) {{
-    console.error('Error copying image to clipboard:', err);
+    console.error('Error al procesar la imagen para copiar:', err);
   }}
 }})();
 """
-        # --- ✨ FIN: NUEVO SCRIPT DE COPIADO DE IMAGEN ✨ ---
+        # --- ✨ FIN: SCRIPT CORRECTO ✨ ---
 
         return rx.box(
             rx.hstack(
@@ -456,7 +470,7 @@ def qr_display_modal() -> rx.Component:
                     rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
                         variant.qr_url != "",
-                        # qr_code_display AHORA RENDERIZA UN <img>
+                        # qr_code_display ahora renderiza un <img> con el Data URI
                         qr_code_display(value=variant.qr_url, size=120, id=qr_img_id),
                         rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
@@ -465,8 +479,9 @@ def qr_display_modal() -> rx.Component:
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
+                            # Llama al nuevo script
                             on_click=[
-                                rx.call_script(copy_script), # Llama al nuevo script
+                                rx.call_script(copy_script),
                                 rx.toast.success("Imagen QR copiada al portapapeles")
                             ],
                             variant="soft",
