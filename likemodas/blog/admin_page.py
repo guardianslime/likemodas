@@ -409,34 +409,35 @@ def qr_display_modal() -> rx.Component:
     }
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
-        """
-        [VERSIÓN CORREGIDA]
-        Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
-        y usa el disparador DOM para sincronizar el toast.
-        """
         
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- ✨ INICIO: SCRIPT CON DISPARADOR DE TOAST ✨ ---
+        # --- ✨ INICIO: SCRIPT CORREGIDO CON DEBUGGING Y ALERTAS ✨ ---
         copy_script_code = f"""
 (async function() {{
   const imgElement = document.getElementById('{qr_img_id}');
-  // 1. Elemento para disparar el evento de Reflex en caso de éxito
   const successTrigger = document.getElementById('qr_copy_success_trigger'); 
+  console.log("1. Ejecutando script de copiado para:", '{qr_img_id}');
   
   if (!imgElement) {{
-    console.error("QR Image not found:", '{qr_img_id}');
+    console.error("ERROR CRÍTICO: Imagen QR no encontrada con ID:", '{qr_img_id}');
+    alert("Error: Imagen QR no encontrada.");
     return; 
   }}
-
+  
+  // Si la imagen no es un <img> o no ha cargado, espera.
+  // Es mejor usar imgElement que sourceElement, ya que la función qr_code_display
+  // debe asegurar que el ID está en el <img>.
   try {{
-    if (!imgElement.complete) {{
+    if (imgElement.tagName.toLowerCase() === 'img' && !imgElement.complete) {{
+        console.log("2. Esperando a que la imagen IMG cargue...");
         await new Promise((resolve, reject) => {{ 
             imgElement.onload = resolve; 
             imgElement.onerror = reject;
         }});
     }}
 
+    // 3. Creación del Canvas
     const canvas = document.createElement("canvas");
     const padding = 20; 
     canvas.width = imgElement.naturalWidth + (padding * 2);
@@ -446,36 +447,45 @@ def qr_display_modal() -> rx.Component:
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
+    console.log("3. Imagen dibujada en Canvas. Buscando Blob...");
 
     await new Promise((resolve, reject) => {{
         canvas.toBlob(async (blob) => {{
             if (blob) {{
                 try {{
+                    // 4. Escribir en el portapapeles (el punto más probable de fallo)
                     await navigator.clipboard.write([
                         new ClipboardItem({{ [blob.type]: blob }})
                     ]);
                     
-                    // 3. ÉXITO: Si la copia es exitosa, disparamos el evento de Reflex.
+                    console.log("4. ÉXITO: Imagen copiada al portapapeles.");
                     if (successTrigger) {{
                         successTrigger.click(); // <--- Dispara el evento del Toast
                     }}
                     resolve();
                 }} catch (err) {{
-                    console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
+                    // Fallo de SecurityError (navegador bloqueando la escritura)
+                    console.error("FALLO (Clipboard API): El navegador bloqueó la escritura del Blob. Causado por: ", err);
+                    alert("ERROR DE COPIADO: El navegador ha bloqueado la escritura al portapapeles. Esto puede ocurrir si el sitio no es seguro (no HTTPS) o por permisos.");
                     resolve(); 
                 }}
             }} else {{
-                console.error("Fallo al crear Blob.");
+                // Fallo al crear el Blob (Tainting por CORS, si la imagen fuera remota)
+                console.error("FALLO (Blob): Error al crear Blob. POSIBLE FALLO DE CORS (Canvas Tainted).");
+                alert("ERROR DE COPIADO: Fallo al procesar la imagen (Canvas Tainted). Intenta de nuevo.");
                 resolve();
             }}
         }}, "image/png");
     }});
 
   }} catch (err) {{
-    console.error('Error al procesar la imagen para copiar:', err);
+    // Falla en drawImage (si es un SVG o si el QR no ha cargado correctamente)
+    console.error('ERROR (Procesamiento): Error al procesar la imagen (posiblemente un SVG o la imagen no cargó).', err);
+    alert('ERROR DE COPIADO: La imagen del QR no se pudo procesar. Verifica la consola del navegador para más detalles.');
   }}
 }})();
 """
+        # --- ✨ FIN: SCRIPT CORREGIDO CON DEBUGGING Y ALERTAS ✨ ---
         # --- ✨ FIN: SCRIPT CON DISPARADOR DE TOAST ✨ ---
 
         return rx.box(
