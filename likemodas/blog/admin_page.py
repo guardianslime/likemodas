@@ -373,12 +373,12 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL COMPATIBLE v5]
-    Modal de QR con corrección de SyntaxError y botón de copiar
+    [VERSIÓN FINAL COMPATIBLE]
+    Modal de QR con estilos de impresión y el script de copiado de imagen
     que usa un disparador DOM para el toast de éxito.
     """
     
-    # --- (Estilos de impresión) ---
+    # --- (Estilos de impresión, no cambian) ---
     scroll_area_print_style = {
         "@media print": {
             "max-height": "none !important",
@@ -410,16 +410,18 @@ def qr_display_modal() -> rx.Component:
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
+        [VERSIÓN CORREGIDA]
         Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
         y usa el disparador DOM para sincronizar el toast.
         """
         
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- SCRIPT DE COPIADO (con disparador DOM) ---
+        # --- ✨ INICIO: SCRIPT CON DISPARADOR DE TOAST ✨ ---
         copy_script_code = f"""
 (async function() {{
   const imgElement = document.getElementById('{qr_img_id}');
+  // 1. Elemento para disparar el evento de Reflex en caso de éxito
   const successTrigger = document.getElementById('qr_copy_success_trigger'); 
   
   if (!imgElement) {{
@@ -445,7 +447,7 @@ def qr_display_modal() -> rx.Component:
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
 
-    await new Promise((resolve) => {{
+    await new Promise((resolve, reject) => {{
         canvas.toBlob(async (blob) => {{
             if (blob) {{
                 try {{
@@ -453,12 +455,13 @@ def qr_display_modal() -> rx.Component:
                         new ClipboardItem({{ [blob.type]: blob }})
                     ]);
                     
+                    // 3. ÉXITO: Si la copia es exitosa, disparamos el evento de Reflex.
                     if (successTrigger) {{
-                        successTrigger.click(); 
+                        successTrigger.click(); // <--- Dispara el evento del Toast
                     }}
                     resolve();
                 }} catch (err) {{
-                    console.error("Fallo al copiar la imagen al portapapeles:", err);
+                    console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
                     resolve(); 
                 }}
             }} else {{
@@ -473,16 +476,14 @@ def qr_display_modal() -> rx.Component:
   }}
 }})();
 """
-        # --- FIN SCRIPT ---
-    
+        # --- ✨ FIN: SCRIPT CON DISPARADOR DE TOAST ✨ ---
+
         return rx.box(
             rx.hstack(
                 rx.vstack(
                     rx.text(variant.attributes_str, weight="bold", size="4"),
                     rx.text(f"Stock: {variant.stock}"),
-                    # --- ✨ INICIO: CORRECCIÓN DEL SYNTAXERROR ✨ ---
-                    align_items="start", spacing="1", flex_grow="1", # <-- Se añadió el "="
-                    # --- ✨ FIN: CORRECCIÓN DEL SYNTAXERROR ✨ ---
+                    align_items="start", spacing="1", flex_grow="1",
                 ),
                 rx.spacer(),
                 rx.vstack(
@@ -497,12 +498,13 @@ def qr_display_modal() -> rx.Component:
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
-                            # --- ✨ ON_CLICK CORREGIDO (compatible con versión antigua) ✨ ---
+                            # --- ✨ ON_CLICK REVISADO PARA COMPATIBILIDAD ✨ ---
                             on_click=[
                                 AppState.set_is_copying_qr(True), 
-                                rx.call_script(copy_script_code), # <-- Usa rx.call_script
+                                # Solo ejecutamos el script (sin on_success/on_failure)
+                                rx.call_script(copy_script_code), 
                             ],
-                            # --- ✨ FIN ON_CLICK CORREGIDO ✨ ---
+                            # --- ✨ FIN ON_CLICK REVISADO ✨ ---
                             variant="soft",
                             color_scheme="gray",
                             size="1",
@@ -543,12 +545,13 @@ def qr_display_modal() -> rx.Component:
                     spacing="3", margin_top="1em", justify="end",
                 ),
                 
-                # --- ✨ DISPARADOR OCULTO (para el toast) ✨ ---
+                # --- ✨ AÑADIR ESTE DISPARADOR OCULTO DE NUEVO ✨ ---
+                # Este es el botón que el JavaScript hace click para disparar el Toast de Reflex
                 rx.button(
                     "CopySuccessTrigger",
-                    id="qr_copy_success_trigger", 
-                    on_click=AppState.show_qr_copy_success_toast, 
-                    display="none", 
+                    id="qr_copy_success_trigger", # <--- ID que el JS busca
+                    on_click=AppState.show_qr_copy_success_toast, # <--- El evento que muestra el toast
+                    display="none", # Debe estar oculto
                 ),
                 # --- ✨ FIN DISPARADOR OCULTO ✨ ---
 
