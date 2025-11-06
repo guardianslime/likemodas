@@ -373,12 +373,11 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL CORREGIDA v3]
-    Modal de QR con estilos de impresión y script de copiado de imagen
-    que dispara el toast SÓLO al finalizar.
+    [VERSIÓN FINAL CORREGIDA v4]
+    Modal de QR con la corrección del SyntaxError.
     """
     
-    # --- (Estilos de impresión, no cambian) ---
+    # --- (Estilos de impresión) ---
     scroll_area_print_style = {
         "@media print": {
             "max-height": "none !important",
@@ -390,8 +389,9 @@ def qr_display_modal() -> rx.Component:
         "id": "printable-qr-area",
         "@media print": {
             "body *": {
-                "visibility": "hidden !impor
-tant",
+                # --- ✨ INICIO: CORRECCIÓN DEL SYNTAXERROR ✨ ---
+                "visibility": "hidden !important", # <-- Esta línea está ahora en una sola cadena
+                # --- ✨ FIN: CORRECCIÓN DEL SYNTAXERROR ✨ ---
             },
             "#printable-qr-area, #printable-qr-area *": {
                 "visibility": "visible !important",
@@ -413,21 +413,24 @@ tant",
         """
         [VERSIÓN CORREGIDA]
         Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
-        y dispara un evento de toast al tener éxito.
+        usando un canvas temporal.
         """
         
+        # 1. Define un ID único para la ETIQUETA <img>
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- ✨ INICIO: SCRIPT CON DISPARADOR DE TOAST ✨ ---
+        # 2. Define el script JS que copia la imagen <img> a un Blob y al portapapeles
         copy_script = f"""
 (async function() {{
+  // 1. Encuentra el elemento <img> por su ID
   const imgElement = document.getElementById('{qr_img_id}');
   if (!imgElement) {{
-    console.error("QR Image not found:", '{qr_img_id}');
+    console.error("Elemento <img> del QR no encontrado:", '{qr_img_id}');
     return;
   }}
 
   try {{
+    // Espera a que la imagen esté completamente cargada en el DOM
     if (!imgElement.complete) {{
         await new Promise((resolve, reject) => {{ 
             imgElement.onload = resolve; 
@@ -435,30 +438,34 @@ tant",
         }});
     }}
 
+    // 2. Crea un canvas en memoria
     const canvas = document.createElement("canvas");
     const padding = 20; 
     canvas.width = imgElement.naturalWidth + (padding * 2);
     canvas.height = imgElement.naturalHeight + (padding * 2);
     const ctx = canvas.getContext("2d");
 
+    // 3. Rellena el fondo del canvas de blanco
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 4. Dibuja la imagen en el canvas con el padding
     ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
 
+    // 5. Convierte el canvas a un Blob (archivo de imagen PNG)
     canvas.toBlob(async (blob) => {{
       if (blob) {{
         try {{
+          // 6. Escribe el Blob de imagen PNG en el portapapeles
           await navigator.clipboard.write([
             new ClipboardItem({{ [blob.type]: blob }})
           ]);
           
-          // --- ESTA ES LA CORRECCIÓN ---
-          // Busca el botón disparador oculto y haz clic en él
+          // 7. Busca el botón disparador oculto y haz clic en él
           const triggerButton = document.getElementById('qr_copy_success_trigger');
           if (triggerButton) {{
             triggerButton.click();
           }}
-          // --- FIN DE LA CORRECCIÓN ---
 
         }} catch (err) {{
           console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
@@ -471,7 +478,6 @@ tant",
   }}
 }})();
 """
-        # --- ✨ FIN: SCRIPT CON DISPARADOR DE TOAST ✨ ---
 
         return rx.box(
             rx.hstack(
@@ -485,6 +491,7 @@ tant",
                     rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
                         variant.qr_url != "",
+                        # qr_code_display renderiza un <img> con el Data URI
                         qr_code_display(value=variant.qr_url, size=120, id=qr_img_id),
                         rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
@@ -493,10 +500,8 @@ tant",
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
-                            # --- ✨ CORRECCIÓN DE ON_CLICK ✨ ---
-                            # Ahora solo llama al script. El script se encargará del toast.
+                            # Llama al script (el script ahora dispara el toast)
                             on_click=rx.call_script(copy_script),
-                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                             variant="soft",
                             color_scheme="gray",
                             size="1",
@@ -541,15 +546,13 @@ tant",
                 style=printable_area_style,
             ),
             
-            # --- ✨ INICIO: AÑADIR BOTÓN OCULTO ✨ ---
-            # Este botón es invisible y solo existe para ser "presionado" por el script
+            # Botón oculto para que el script JS lo presione
             rx.button(
                 "CopySuccessTrigger",
                 id="qr_copy_success_trigger",
                 on_click=AppState.show_qr_copy_success_toast,
                 display="none",
             ),
-            # --- ✨ FIN: AÑADIR BOTÓN OCULTO ✨ ---
 
             style={"max_width": "720px"},
         ),
