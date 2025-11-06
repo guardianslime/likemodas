@@ -489,12 +489,12 @@ def qr_display_modal() -> rx.Component:
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
-                            # --- ✨ ON_CLICK REVISADO ✨ ---
+                            # --- ✨ ON_CLICK REVISADO (CORREGIDO) ✨ ---
                             on_click=[
                                 # 1. Ponemos el estado de copiado a True
                                 AppState.set_is_copying_qr(True),
-                                # 2. Ejecutamos el script. Su resultado (true/false) se pasará a on_success.
-                                rx.run_js(
+                                # 2. CAMBIA rx.run_js por rx.call_script
+                                rx.call_script( # <--- ¡AQUÍ ESTÁ LA CORRECCIÓN!
                                     copy_script_code,
                                     # Si el JS devuelve true (éxito), disparamos el toast
                                     on_success=AppState.show_qr_copy_success_toast,
