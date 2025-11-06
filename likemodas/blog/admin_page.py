@@ -373,203 +373,70 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL Y COMPATIBLE]
-    Modal de QR con estilos de impresión y botón de copiar imagen robusto
-    que usa un disparador DOM para el toast de éxito.
+    Modal que muestra el QR generado para el usuario y el botón para copiarlo.
+    Corregido para usar la acción de copiado de imagen por JavaScript.
     """
-    
-    # --- (Estilos de impresión, no cambian) ---
-    scroll_area_print_style = {
-        "@media print": {
-            "max-height": "none !important",
-            "overflow": "visible !important",
-        }
-    }
-    
-    printable_area_style = {
-        "id": "printable-qr-area",
-        "@media print": {
-            "body *": {
-                "visibility": "hidden !important",
-            },
-            "#printable-qr-area, #printable-qr-area *": {
-                "visibility": "visible !important",
-            },
-            "#printable-qr-area": {
-                "position": "absolute !important",
-                "left": "0 !important",
-                "top": "0 !important",
-                "width": "100% !important",
-                "padding": "1em !important",
-                "margin": "0 !important",
-                "box_shadow": "none !important",
-                "border": "none !important",
-            },
-        },
-    }
-
-    def render_variant_qr(variant: AdminVariantData) -> rx.Component:
-        """
-        Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
-        y usa el disparador DOM para sincronizar el toast.
-        """
-        
-        qr_img_id = f"qr-img-{variant.variant_uuid}"
-        
-        # --- ✨ SCRIPT MEJORADO PARA COPIAR CON DISPARADOR DOM ✨ ---
-        copy_script_code = f"""
-(async function() {{
-  const imgElement = document.getElementById('{qr_img_id}');
-  // 1. Elemento para disparar el evento de Reflex en caso de éxito
-  const successTrigger = document.getElementById('qr_copy_success_trigger'); 
-  
-  if (!imgElement) {{
-    console.error("QR Image not found:", '{qr_img_id}');
-    return; 
-  }}
-
-  try {{
-    // Es crucial esperar a que la imagen Data URI se cargue
-    if (!imgElement.complete) {{
-        await new Promise((resolve, reject) => {{ 
-            imgElement.onload = resolve; 
-            imgElement.onerror = reject;
-        }});
-    }}
-
-    // Creación del Canvas (Añade padding y fondo blanco)
-    const canvas = document.createElement("canvas");
-    const padding = 20; 
-    canvas.width = imgElement.naturalWidth + (padding * 2);
-    canvas.height = imgElement.naturalHeight + (padding * 2);
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
-
-    // Convertir a Blob y Copiar
-    await new Promise((resolve, reject) => {{
-        canvas.toBlob(async (blob) => {{
-            if (blob) {{
-                try {{
-                    // 2. Intentar escribir al portapapeles (solo funciona por HTTPS/localhost)
-                    await navigator.clipboard.write([
-                        new ClipboardItem({{ [blob.type]: blob }})
-                    ]);
-                    
-                    // 3. ÉXITO: Si la copia es exitosa, disparamos el evento de Reflex.
-                    if (successTrigger) {{
-                        successTrigger.click(); // <--- Dispara el evento del Toast
-                    }}
-                    resolve();
-                }} catch (err) {{
-                    console.error("Fallo al copiar la imagen al portapapeles:", err);
-                    // En caso de fallo, no mostramos toast, solo resolvemos/salimos.
-                    // Si falla el API, es un problema de permisos del navegador.
-                    resolve(); 
-                }}
-            }} else {{
-                console.error("Fallo al crear Blob.");
-                resolve();
-            }}
-        }}, "image/png");
-    }});
-
-  }} catch (err) {{
-    console.error('Error al procesar la imagen para copiar:', err);
-  }}
-}})();
-"""
-        # --- ✨ FIN: SCRIPT MEJORADO ✨ ---
-
-        return rx.box(
-            rx.hstack(
-                rx.vstack(
-                    rx.text(variant.attributes_str, weight="bold", size="4"),
-                    rx.text(f"Stock: {variant.stock}"),
-                    align_items="start", spacing="1", flex_grow="1",
-                ),
-                rx.spacer(),
-                rx.vstack(
-                    rx.text("Código QR Único", size="2", weight="medium"),
-                    rx.cond(
-                        variant.qr_url != "",
-                        qr_code_display(value=variant.qr_url, size=120, id=qr_img_id),
-                        rx.center(rx.text("Sin QR"), width="120px", height="120px")
-                    ),
-                    rx.text(variant.variant_uuid, size="1", color_scheme="gray", no_of_lines=1, max_width="140px"),
-                    
-                    rx.tooltip(
-                        rx.icon_button(
-                            rx.icon("copy", size=14),
-                            # --- ✨ ON_CLICK REVISADO PARA COMPATIBILIDAD ✨ ---
-                            on_click=[
-                                # Solo ponemos el estado a True (para un posible spinner, aunque no lo usamos)
-                                AppState.set_is_copying_qr(True), 
-                                # Solo ejecutamos el script sin on_success/on_failure
-                                rx.call_script(copy_script_code), 
-                                # Asumimos que el script de JS se encarga de disparar el click al successTrigger
-                            ],
-                            # --- ✨ FIN ON_CLICK REVISADO ✨ ---
-                            variant="soft",
-                            color_scheme="gray",
-                            size="1",
-                            margin_top="0.25em",
-                        ),
-                        content="Copiar Imagen del QR",
-                    ),
-                    
-                    align="center",
-                ),
-                spacing="6", align="center", width="100%"
-            ),
-            border="1px solid", border_color=rx.color("gray", 6),
-            border_radius="md", padding="1em", width="100%",
-        )
-
     return rx.dialog.root(
+        # Controlar la apertura y cierre del modal
+        open=AppState.show_qr_modal,
+        on_open_change=AppState.set_show_qr_modal,
+        
+        # Contenido del modal
         rx.dialog.content(
-            rx.vstack(
-                rx.hstack(
-                    rx.dialog.title("Códigos QR para: ", rx.text(AppState.post_for_qr_display.title, as_="span", color_scheme="violet")),
-                    rx.spacer(),
-                    rx.button("Imprimir", on_click=rx.call_script("window.print()")),
-                    justify="between", width="100%"
+            rx.dialog.title("Código QR de Acceso"),
+            rx.dialog.description("Escanea este código o usa el botón para compartirlo."),
+            
+            rx.center(
+                rx.vstack(
+                    # 1. El componente QR con el ID necesario para el script JS
+                    qr_code_display(
+                        value=AppState.qr_code_url,
+                        id="qr-code-img",  # <-- ¡ID CRUCIAL! El JS lo busca por este ID.
+                        size=250,
+                    ),
+                    
+                    # 2. El botón que llama a la acción de copiado CORREGIDA
+                    rx.button(
+                        rx.icon("copy", margin_right="0.5em"),
+                        "Copiar QR al Portapapeles",
+                        # Llama a la acción que ejecuta el JS para copiar la imagen (definida en state.py)
+                        on_click=AppState.copy_qr_image_action, 
+                        is_loading=AppState.is_copying_qr,
+                        disabled=AppState.is_copying_qr,
+                        color_scheme="violet",
+                        variant="soft",
+                        size="3",
+                        width="100%",
+                    ),
+                    
+                    # 3. Opción de enlace alternativo
+                    rx.text(
+                        "Enlace alternativo (solo texto):",
+                        size="1",
+                        color_scheme="gray",
+                        margin_top="1em",
+                    ),
+                    rx.input(
+                        value=AppState.qr_code_url,
+                        is_read_only=True,
+                        on_click=rx.clipboard.copy(AppState.qr_code_url, on_success=rx.toast.success("Enlace copiado (texto)")),
+                    ),
+                    
+                    spacing="4",
+                    width="100%",
                 ),
-                rx.dialog.description("Cada código QR identifica una variante única de tu producto."),
-                
-                rx.scroll_area(
-                    rx.vstack(rx.foreach(AppState.post_for_qr_display.variants, render_variant_qr), spacing="3", width="100%"),
-                    max_height="60vh", 
-                    type="auto", 
-                    scrollbars="vertical",
-                    style=scroll_area_print_style 
-                ),
-
-                rx.flex(
-                    rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
-                    spacing="3", margin_top="1em", justify="end",
-                ),
-                
-                # --- ✨ AÑADIR ESTE DISPARADOR OCULTO DE NUEVO ✨ ---
-                # Este es el botón que el JavaScript hace click para disparar el Toast de Reflex
-                rx.button(
-                    "CopySuccessTrigger",
-                    id="qr_copy_success_trigger", # <--- ID que el JS busca
-                    on_click=AppState.show_qr_copy_success_toast, # <--- El evento que muestra el toast
-                    display="none", # Debe estar oculto
-                ),
-                # --- ✨ FIN DISPARADOR OCULTO ✨ ---
-
-                align_items="stretch", 
-                spacing="4", 
-                style=printable_area_style,
             ),
-            style={"max_width": "720px"},
+
+            rx.flex(
+                rx.dialog.close(
+                    rx.button("Cerrar", variant="soft", color_scheme="gray"),
+                ),
+                justify="end",
+                margin_top="1.5em",
+            ),
+            
+            style={"max_width": "350px"},
         ),
-        open=AppState.show_qr_display_modal,
-        on_open_change=AppState.set_show_qr_display_modal,
     )
 
 def desktop_post_row(post: AdminPostRowData) -> rx.Component:

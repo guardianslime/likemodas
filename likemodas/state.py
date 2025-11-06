@@ -80,6 +80,70 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 # --- FIN DE LA CONFIGURACIÓN ---
 
+# 1. El script de JavaScript para copiar la imagen del QR al portapapeles.
+#    Asumimos que el componente de QR tiene el id="qr-code-img"
+QR_COPY_JS_SCRIPT = """
+    async function copyQrImage() {
+        // Busca el elemento de la imagen QR por ID
+        const qrElement = document.getElementById('qr-code-img');
+        if (!qrElement || !qrElement.src) {
+            console.error('QR element not found or has no source!');
+            return false;
+        }
+        
+        // Obtiene el Data URL (la imagen codificada en base64)
+        const dataUrl = qrElement.src;
+
+        try {
+            // Convierte el Data URL a un Blob (requerido por el Clipboard API)
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            
+            // Escribe la imagen Blob al portapapeles
+            await navigator.clipboard.write([
+                new ClipboardItem({ [blob.type]: blob })
+            ]);
+            
+            return true; // Éxito
+        } catch (err) {
+            console.error('Failed to copy QR image:', err);
+            // Si hay un error, usa una copia de seguridad (copiar el texto del link)
+            try {
+                await navigator.clipboard.writeText(dataUrl);
+                return true; // Éxito si al menos copiamos el texto del Data URL
+            } catch (err2) {
+                console.error('Failed to copy text fallback:', err2);
+                return false; // Falla total
+            }
+        }
+    }
+    // Ejecuta la función asíncrona y devuelve el resultado
+    return await copyQrImage();
+"""
+
+@rx.event
+def copy_qr_image_action(self):
+    """
+    Orquesta la acción de copiar el QR y el manejo del toast.
+    Esta acción es la que debe ir en el on_click del botón.
+    """
+    return [
+        # 1. Establece el estado de copiado a True (si lo usas para deshabilitar el botón)
+        self.set_is_copying_qr(True),
+        
+        # 2. Llama al script JS. 
+        #    - El script JS retorna 'true' o 'false'.
+        #    - on_success se llama si el script se ejecuta sin errores.
+        #    - El script JS hace la copia.
+        rx.call_script(
+            QR_COPY_JS_SCRIPT,
+            # Llama al evento de éxito si el script JS se ejecuta correctamente.
+            # Este evento, a su vez, establecerá is_copying_qr en False.
+            on_success=self.show_qr_copy_success_toast,
+            on_error=rx.toast.error("Error desconocido al iniciar la copia. Revisa la consola del navegador."),
+        )
+    ]
+
 def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
     """Genera el texto de envío basado en el costo."""
     if shipping_cost == 0.0:
@@ -2909,7 +2973,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.search_attr_tipo.lower() in o.lower()
         ]
     
-    is_copying_qr: bool = False # Nuevo: Para controlar el proceso de copiado
+    is_copying_qr: bool = False # Para controlar el proceso de copiado (opcional, pero buena práctica)
 
     @rx.event
     def show_qr_copy_success_toast(self):
