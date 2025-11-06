@@ -373,11 +373,11 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL CORREGIDA v4]
-    Modal de QR con la corrección del SyntaxError.
+    [VERSIÓN FINAL DEFINITIVA]
+    Modal de QR con estilos de impresión y botón de copiar imagen robusto.
     """
     
-    # --- (Estilos de impresión) ---
+    # --- (Estilos de impresión, no cambian) ---
     scroll_area_print_style = {
         "@media print": {
             "max-height": "none !important",
@@ -389,9 +389,7 @@ def qr_display_modal() -> rx.Component:
         "id": "printable-qr-area",
         "@media print": {
             "body *": {
-                # --- ✨ INICIO: CORRECCIÓN DEL SYNTAXERROR ✨ ---
-                "visibility": "hidden !important", # <-- Esta línea está ahora en una sola cadena
-                # --- ✨ FIN: CORRECCIÓN DEL SYNTAXERROR ✨ ---
+                "visibility": "hidden !important",
             },
             "#printable-qr-area, #printable-qr-area *": {
                 "visibility": "visible !important",
@@ -411,26 +409,23 @@ def qr_display_modal() -> rx.Component:
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
-        [VERSIÓN CORREGIDA]
         Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
-        usando un canvas temporal.
+        y usa el estado de Reflex para sincronizar el toast.
         """
         
-        # 1. Define un ID único para la ETIQUETA <img>
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # 2. Define el script JS que copia la imagen <img> a un Blob y al portapapeles
-        copy_script = f"""
+        # --- ✨ INICIO: SCRIPT MEJORADO PARA COPIAR CON FEEDBACK ✨ ---
+        # Este script ahora devuelve un booleano para indicar éxito/fallo
+        copy_script_code = f"""
 (async function() {{
-  // 1. Encuentra el elemento <img> por su ID
   const imgElement = document.getElementById('{qr_img_id}');
   if (!imgElement) {{
-    console.error("Elemento <img> del QR no encontrado:", '{qr_img_id}');
-    return;
+    console.error("QR Image not found:", '{qr_img_id}');
+    return false; // Fallo
   }}
 
   try {{
-    // Espera a que la imagen esté completamente cargada en el DOM
     if (!imgElement.complete) {{
         await new Promise((resolve, reject) => {{ 
             imgElement.onload = resolve; 
@@ -438,46 +433,41 @@ def qr_display_modal() -> rx.Component:
         }});
     }}
 
-    // 2. Crea un canvas en memoria
     const canvas = document.createElement("canvas");
     const padding = 20; 
     canvas.width = imgElement.naturalWidth + (padding * 2);
     canvas.height = imgElement.naturalHeight + (padding * 2);
     const ctx = canvas.getContext("2d");
 
-    // 3. Rellena el fondo del canvas de blanco
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 4. Dibuja la imagen en el canvas con el padding
     ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
 
-    // 5. Convierte el canvas a un Blob (archivo de imagen PNG)
-    canvas.toBlob(async (blob) => {{
-      if (blob) {{
-        try {{
-          // 6. Escribe el Blob de imagen PNG en el portapapeles
-          await navigator.clipboard.write([
-            new ClipboardItem({{ [blob.type]: blob }})
-          ]);
-          
-          // 7. Busca el botón disparador oculto y haz clic en él
-          const triggerButton = document.getElementById('qr_copy_success_trigger');
-          if (triggerButton) {{
-            triggerButton.click();
-          }}
-
-        }} catch (err) {{
-          console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
-        }}
-      }}
-    }}, "image/png");
+    return new Promise((resolve) => {{
+        canvas.toBlob(async (blob) => {{
+            if (blob) {{
+                try {{
+                    await navigator.clipboard.write([
+                        new ClipboardItem({{ [blob.type]: blob }})
+                    ]);
+                    resolve(true); // Éxito
+                }} catch (err) {{
+                    console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
+                    resolve(false); // Fallo
+                }}
+            }} else {{
+                resolve(false); // Fallo al crear Blob
+            }}
+        }}, "image/png");
+    }});
 
   }} catch (err) {{
     console.error('Error al procesar la imagen para copiar:', err);
+    return false; // Fallo
   }}
 }})();
 """
+        # --- ✨ FIN: SCRIPT MEJORADO ✨ ---
 
         return rx.box(
             rx.hstack(
@@ -491,7 +481,6 @@ def qr_display_modal() -> rx.Component:
                     rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
                         variant.qr_url != "",
-                        # qr_code_display renderiza un <img> con el Data URI
                         qr_code_display(value=variant.qr_url, size=120, id=qr_img_id),
                         rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
@@ -500,8 +489,20 @@ def qr_display_modal() -> rx.Component:
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
-                            # Llama al script (el script ahora dispara el toast)
-                            on_click=rx.call_script(copy_script),
+                            # --- ✨ ON_CLICK REVISADO ✨ ---
+                            on_click=[
+                                # 1. Ponemos el estado de copiado a True
+                                AppState.set_is_copying_qr(True),
+                                # 2. Ejecutamos el script. Su resultado (true/false) se pasará a on_success.
+                                rx.run_js(
+                                    copy_script_code,
+                                    # Si el JS devuelve true (éxito), disparamos el toast
+                                    on_success=AppState.show_qr_copy_success_toast,
+                                    # Si el JS devuelve false (fallo), solo limpiamos el estado
+                                    on_failure=AppState.set_is_copying_qr(False) 
+                                )
+                            ],
+                            # --- ✨ FIN ON_CLICK REVISADO ✨ ---
                             variant="soft",
                             color_scheme="gray",
                             size="1",
@@ -546,13 +547,15 @@ def qr_display_modal() -> rx.Component:
                 style=printable_area_style,
             ),
             
-            # Botón oculto para que el script JS lo presione
-            rx.button(
-                "CopySuccessTrigger",
-                id="qr_copy_success_trigger",
-                on_click=AppState.show_qr_copy_success_toast,
-                display="none",
-            ),
+            # --- NOTA IMPORTANTE ---
+            # El botón oculto "CopySuccessTrigger" ya NO es necesario con rx.run_js.
+            # Lo dejo comentado aquí por si acaso, pero deberías eliminarlo.
+            # rx.button(
+            #     "CopySuccessTrigger",
+            #     id="qr_copy_success_trigger",
+            #     on_click=AppState.show_qr_copy_success_toast,
+            #     display="none",
+            # ),
 
             style={"max_width": "720px"},
         ),
