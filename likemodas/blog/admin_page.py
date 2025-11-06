@@ -373,8 +373,9 @@ def artist_edit_dialog() -> rx.Component:
 
 def qr_display_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL DEFINITIVA]
-    Modal de QR con estilos de impresión y botón de copiar imagen robusto.
+    [VERSIÓN FINAL Y COMPATIBLE]
+    Modal de QR con estilos de impresión y botón de copiar imagen robusto
+    que usa un disparador DOM para el toast de éxito.
     """
     
     # --- (Estilos de impresión, no cambian) ---
@@ -410,22 +411,25 @@ def qr_display_modal() -> rx.Component:
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
         Renderiza la tarjeta de QR con un botón que copia la IMAGEN (<img>)
-        y usa el estado de Reflex para sincronizar el toast.
+        y usa el disparador DOM para sincronizar el toast.
         """
         
         qr_img_id = f"qr-img-{variant.variant_uuid}"
         
-        # --- ✨ INICIO: SCRIPT MEJORADO PARA COPIAR CON FEEDBACK ✨ ---
-        # Este script ahora devuelve un booleano para indicar éxito/fallo
+        # --- ✨ SCRIPT MEJORADO PARA COPIAR CON DISPARADOR DOM ✨ ---
         copy_script_code = f"""
 (async function() {{
   const imgElement = document.getElementById('{qr_img_id}');
+  // 1. Elemento para disparar el evento de Reflex en caso de éxito
+  const successTrigger = document.getElementById('qr_copy_success_trigger'); 
+  
   if (!imgElement) {{
     console.error("QR Image not found:", '{qr_img_id}');
-    return false; // Fallo
+    return; 
   }}
 
   try {{
+    // Es crucial esperar a que la imagen Data URI se cargue
     if (!imgElement.complete) {{
         await new Promise((resolve, reject) => {{ 
             imgElement.onload = resolve; 
@@ -433,6 +437,7 @@ def qr_display_modal() -> rx.Component:
         }});
     }}
 
+    // Creación del Canvas (Añade padding y fondo blanco)
     const canvas = document.createElement("canvas");
     const padding = 20; 
     canvas.width = imgElement.naturalWidth + (padding * 2);
@@ -443,27 +448,36 @@ def qr_display_modal() -> rx.Component:
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imgElement, padding, padding, imgElement.naturalWidth, imgElement.naturalHeight);
 
-    return new Promise((resolve) => {{
+    // Convertir a Blob y Copiar
+    await new Promise((resolve, reject) => {{
         canvas.toBlob(async (blob) => {{
             if (blob) {{
                 try {{
+                    // 2. Intentar escribir al portapapeles (solo funciona por HTTPS/localhost)
                     await navigator.clipboard.write([
                         new ClipboardItem({{ [blob.type]: blob }})
                     ]);
-                    resolve(true); // Éxito
+                    
+                    // 3. ÉXITO: Si la copia es exitosa, disparamos el evento de Reflex.
+                    if (successTrigger) {{
+                        successTrigger.click(); // <--- Dispara el evento del Toast
+                    }}
+                    resolve();
                 }} catch (err) {{
-                    console.error("Fallo al copiar la imagen al portapapeles (Clipboard API):", err);
-                    resolve(false); // Fallo
+                    console.error("Fallo al copiar la imagen al portapapeles:", err);
+                    // En caso de fallo, no mostramos toast, solo resolvemos/salimos.
+                    // Si falla el API, es un problema de permisos del navegador.
+                    resolve(); 
                 }}
             }} else {{
-                resolve(false); // Fallo al crear Blob
+                console.error("Fallo al crear Blob.");
+                resolve();
             }}
         }}, "image/png");
     }});
 
   }} catch (err) {{
     console.error('Error al procesar la imagen para copiar:', err);
-    return false; // Fallo
   }}
 }})();
 """
@@ -489,18 +503,13 @@ def qr_display_modal() -> rx.Component:
                     rx.tooltip(
                         rx.icon_button(
                             rx.icon("copy", size=14),
-                            # --- ✨ ON_CLICK REVISADO (CORREGIDO) ✨ ---
+                            # --- ✨ ON_CLICK REVISADO PARA COMPATIBILIDAD ✨ ---
                             on_click=[
-                                # 1. Ponemos el estado de copiado a True
-                                AppState.set_is_copying_qr(True),
-                                # 2. CAMBIA rx.run_js por rx.call_script
-                                rx.call_script( # <--- ¡AQUÍ ESTÁ LA CORRECCIÓN!
-                                    copy_script_code,
-                                    # Si el JS devuelve true (éxito), disparamos el toast
-                                    on_success=AppState.show_qr_copy_success_toast,
-                                    # Si el JS devuelve false (fallo), solo limpiamos el estado
-                                    on_failure=AppState.set_is_copying_qr(False) 
-                                )
+                                # Solo ponemos el estado a True (para un posible spinner, aunque no lo usamos)
+                                AppState.set_is_copying_qr(True), 
+                                # Solo ejecutamos el script sin on_success/on_failure
+                                rx.call_script(copy_script_code), 
+                                # Asumimos que el script de JS se encarga de disparar el click al successTrigger
                             ],
                             # --- ✨ FIN ON_CLICK REVISADO ✨ ---
                             variant="soft",
@@ -542,21 +551,21 @@ def qr_display_modal() -> rx.Component:
                     rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
                     spacing="3", margin_top="1em", justify="end",
                 ),
+                
+                # --- ✨ AÑADIR ESTE DISPARADOR OCULTO DE NUEVO ✨ ---
+                # Este es el botón que el JavaScript hace click para disparar el Toast de Reflex
+                rx.button(
+                    "CopySuccessTrigger",
+                    id="qr_copy_success_trigger", # <--- ID que el JS busca
+                    on_click=AppState.show_qr_copy_success_toast, # <--- El evento que muestra el toast
+                    display="none", # Debe estar oculto
+                ),
+                # --- ✨ FIN DISPARADOR OCULTO ✨ ---
+
                 align_items="stretch", 
                 spacing="4", 
                 style=printable_area_style,
             ),
-            
-            # --- NOTA IMPORTANTE ---
-            # El botón oculto "CopySuccessTrigger" ya NO es necesario con rx.run_js.
-            # Lo dejo comentado aquí por si acaso, pero deberías eliminarlo.
-            # rx.button(
-            #     "CopySuccessTrigger",
-            #     id="qr_copy_success_trigger",
-            #     on_click=AppState.show_qr_copy_success_toast,
-            #     display="none",
-            # ),
-
             style={"max_width": "720px"},
         ),
         open=AppState.show_qr_display_modal,
