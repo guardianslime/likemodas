@@ -2909,6 +2909,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.search_attr_tipo.lower() in o.lower()
         ]
     
+    # --- ✨ INICIO: AÑADIR ESTE NUEVO EVENTO ✨ ---
+    @rx.event
+    def show_qr_copy_success_toast(self):
+        """Muestra el toast de éxito DESPUÉS de que el script JS haya terminado."""
+        return rx.toast.success("Imagen QR copiada al portapapeles")
+    # --- ✨ FIN: AÑADIR ESTE NUEVO EVENTO ✨ ---
+    
     show_qr_scanner_modal: bool = False
 
     def toggle_qr_scanner_modal(self):
