@@ -213,8 +213,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
-                    # Usamos la función de formato (del frontend) sobre el valor numérico
-                    rx.heading(format_to_cop(purchase.total_price), size="6"),
+                    # ✨ CORRECCIÓN APLICADA: Usar la propiedad pre-calculada 'total_price_cop'
+                    rx.heading(purchase.total_price_cop, size="6"), 
                     align_items="end",
                 ), width="100%",
             ),
@@ -250,7 +250,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.text(purchase.subtotal_cop, size="3"),
                 ),
                 rx.hstack(
-                    rx.text("Envío:", size="3", color_scheme="gray"), # <-- LA LÍNEA QUE FALTABA
+                    rx.text("Envío:", size="3", color_scheme="gray"), 
                     rx.spacer(),
                     # El DTO ya tiene este valor formateado por el backend
                     rx.text(purchase.shipping_applied_cop, size="3"),
