@@ -310,10 +310,10 @@ class AdminPurchaseCardData(rx.Base):
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Ya no es una propiedad, es un campo de texto simple.
     shipping_applied_cop: str = "$ 0"
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-    purchase_items: list[PurchaseItemCardData] = []  # <--- CAMBIO CLAVE AQUÍ
+    # items: list[PurchaseItemCardData] = []  <--- ASEGÚRESE DE QUE ESTA LÍNEA NO ESTÉ
+    purchase_items: list[PurchaseItemCardData] = []  # <--- ESTA ES LA SOLUCIÓN
     action_by_name: Optional[str] = None
-
+    
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
     
