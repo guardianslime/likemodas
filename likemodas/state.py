@@ -311,7 +311,6 @@ class AdminPurchaseCardData(rx.Base):
     # Ya no es una propiedad, es un campo de texto simple.
     shipping_applied_cop: str = "$ 0"
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-    items: list[PurchaseItemCardData] = []
     purchase_items: list[PurchaseItemCardData] = []  # <--- CAMBIO CLAVE AQUÍ
     action_by_name: Optional[str] = None
 
@@ -8062,7 +8061,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         subtotal_cop=format_to_cop(subtotal_base),
                         iva_cop=format_to_cop(iva_calculado),
                         purchase_items=detailed_items, # <--- ASIGNACIÓN AL NUEVO CAMPO
-                        items=detailed_items,
+                        # items=detailed_items,
                         action_by_name=actor_name
                     )
                 )
