@@ -312,6 +312,7 @@ class AdminPurchaseCardData(rx.Base):
     shipping_applied_cop: str = "$ 0"
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     items: list[PurchaseItemCardData] = []
+    purchase_items: list[PurchaseItemCardData] = []  # <--- CAMBIO CLAVE AQUÍ
     action_by_name: Optional[str] = None
 
     @property
@@ -8060,6 +8061,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
                         subtotal_cop=format_to_cop(subtotal_base),
                         iva_cop=format_to_cop(iva_calculado),
+                        purchase_items=detailed_items, # <--- ASIGNACIÓN AL NUEVO CAMPO
                         items=detailed_items,
                         action_by_name=actor_name
                     )
@@ -8081,8 +8083,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         Crea un diccionario que mapea el ID de una compra del HISTORIAL a su lista de artículos.
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
-        return {p.id: p.items for p in self.purchase_history}
-    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
+        # <--- USO DEL NUEVO NOMBRE DE CAMPO
+        return {p.id: p.purchase_items for p in self.purchase_history}
 
     @rx.event
     def load_active_purchases(self):
