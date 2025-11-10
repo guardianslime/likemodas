@@ -1514,13 +1514,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.direct_sale_cart[cart_key] <= 0:
                 del self.direct_sale_cart[cart_key]
 
-    # likemodas/state.py
-
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
-        [VERSIÓN FINAL] Procesa la venta directa, guardando nombre y correo anónimos
-        y asignando correctamente al comprador y al actor de la venta.
+        [VERSIÓN FINAL CORREGIDA] Procesa la venta directa,
+        bloqueando el stock y desactivando la publicación si llega a cero.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             yield rx.toast.error("No tienes permisos para realizar esta acción.")
@@ -1550,7 +1548,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             items_to_create = []
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
             
-            # 🆕 CORRECCIÓN CLAVE: Añadir .with_for_update() para bloquear las filas
+            # 🆕 CORRECCIÓN CLAVE 1: Añadir .with_for_update() para bloquear las filas
             # Esto previene que dos personas vendan el último item al mismo tiempo.
             posts_to_check = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -1567,13 +1565,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 variant_updated = False
                 for variant in post.variants:
                     if variant.get("attributes") == item.variant_details:
-                        # 🆕 Verificación de stock (ya la tenías, pero es vital)
+                        # 🆕 Verificación de stock (vital para el bloqueo)
                         if variant.get("stock", 0) < item.quantity:
                             yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                             return
+                        
                         variant["stock"] -= item.quantity
                         
-                        # 🆕 Asegurarse de que el stock no sea negativo
+                        # 🆕 CORRECCIÓN CLAVE 2: Asegurar que el stock no sea negativo
                         if variant["stock"] < 0:
                             variant["stock"] = 0
                             
@@ -1583,12 +1582,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                     return
                 
-                # 🆕 Lógica Clave: Verificar el stock total de la PUBLICACIÓN
+                # 🆕 CORRECCIÓN CLAVE 3: Verificar el stock total y desactivar la publicación
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
-                    post.publish_active = False # 🆕 ¡Desactivar publicación!
+                    post.publish_active = False # ¡Desactivar publicación!
                 
-                session.add(post) # 🆕 Persistir cambios en stock y publish_active
+                session.add(post) # Persistir cambios en stock y publish_active
                 
                 items_to_create.append(
                     PurchaseItemModel(
@@ -1597,7 +1596,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             
-            # --- LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ---
+            # --- Lógica de nombre/correo anónimo (sin cambios) ---
             final_shipping_name = "Cliente (Venta Directa)"
             if self.direct_sale_buyer_id:
                 final_shipping_name = buyer_info.user.username
@@ -1616,7 +1615,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_applied=0,
                 shipping_name=final_shipping_name,
                 is_direct_sale=True,
-                action_by_id=actor_id, # Guardamos quién hizo la venta
+                action_by_id=actor_id,
                 anonymous_customer_email=self.direct_sale_anonymous_buyer_email.strip() if self.direct_sale_anonymous_buyer_email.strip() else None,
             )
 
@@ -1637,6 +1636,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.success(f"Venta #{purchase_id_for_toast} confirmada exitosamente.")
         
         yield AppState.load_purchase_history
+        # 🆕 CORRECCIÓN CLAVE 4: Recargar la lista de productos de la tienda del admin
+        # para que la publicación agotada desaparezca de la vista.
+        yield AppState.on_load_admin_store
 
     
     @rx.var
