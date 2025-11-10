@@ -8866,6 +8866,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.userinfo_id == owner_id)
+                
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Añadimos esta línea para filtrar solo las publicaciones activas
+                .where(BlogPostModel.publish_active == True)
+                # --- FIN DE LA CORRECCIÓN ---
+                
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
