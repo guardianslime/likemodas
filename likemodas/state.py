@@ -9,6 +9,7 @@ import sqlmodel
 from sqlmodel import select
 from sqlmodel import text # Importar text
 import sqlalchemy
+from sqlalchemy.orm.attributes import flag_modified # <-- AÑADE ESTA LÍNEA
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple, Union
 from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, RequestStatus, _format_to_cop_backend
@@ -1529,8 +1530,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
-        [VERSIÓN FINAL CORREGIDA] Procesa la venta directa,
-        bloqueando el stock y desactivando la publicación si llega a cero.
+        [VERSIÓN FINAL] Procesa la venta directa, guardando nombre y correo anónimos
+        y asignando correctamente al comprador y al actor de la venta.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             yield rx.toast.error("No tienes permisos para realizar esta acción.")
@@ -1560,8 +1561,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             items_to_create = []
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
             
-            # 🆕 CORRECCIÓN CLAVE 1: Añadir .with_for_update() para bloquear las filas
-            # Esto previene que dos personas vendan el último item al mismo tiempo.
+            # CORRECCIÓN CLAVE: Añadir .with_for_update() para bloquear las filas
             posts_to_check = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.id.in_(product_ids))
@@ -1574,11 +1574,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not post:
                     yield rx.toast.error(f"El producto '{item.title}' ya no existe. Venta cancelada.")
                     return
+                
                 variant_updated = False
                 
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Hacemos una copia de la lista de variantes para modificarla
-                current_variants = list(post.variants)
+                # --- INICIO DE LA CORRECCIÓN (FORZAR ACTUALIZACIÓN DE JSONB) ---
+                current_variants = list(post.variants) # 1. Copia superficial de la lista
                 
                 for i, variant in enumerate(current_variants): # Iteramos sobre la copia
                     if variant.get("attributes") == item.variant_details:
@@ -1586,9 +1586,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                             yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                             return
                         
-                        # Modificamos el diccionario de la variante en la copia
-                        new_stock = variant.get("stock", 0) - item.quantity
-                        current_variants[i]["stock"] = max(0, new_stock)
+                        # 2. Creamos un *nuevo* diccionario (copia profunda de la variante)
+                        new_variant = variant.copy() 
+                        
+                        # 3. Modificamos el *nuevo* diccionario
+                        new_stock = new_variant.get("stock", 0) - item.quantity
+                        new_variant["stock"] = max(0, new_stock)
+                        
+                        # 4. Reemplazamos el diccionario antiguo por el nuevo en la lista
+                        current_variants[i] = new_variant
                         
                         variant_updated = True
                         break
@@ -1597,26 +1603,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                     return
 
-                # Re-asignamos la lista completa al modelo.
-                # Esto le dice a SQLAlchemy "¡Hey, este campo JSONB cambió!"
+                # 5. Re-asignamos la lista *modificada* al campo del modelo
                 post.variants = current_variants
-                # --- FIN DE LA CORRECCIÓN ---
                 
-                # Esta lógica de desactivación ya era correcta
+                # 6. Forzamos a SQLAlchemy a marcar el campo 'variants' como "modificado"
+                # (Asegúrate de tener: from sqlalchemy.orm.attributes import flag_modified)
+                sqlalchemy.orm.attributes.flag_modified(post, "variants")
+                # --- FIN DE LA CORRECCIÓN ---
+                                
+                # Lógica Clave: Verificar el stock total de la PUBLICACIÓN
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
-                    post.publish_active = False
+                    post.publish_active = False # ¡Desactivar publicación!
                 
                 session.add(post) # Persistir cambios en stock y publish_active
-                
+                 
                 items_to_create.append(
                     PurchaseItemModel(
                         blog_post_id=item.product_id, quantity=item.quantity,
                         price_at_purchase=item.price, selected_variant=item.variant_details,
                     )
                 )
-            
-            # --- Lógica de nombre/correo anónimo (sin cambios) ---
+             
+            # --- LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ---
             final_shipping_name = "Cliente (Venta Directa)"
             if self.direct_sale_buyer_id:
                 final_shipping_name = buyer_info.user.username
@@ -1635,7 +1644,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_applied=0,
                 shipping_name=final_shipping_name,
                 is_direct_sale=True,
-                action_by_id=actor_id,
+                action_by_id=actor_id, # Guardamos quién hizo la venta
                 anonymous_customer_email=self.direct_sale_anonymous_buyer_email.strip() if self.direct_sale_anonymous_buyer_email.strip() else None,
             )
 
@@ -1660,7 +1669,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         # para que la publicación agotada desaparezca de la vista.
         yield AppState.on_load_admin_store
 
-    
     @rx.var
     def direct_sale_grouped_cart(self) -> list[DirectSaleGroupDTO]:
         """
@@ -6204,7 +6212,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     option_value = v["attributes"][key_to_select]
                     all_options_set.add(option_value)
                     
-                    # Guardamos el stock MÁS ALTO (por si acaso, aunque no debería haber duplicados)
+                    # Guardamos el stock MÁS ALTO (por si acaso)
                     stock_map[option_value] = max(stock_map.get(option_value, 0), v.get("stock", 0))
 
             # 2. Creamos los DTOs de las opciones, marcando 'disabled' si el stock es 0
@@ -7332,17 +7340,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                     post_to_update = post_map.get(prod_id)
                     if post_to_update:
                         
-                        # --- INICIO DE LA CORRECCIÓN ---
+                        # --- INICIO DE LA CORRECCIÓN (FORZAR ACTUALIZACIÓN DE JSONB) ---
                         current_variants = list(post_to_update.variants)
                         for i, variant in enumerate(current_variants):
                             if variant.get("attributes") == selection_attrs:
-                                new_stock = variant.get("stock", 0) - quantity_in_cart
-                                current_variants[i]["stock"] = max(0, new_stock)
+                                # (Aquí no necesitamos la validación de stock, ya se hizo antes)
+                                new_variant = variant.copy()
+                                new_stock = new_variant.get("stock", 0) - quantity_in_cart
+                                new_variant["stock"] = max(0, new_stock)
+                                current_variants[i] = new_variant
                                 break
+                        
                         post_to_update.variants = current_variants
+                        sqlalchemy.orm.attributes.flag_modified(post_to_update, "variants")
                         # --- FIN DE LA CORRECCIÓN ---
                         
-                        # Esta lógica ya era correcta
+                        # Lógica de desactivación (ya era correcta)
                         total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
                         if total_stock <= 0:
                             post_to_update.publish_active = False
@@ -7456,17 +7469,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                     post_to_update = post_map.get(prod_id)
                     if post_to_update:
                         
-                        # --- INICIO DE LA CORRECCIÓN ---
+                        # --- INICIO DE LA CORRECCIÓN (FORZAR ACTUALIZACIÓN DE JSONB) ---
                         current_variants = list(post_to_update.variants)
                         for i, variant in enumerate(current_variants):
                             if variant.get("attributes") == selection_attrs:
-                                new_stock = variant.get("stock", 0) - quantity_in_cart
-                                current_variants[i]["stock"] = max(0, new_stock)
+                                # (Validación de stock ya se hizo antes)
+                                new_variant = variant.copy()
+                                new_stock = new_variant.get("stock", 0) - quantity_in_cart
+                                new_variant["stock"] = max(0, new_stock)
+                                current_variants[i] = new_variant
                                 break
+                        
                         post_to_update.variants = current_variants
+                        sqlalchemy.orm.attributes.flag_modified(post_to_update, "variants")
                         # --- FIN DE LA CORRECCIÓN ---
 
-                        # Esta lógica ya era correcta
+                        # Lógica de desactivación (ya era correcta)
                         total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
                         if total_stock <= 0:
                             post_to_update.publish_active = False

@@ -248,10 +248,11 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             rx.foreach(
                                 selector.options,
                                 # --- INICIO DE LA MODIFICACIÓN ---
+                                # Ahora 'option' es un DTO, no un string
                                 lambda option: rx.segmented_control.item(
-                                    option.value, 
-                                    value=option.value,
-                                    disabled=option.disabled # <-- ¡AQUÍ ESTÁ LA MAGIA!
+                                    option.value, # El texto a mostrar
+                                    value=option.value, # El valor
+                                    disabled=option.disabled # ¡Aquí le decimos que se deshabilite!
                                 )
                                 # --- FIN DE LA MODIFICACIÓN ---
                             ),
