@@ -1514,6 +1514,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.direct_sale_cart[cart_key] <= 0:
                 del self.direct_sale_cart[cart_key]
 
+    # likemodas/state.py
+
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
@@ -1544,11 +1546,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("El comprador o el contexto del vendedor no son válidos.")
                 return
 
-            # ... (El resto de la lógica interna de la función se mantiene igual)
             subtotal = sum(item.subtotal for item in self.direct_sale_cart_details)
             items_to_create = []
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
-            posts_to_check = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
+            
+            # 🆕 CORRECCIÓN CLAVE: Añadir .with_for_update() para bloquear las filas
+            # Esto previene que dos personas vendan el último item al mismo tiempo.
+            posts_to_check = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.id.in_(product_ids))
+                .with_for_update() 
+            ).all()
             post_map = {p.id: p for p in posts_to_check}
 
             for item in self.direct_sale_cart_details:
@@ -1559,6 +1567,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 variant_updated = False
                 for variant in post.variants:
                     if variant.get("attributes") == item.variant_details:
+                        # 🆕 Verificación de stock (ya la tenías, pero es vital)
                         if variant.get("stock", 0) < item.quantity:
                             yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                             return
@@ -1588,7 +1597,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             
-            # --- ✨ INICIO: LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ✨ ---
+            # --- LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ---
             final_shipping_name = "Cliente (Venta Directa)"
             if self.direct_sale_buyer_id:
                 final_shipping_name = buyer_info.user.username
@@ -1611,7 +1620,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 anonymous_customer_email=self.direct_sale_anonymous_buyer_email.strip() if self.direct_sale_anonymous_buyer_email.strip() else None,
             )
 
-            # --- FIN DE LA ASIGNACIÓN ÚNICA ---
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
@@ -7183,6 +7191,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     cod_ineligible_products: list[CartItemData] = []
     # --- ✨ FIN ✨ ---
 
+    # likemodas/state.py
+
     @rx.event
     async def handle_checkout(self):
         """
@@ -7216,12 +7226,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.cod_ineligible_products = ineligible_items
                 
                 if self.cod_ineligible_products:
-                    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-                    # Se cambia 'return' por 'yield' para ejecutar el evento
-                    # y se añade un 'return' vacío para detener la función.
                     yield rx.toast.error("Algunos productos no son elegibles para pago contra entrega.")
                     return
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         
         # El resto de la lógica de checkout se ejecuta solo si la validación pasa.
         if not self.is_authenticated or not self.default_shipping_address:
@@ -7240,6 +7246,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.payment_method == "Sistecredito":
             with rx.session() as session:
                 product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+                # 🆕 Verificación: .with_for_update() ESTÁ PRESENTE (Correcto)
                 posts_to_check = session.exec(
                     sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
                 ).all()
@@ -7292,17 +7299,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                         for variant in post_to_update.variants:
                             if variant.get("attributes") == selection_attrs:
                                 variant["stock"] -= quantity_in_cart
-                                # 🆕 Asegurarse de que el stock no sea negativo
                                 if variant["stock"] < 0:
                                     variant["stock"] = 0
                                 break
                         
-                        # 🆕 Lógica Clave: Verificar el stock total de la PUBLICACIÓN
+                        # 🆕 Verificación: Lógica de desactivación ESTÁ PRESENTE (Correcto)
                         total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
                         if total_stock <= 0:
-                            post_to_update.publish_active = False # 🆕 ¡Desactivar publicación!
+                            post_to_update.publish_active = False
                         
-                        session.add(post_to_update) # 🆕 Persistir cambios en stock y publish_active
+                        session.add(post_to_update)
                         
                         session.add(PurchaseItemModel(
                             purchase_id=new_purchase.id,
@@ -7353,6 +7359,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             with rx.session() as session:
                 product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+                # 🆕 Verificación: .with_for_update() ESTÁ PRESENTE (Correcto)
                 posts_to_check = session.exec(
                     sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
                 ).all()
@@ -7412,17 +7419,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                         for variant in post_to_update.variants:
                             if variant.get("attributes") == selection_attrs:
                                 variant["stock"] -= quantity_in_cart
-                                # 🆕 Asegurarse de que el stock no sea negativo
                                 if variant["stock"] < 0:
                                     variant["stock"] = 0
                                 break
 
-                        # 🆕 Lógica Clave: Verificar el stock total de la PUBLICACIÓN
+                        # 🆕 Verificación: Lógica de desactivación ESTÁ PRESENTE (Correcto)
                         total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
                         if total_stock <= 0:
-                            post_to_update.publish_active = False # 🆕 ¡Desactivar publicación!
-
-                        session.add(post_to_update) # 🆕 Persistir cambios en stock y publish_active
+                            post_to_update.publish_active = False
+                        
+                        session.add(post_to_update)
                         
                         item = PurchaseItemModel(
                             purchase_id=new_purchase.id,
@@ -7433,7 +7439,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                         session.add(item)
                 
-                # ✨ Lógica de Notificación movida aquí DENTRO de la sesión ✨
                 if self.payment_method == "Contra Entrega":
                     for seller_id, product_ids in seller_groups.items():
                         notification = NotificationModel(
@@ -7442,7 +7447,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                             url="/admin/confirm-payments"
                         )
                         session.add(notification)
-                    # Activamos la bandera para el punto rojo en el menú
                     self.new_purchase_notification = True
 
                 session.commit()
