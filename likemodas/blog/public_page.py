@@ -239,6 +239,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         width="100%"
                     ),
                 ),
+                # Este es el rx.foreach que debemos cambiar:
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
@@ -246,7 +247,13 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         rx.segmented_control.root(
                             rx.foreach(
                                 selector.options,
-                                lambda option: rx.segmented_control.item(option, value=option)
+                                # --- INICIO DE LA MODIFICACIÓN ---
+                                lambda option: rx.segmented_control.item(
+                                    option.value, 
+                                    value=option.value,
+                                    disabled=option.disabled # <-- ¡AQUÍ ESTÁ LA MAGIA!
+                                )
+                                # --- FIN DE LA MODIFICACIÓN ---
                             ),
                             on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
                             value=selector.current_value,

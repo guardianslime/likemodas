@@ -440,8 +440,20 @@ class CartItemData(rx.Base):
 class UniqueVariantItem(rx.Base):
     variant: dict; index: int
 
+# --- INICIO DE LA MODIFICACIÓN (Añadir esta clase) ---
+class ModalSelectorOption(rx.Base):
+    """Un DTO para una sola opción en el selector (ej: "XL")"""
+    value: str
+    disabled: bool
+# --- FIN DE LA MODIFICACIÓN ---
+
 class ModalSelectorDTO(rx.Base):
-    key: str; options: list[str]; current_value: str
+    key: str
+    # --- MODIFICACIÓN AQUÍ ---
+    # options: list[str]  <-- CAMBIA ESTO
+    options: list[ModalSelectorOption] # <-- POR ESTO
+    # --- FIN DE LA MODIFICACIÓN ---
+    current_value: str
 
 class VariantFormData(rx.Base):
     attributes: dict[str, str]
@@ -1563,29 +1575,37 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error(f"El producto '{item.title}' ya no existe. Venta cancelada.")
                     return
                 variant_updated = False
-                for variant in post.variants:
+                
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Hacemos una copia de la lista de variantes para modificarla
+                current_variants = list(post.variants)
+                
+                for i, variant in enumerate(current_variants): # Iteramos sobre la copia
                     if variant.get("attributes") == item.variant_details:
-                        # 🆕 Verificación de stock (vital para el bloqueo)
                         if variant.get("stock", 0) < item.quantity:
                             yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                             return
                         
-                        variant["stock"] -= item.quantity
+                        # Modificamos el diccionario de la variante en la copia
+                        new_stock = variant.get("stock", 0) - item.quantity
+                        current_variants[i]["stock"] = max(0, new_stock)
                         
-                        # 🆕 CORRECCIÓN CLAVE 2: Asegurar que el stock no sea negativo
-                        if variant["stock"] < 0:
-                            variant["stock"] = 0
-                            
                         variant_updated = True
                         break
+                
                 if not variant_updated:
                     yield rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                     return
+
+                # Re-asignamos la lista completa al modelo.
+                # Esto le dice a SQLAlchemy "¡Hey, este campo JSONB cambió!"
+                post.variants = current_variants
+                # --- FIN DE LA CORRECCIÓN ---
                 
-                # 🆕 CORRECCIÓN CLAVE 3: Verificar el stock total y desactivar la publicación
+                # Esta lógica de desactivación ya era correcta
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
-                    post.publish_active = False # ¡Desactivar publicación!
+                    post.publish_active = False
                 
                 session.add(post) # Persistir cambios en stock y publish_active
                 
@@ -6145,55 +6165,68 @@ class AppState(reflex_local_auth.LocalAuthState):
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
         """
         [CORREGIDO] Genera dinámicamente los selectores (Talla, Número, etc.)
-        para el modal de detalle del producto, filtrando correctamente por grupo de imágenes.
+        para el modal, marcando las opciones sin stock como deshabilitadas.
         """
         if not self.current_modal_variant or not self.product_in_modal:
             return []
 
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-
-        # 1. Obtener el grupo de imágenes de la variante actualmente seleccionada.
-        #    Usamos una tupla ordenada para que sea una clave única y comparable.
+        # 1. Obtener el grupo de imágenes de la variante actual
         current_image_group = tuple(sorted(self.current_modal_variant.get("image_urls", [])))
         if not current_image_group:
             return []
 
-        # 2. Filtrar TODAS las variantes del producto para encontrar solo las que pertenecen a este mismo grupo de imágenes.
+        # 2. Encontrar todas las variantes que comparten ese grupo de imágenes
         variants_for_this_group = [
             v for v in self.product_in_modal.variants
             if tuple(sorted(v.get("image_urls", []))) == current_image_group
         ]
 
-        # 3. Identificar qué atributos son seleccionables (Talla, Número, etc.) dentro de este grupo.
+        # 3. Identificar qué atributos son seleccionables (Talla, Número, etc.)
         selectable_keys = list(set(
             key for v in variants_for_this_group
             for key in v.get("attributes", {})
-            if key in self.SELECTABLE_ATTRIBUTES  # Usa la constante que ya tienes: ["Talla", "Número", "Tamaño"]
+            if key in self.SELECTABLE_ATTRIBUTES
         ))
 
         if not selectable_keys:
             return []
 
-        # 4. Para cada atributo seleccionable, encontrar sus opciones válidas (con stock > 0).
+        # 4. Construir los selectores
         selectors = []
         for key_to_select in selectable_keys:
-            valid_options = sorted(list({
-                v["attributes"][key_to_select]
-                for v in variants_for_this_group
-                if v.get("stock", 0) > 0 and key_to_select in v.get("attributes", {})
-            }))
+            
+            # --- INICIO DE LA LÓGICA MODIFICADA ---
+            all_options_set = set()
+            stock_map = {} # Mapa para guardar el stock de cada opción (ej: "XL": 0)
+            
+            for v in variants_for_this_group:
+                if key_to_select in v.get("attributes", {}):
+                    option_value = v["attributes"][key_to_select]
+                    all_options_set.add(option_value)
+                    
+                    # Guardamos el stock MÁS ALTO (por si acaso, aunque no debería haber duplicados)
+                    stock_map[option_value] = max(stock_map.get(option_value, 0), v.get("stock", 0))
 
-            if valid_options:
+            # 2. Creamos los DTOs de las opciones, marcando 'disabled' si el stock es 0
+            option_dtos = [
+                ModalSelectorOption(
+                    value=opt,
+                    disabled=(stock_map.get(opt, 0) <= 0) # Deshabilitado si stock es 0
+                )
+                for opt in sorted(list(all_options_set))
+            ]
+            # --- FIN DE LA LÓGICA MODIFICADA ---
+
+            if option_dtos:
                 selectors.append(
                     ModalSelectorDTO(
                         key=key_to_select,
-                        options=valid_options,
+                        options=option_dtos, # Pasamos la nueva lista de DTOs
                         current_value=self.modal_selected_attributes.get(key_to_select, "")
                     )
                 )
         
         return selectors
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
     @rx.event
     def add_to_cart(self, product_id: int):
@@ -7298,14 +7331,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                     selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
                     post_to_update = post_map.get(prod_id)
                     if post_to_update:
-                        for variant in post_to_update.variants:
-                            if variant.get("attributes") == selection_attrs:
-                                variant["stock"] -= quantity_in_cart
-                                if variant["stock"] < 0:
-                                    variant["stock"] = 0
-                                break
                         
-                        # 🆕 Verificación: Lógica de desactivación ESTÁ PRESENTE (Correcto)
+                        # --- INICIO DE LA CORRECCIÓN ---
+                        current_variants = list(post_to_update.variants)
+                        for i, variant in enumerate(current_variants):
+                            if variant.get("attributes") == selection_attrs:
+                                new_stock = variant.get("stock", 0) - quantity_in_cart
+                                current_variants[i]["stock"] = max(0, new_stock)
+                                break
+                        post_to_update.variants = current_variants
+                        # --- FIN DE LA CORRECCIÓN ---
+                        
+                        # Esta lógica ya era correcta
                         total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
                         if total_stock <= 0:
                             post_to_update.publish_active = False
@@ -7418,14 +7455,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                     selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
                     post_to_update = post_map.get(prod_id)
                     if post_to_update:
-                        for variant in post_to_update.variants:
+                        
+                        # --- INICIO DE LA CORRECCIÓN ---
+                        current_variants = list(post_to_update.variants)
+                        for i, variant in enumerate(current_variants):
                             if variant.get("attributes") == selection_attrs:
-                                variant["stock"] -= quantity_in_cart
-                                if variant["stock"] < 0:
-                                    variant["stock"] = 0
+                                new_stock = variant.get("stock", 0) - quantity_in_cart
+                                current_variants[i]["stock"] = max(0, new_stock)
                                 break
+                        post_to_update.variants = current_variants
+                        # --- FIN DE LA CORRECCIÓN ---
 
-                        # 🆕 Verificación: Lógica de desactivación ESTÁ PRESENTE (Correcto)
+                        # Esta lógica ya era correcta
                         total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
                         if total_stock <= 0:
                             post_to_update.publish_active = False
