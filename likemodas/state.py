@@ -448,6 +448,12 @@ class ModalSelectorOption(rx.Base):
     disabled: bool
 # --- FIN DE LA MODIFICACIÓN ---
 
+class ModalThumbnailData(rx.Base):
+    """DTO para una miniatura en el modal, con estado de stock."""
+    image_url: str
+    is_out_of_stock: bool
+    visual_index: int
+
 class ModalSelectorDTO(rx.Base):
     key: str
     # --- MODIFICACIÓN AQUÍ ---
@@ -5704,6 +5710,65 @@ class AppState(reflex_local_auth.LocalAuthState):
             return []
         return self.current_modal_variant.get("image_urls", [])
     # --- ✨ FIN ✨ ---
+
+    @rx.var
+    def modal_thumbnail_urls(self) -> list[str]:
+        """
+        [ESTA FUNCIÓN QUEDA OBSOLETA - REEMPLAZAR]
+        """
+        urls = []
+        for item in self.unique_modal_variants:
+            image_urls = item.variant.get("image_urls", [])
+            urls.append(image_urls[0] if image_urls else "")
+        return urls
+
+    # --- REEMPLAZA LA FUNCIÓN DE ARRIBA POR ESTA NUEVA ---
+
+    @rx.var
+    def modal_thumbnails_with_stock(self) -> list[ModalThumbnailData]:
+        """
+        [NUEVA FUNCIÓN]
+        Prepara la lista de miniaturas para el modal, incluyendo si
+        el grupo de variantes completo (ej: "Color: Negro") está agotado.
+        """
+        if not self.product_in_modal or not self.product_in_modal.variants:
+            return []
+        
+        thumbnail_data_list = []
+        seen_image_groups = set()
+        visual_index_counter = 0
+        
+        for variant in self.product_in_modal.variants:
+            # 1. Identifica el grupo de imágenes (ej: todas las fotos del buzo negro)
+            image_urls_tuple = tuple(sorted(variant.get("image_urls", [])))
+            
+            # Si ya procesamos este grupo de imágenes, o si no tiene imágenes, saltamos
+            if not image_urls_tuple or image_urls_tuple in seen_image_groups:
+                continue
+            
+            seen_image_groups.add(image_urls_tuple)
+            
+            # 2. Encuentra *todas* las variantes que comparten este mismo grupo de imágenes
+            variants_in_this_group = [
+                v for v in self.product_in_modal.variants
+                if tuple(sorted(v.get("image_urls", []))) == image_urls_tuple
+            ]
+            
+            # 3. Suma el stock de todas esas variantes (ej: stock de XL + L + M)
+            total_stock_for_group = sum(v.get("stock", 0) for v in variants_in_this_group)
+            is_group_out_of_stock = total_stock_for_group <= 0
+            
+            # 4. Añade los datos a la lista
+            thumbnail_data_list.append(
+                ModalThumbnailData(
+                    image_url=image_urls_tuple[0], # Usa la primera imagen como miniatura
+                    is_out_of_stock=is_group_out_of_stock,
+                    visual_index=visual_index_counter
+                )
+            )
+            visual_index_counter += 1
+            
+        return thumbnail_data_list
 
     @rx.var
     def modal_thumbnail_urls(self) -> list[str]:

@@ -141,18 +141,40 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     
     def _modal_image_section() -> rx.Component:
         def _manual_thumbnails() -> rx.Component:
+            """
+            [VERSIÓN CORREGIDA]
+            Muestra las miniaturas de las variantes, aplicando un estilo
+            atenuado y deshabilitando el clic si el grupo está agotado.
+            """
             return rx.hstack(
                 rx.foreach(
-                    AppState.modal_thumbnail_urls,
-                    lambda image_url, i: rx.box(
+                    # 1. Cambiamos la fuente de datos a la nueva propiedad
+                    AppState.modal_thumbnails_with_stock,
+                    
+                    # 2. 'thumb_data' es ahora un objeto ModalThumbnailData
+                    lambda thumb_data: rx.box(
                         rx.image(
-                            src=rx.get_upload_url(image_url),
+                            src=rx.get_upload_url(thumb_data.image_url),
                             height="60px", width="60px", object_fit="cover", border_radius="var(--radius-3)",
                         ),
-                        border_width=rx.cond(AppState.modal_selected_variant_index == i, "3px", "1px"),
-                        border_color=rx.cond(AppState.modal_selected_variant_index == i, "var(--accent-9)", "var(--gray-a6)"),
-                        padding="2px", border_radius="var(--radius-4)", cursor="pointer",
-                        on_click=AppState.set_modal_variant_index(i),
+                        # 3. Usamos 'visual_index' para saber cuál está activo
+                        border_width=rx.cond(AppState.modal_selected_variant_index == thumb_data.visual_index, "3px", "1px"),
+                        border_color=rx.cond(AppState.modal_selected_variant_index == thumb_data.visual_index, "var(--accent-9)", "var(--gray-a6)"),
+                        padding="2px", border_radius="var(--radius-4)",
+                        
+                        # --- INICIO DE LA CORRECCIÓN VISUAL ---
+                        # 4. Aplicamos opacidad si está agotado
+                        opacity=rx.cond(thumb_data.is_out_of_stock, 0.4, 1.0),
+                        # 5. Cambiamos el cursor si está agotado
+                        cursor=rx.cond(thumb_data.is_out_of_stock, "not-allowed", "pointer"),
+                        # --- FIN DE LA CORRECCIÓN VISUAL ---
+                        
+                        # 6. Solo permitimos el clic si NO está agotado
+                        on_click=rx.cond(
+                            ~thumb_data.is_out_of_stock,
+                            AppState.set_modal_variant_index(thumb_data.visual_index),
+                            None # No hace nada si está agotado
+                        ),
                     )
                 ),
                 spacing="3", padding="0.5em", width="100%", overflow_x="auto", margin_top="0.5rem",
