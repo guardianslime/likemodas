@@ -239,7 +239,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         width="100%"
                     ),
                 ),
-                # Este es el rx.foreach que debemos cambiar:
+                ## Este es el rx.foreach que debemos cambiar:
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
@@ -247,14 +247,21 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         rx.segmented_control.root(
                             rx.foreach(
                                 selector.options,
-                                # --- INICIO DE LA MODIFICACIÓN ---
+                                # --- INICIO DE LA CORRECCIÓN VISUAL ---
                                 # Ahora 'option' es un DTO, no un string
                                 lambda option: rx.segmented_control.item(
                                     option.value, # El texto a mostrar
                                     value=option.value, # El valor
-                                    disabled=option.disabled # ¡Aquí le decimos que se deshabilite!
+                                    disabled=option.disabled, # La lógica de deshabilitar
+                                    
+                                    # Añadimos estos estilos para que se vea gris/atenuado
+                                    style={
+                                        "opacity": rx.cond(option.disabled, 0.4, 1.0),
+                                        "cursor": rx.cond(option.disabled, "not-allowed", "pointer"),
+                                        "color": rx.cond(option.disabled, "var(--gray-a9)", "inherit"),
+                                    }
                                 )
-                                # --- FIN DE LA MODIFICACIÓN ---
+                                # --- FIN DE LA CORRECCIÓN VISUAL ---
                             ),
                             on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
                             value=selector.current_value,
@@ -262,7 +269,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         align_items="start", width="100%", spacing="2"
                     )
                 ),
-                align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
             rx.text(
                 "Publicado por: ",

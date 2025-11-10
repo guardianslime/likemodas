@@ -54,12 +54,20 @@ fastapi_app.include_router(webhooks.router)
 fastapi_app.include_router(api_tasks.router)
 
 # Configuración de la aplicación Reflex
+# --- INICIO DE LA CORRECCIÓN Z-INDEX ---
 app = rx.App(
-    style={"font_family": "Arial, sans-serif"},
+    style={
+        "font_family": "Arial, sans-serif",
+        # Esta regla CSS le dice al contenedor de notificaciones
+        # que tenga un z-index altísimo, asegurando que flote
+        # por encima de cualquier modal.
+        ".ToastViewport": {
+            "z_index": "99999 !important",
+        },
+    },
     api_transformer=fastapi_app
 )
-
-
+# --- FIN DE LA CORRECCIÓN Z-INDEX ---
 
 # --- REGISTRO DE RUTAS ---
 
