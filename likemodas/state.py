@@ -1563,12 +1563,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                             yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                             return
                         variant["stock"] -= item.quantity
+                        
+                        # 🆕 Asegurarse de que el stock no sea negativo
+                        if variant["stock"] < 0:
+                            variant["stock"] = 0
+                            
                         variant_updated = True
                         break
                 if not variant_updated:
                     yield rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                     return
-                session.add(post)
+                
+                # 🆕 Lógica Clave: Verificar el stock total de la PUBLICACIÓN
+                total_stock = sum(v.get("stock", 0) for v in post.variants)
+                if total_stock <= 0:
+                    post.publish_active = False # 🆕 ¡Desactivar publicación!
+                
+                session.add(post) # 🆕 Persistir cambios en stock y publish_active
+                
                 items_to_create.append(
                     PurchaseItemModel(
                         blog_post_id=item.product_id, quantity=item.quantity,
@@ -6217,8 +6229,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         stock_disponible = variant_to_add.get("stock", 0)
         cantidad_en_carrito = self.cart.get(cart_key, 0)
         
+        # 🆕 Lógica de validación de stock mejorada
         if cantidad_en_carrito + 1 > stock_disponible:
-            return rx.toast.error("¡Lo sentimos! No hay suficiente stock para esta combinación.")
+            if stock_disponible == 0:
+                return rx.toast.error("¡Lo sentimos! Esta variante está agotada.")
+            else:
+                return rx.toast.error(f"¡Lo sentimos! Solo queda(n) {stock_disponible} unidad(es) y ya tiene(s) {cantidad_en_carrito} en el carrito.")
         
         # 5. Si hay stock, añadir al carrito
         self.cart[cart_key] = cantidad_en_carrito + 1
@@ -7276,8 +7292,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                         for variant in post_to_update.variants:
                             if variant.get("attributes") == selection_attrs:
                                 variant["stock"] -= quantity_in_cart
+                                # 🆕 Asegurarse de que el stock no sea negativo
+                                if variant["stock"] < 0:
+                                    variant["stock"] = 0
                                 break
-                        session.add(post_to_update)
+                        
+                        # 🆕 Lógica Clave: Verificar el stock total de la PUBLICACIÓN
+                        total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
+                        if total_stock <= 0:
+                            post_to_update.publish_active = False # 🆕 ¡Desactivar publicación!
+                        
+                        session.add(post_to_update) # 🆕 Persistir cambios en stock y publish_active
+                        
                         session.add(PurchaseItemModel(
                             purchase_id=new_purchase.id,
                             blog_post_id=post_to_update.id,
@@ -7386,8 +7412,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                         for variant in post_to_update.variants:
                             if variant.get("attributes") == selection_attrs:
                                 variant["stock"] -= quantity_in_cart
+                                # 🆕 Asegurarse de que el stock no sea negativo
+                                if variant["stock"] < 0:
+                                    variant["stock"] = 0
                                 break
-                        session.add(post_to_update)
+
+                        # 🆕 Lógica Clave: Verificar el stock total de la PUBLICACIÓN
+                        total_stock = sum(v.get("stock", 0) for v in post_to_update.variants)
+                        if total_stock <= 0:
+                            post_to_update.publish_active = False # 🆕 ¡Desactivar publicación!
+
+                        session.add(post_to_update) # 🆕 Persistir cambios en stock y publish_active
+                        
                         item = PurchaseItemModel(
                             purchase_id=new_purchase.id,
                             blog_post_id=post_to_update.id,
