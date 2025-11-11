@@ -8794,7 +8794,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     # True = Forzar el tema del sitio (ignorar al vendedor).
     
     # --- CORRECCIÓN AQUÍ ---
-    force_site_theme: bool = rx.LocalStorage(name="force_site_theme", default=False)
+    # El valor por defecto 'False' es el primer argumento posicional.
+    force_site_theme: bool = rx.LocalStorage(False, name="force_site_theme")
     # --- FIN DE LA CORRECCIÓN ---
 
     def set_force_site_theme(self, value: bool):
