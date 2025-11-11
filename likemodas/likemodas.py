@@ -18,14 +18,8 @@ from .auth.tfa_verify_page import tfa_verify_page_content
 from .account import profile_page as user_profile_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module
-
-# --- INICIO DE LA CORRECCIÓN ---
-# LÍNEA INCORRECTA (la que tienes ahora):
-# from .account import display_settings_page 
-
-# LÍNEA CORREGIDA (reemplázala por esta):
+# Esta importación es correcta
 from .account.display_settings_page import display_settings_page
-# --- FIN DE LA CORRECCIÓN ---
 
 # Vistas de ADMINISTRADOR
 from .admin import page as admin_page
@@ -100,8 +94,11 @@ app.add_page(shipping_info_module.shipping_info_content(), route=navigation.rout
 app.add_page(saved_posts_module.saved_posts_content(), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
 # --- FIN DE LA CORRECCIÓN ---
 
-# --- INICIO DE LA MODIFICACIÓN ---
-app.add_page(display_settings_page.display_settings_page(), route="/my-account/display-settings", title="Configuración de Visualización") # <-- AÑADE ESTA LÍNEA
+# --- INICIO DE LA MODIFICACIÓN (LÍNEA 104) ---
+# LÍNEA INCORRECTA:
+# app.add_page(display_settings_page.display_settings_page(), route="/my-account/display-settings", title="Configuración de Visualización")
+# LÍNEA CORREGIDA:
+app.add_page(display_settings_page(), route="/my-account/display-settings", title="Configuración de Visualización")
 # --- FIN DE LA MODIFICACIÓN ---
 
 # Rutas del Proceso de Compra
