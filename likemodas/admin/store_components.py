@@ -17,7 +17,7 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
     [VERSIÓN FINAL] Tarjeta de producto para la vista de admin, ahora con el diseño
     y los datos consistentes del resto de la aplicación.
     """
-    # 1. Obtiene los estilos de imagen guardados (zoom, rotación, etc.)
+    # 1. (lógica de estilos de imagen sin cambios)
     image_styles = post.image_styles
     zoom = image_styles.get("zoom", 1.0)
     rotation = image_styles.get("rotation", 0)
@@ -25,18 +25,32 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
     offset_y = image_styles.get("offsetY", 0)
     transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-    # --- ✨ INICIO: LÓGICA DE COLOR UNIFICADA (COPIADA DE UI/COMPONENTS) ✨ ---
+    # --- ✨ INICIO: LÓGICA DE COLOR CORREGIDA ✨ ---
     
     # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
     site_theme = rx.color_mode_cond("light", "dark")
     
-    # 2. Determina la APARIENCIA OBJETIVO ("light" o "dark")
-    card_target_appearance = rx.cond(
+    # 2. Determina la APARIENCIA ELEGIDA POR EL VENDEDOR
+    seller_chosen_appearance = rx.cond(
         site_theme == "light",
         post.light_mode_appearance, # Si sitio es claro, usa config clara
         post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
     )
     
+    # 3. Aplica la preferencia del USUARIO (el admin)
+    # Si 'force_site_theme' es True, usa el 'site_theme'.
+    # Si es False, usa el 'seller_chosen_appearance'.
+    card_target_appearance = rx.cond(
+        AppState.force_site_theme,
+        site_theme,
+        seller_chosen_appearance
+    )
+    
+    # --- ✨ FIN DE LA LÓGICA DE COLOR CORREGIDA ✨ ---
+    
+    # El resto de la lógica (colores, badges, etc.) ya depende
+    # de 'card_target_appearance', por lo que funcionará automáticamente.
+
     # 3. Determina los colores por DEFECTO basados en la APARIENCIA OBJETIVO (usando HEX)
     default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
     default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
@@ -64,15 +78,14 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
     title_color = rx.cond(post.use_default_style, default_title_by_appearance, custom_title)
     price_color = rx.cond(post.use_default_style, default_price_by_appearance, custom_price)
     
-    # --- ✨ ESTA ES LA CORRECCIÓN CLAVE PARA EL FONDO DE IMAGEN ✨ ---
+    # --- (fondo de imagen) ---
     image_bg = rx.cond(
         card_target_appearance == "light",
         DEFAULT_LIGHT_IMAGE_BG,
         DEFAULT_DARK_IMAGE_BG
     )
-    # --- ✨ FIN DE LA LÓGICA DE COLOR UNIFICADA ✨ ---
-
-    # (La función _card_badge usa card_target_appearance y es correcta)
+    
+    # (La función _card_badge es correcta)
     def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -94,10 +107,8 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                         post.main_image_url != "",
                         rx.image(
                             src=rx.get_upload_url(post.main_image_url),
-                            # --- ✨ INICIO: CORRECCIÓN DE TAMAÑO ✨ ---
                             width="100%", 
                             height="260px",
-                            # --- ✨ FIN: CORRECCIÓN DE TAMAÑO ✨ ---
                             object_fit="contain",
                             transform=transform_style,
                             transition="transform 0.2s ease-out",
@@ -113,9 +124,7 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                     position="relative",
                     width="100%", height="260px",
                     overflow="hidden",
-                    # --- ✨ INICIO: CORRECCIÓN DE FONDO DE IMAGEN ✨ ---
                     bg=image_bg,
-                    # --- ✨ FIN: CORRECCIÓN DE FONDO DE IMAGEN ✨ ---
                 ),
                 # Sección de información del producto
                 rx.vstack(

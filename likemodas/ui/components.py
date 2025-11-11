@@ -152,25 +152,28 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
     
     def _render_single_card(post: ProductCardData) -> rx.Component:
         
+        # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
         site_theme = rx.color_mode_cond("light", "dark")
         
-        # --- INICIO DE LA CORRECCIÓN: Lógica de Apariencia ---
+        # --- INICIO DE LA LÓGICA CORREGIDA ---
         
-        # Esta es la lógica clave.
-        # 1. Comprueba si el usuario está forzando el tema.
-        # 2. Si es VERDADERO, 'card_target_appearance' será "light" o "dark" (según el tema del sitio).
-        # 3. Si es FALSO, usa la lógica original que respeta la elección del vendedor.
-        card_target_appearance = rx.cond(
-            AppState.force_site_theme,  # Si el usuario fuerza el tema...
-            site_theme,                 # ...usa el tema del sitio ("light" o "dark").
-            rx.cond(                    # ...de lo contrario, usa la lógica del vendedor.
-                site_theme == "light",
-                post.light_mode_appearance,
-                post.dark_mode_appearance
-            )
+        # 2. Determina la APARIENCIA ELEGIDA POR EL VENDEDOR
+        seller_chosen_appearance = rx.cond(
+            site_theme == "light",
+            post.light_mode_appearance, # Si sitio es claro, usa config clara
+            post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
         )
         
-        # --- FIN DE LA CORRECCIÓN ---
+        # 3. Aplica la preferencia del USUARIO
+        # Si 'force_site_theme' es True, usa el 'site_theme'.
+        # Si es False, usa el 'seller_chosen_appearance'.
+        card_target_appearance = rx.cond(
+            AppState.force_site_theme,
+            site_theme,
+            seller_chosen_appearance
+        )
+        
+        # --- FIN DE LA LÓGICA CORREGIDA ---
 
         # El resto de la lógica de renderizado depende de 'card_target_appearance',
         # por lo que funcionará automáticamente con la nueva preferencia.
@@ -205,7 +208,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             DEFAULT_DARK_IMAGE_BG
         )
         
-        # ... (la función _card_badge no cambia) ...
+        # (La función _card_badge es correcta)
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -215,8 +218,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                 bg=colors["bg"], color=colors["text"], padding="1px 10px",
                 border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
             )
-            
-        # ... (los estilos de imagen no cambian) ...
+
+        # (Estilos de imagen - SIN CAMBIOS)
         image_styles = post.image_styles
         zoom = image_styles.get("zoom", 1.0)
         rotation = image_styles.get("rotation", 0)
@@ -224,9 +227,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # ... (el renderizado de la tarjeta no cambia) ...
+        # (Renderizado de la tarjeta - SIN CAMBIOS)
         return rx.box(
-             rx.vstack(
+            rx.vstack(
                 rx.vstack( # Contenedor clickeable
                     rx.box( # Imagen
                          rx.cond(
@@ -278,7 +281,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                     spacing="0", align_items="stretch", width="100%",
                 ),
-                 on_click=AppState.open_product_detail_modal(post.id),
+                on_click=AppState.open_product_detail_modal(post.id),
                 cursor="pointer", height="100%"
             ),
             width="290px", height="480px", bg=card_bg_color,
@@ -286,7 +289,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             border_radius="8px", box_shadow="md", overflow="hidden"
         )
 
-    # ... (el renderizado de la galería no cambia) ...
+    # (Renderizado de la galería - SIN CAMBIOS)
     return rx.cond(
         posts,
         rx.flex(
