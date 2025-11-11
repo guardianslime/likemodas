@@ -24,9 +24,8 @@ from .account import saved_posts as saved_posts_module
 # from .account import display_settings_page 
 
 # LÍNEA CORREGIDA (reemplázala por esta):
-from .account import display_settings_page
+from .account.display_settings_page import display_settings_page
 # --- FIN DE LA CORRECCIÓN ---
-
 
 # Vistas de ADMINISTRADOR
 from .admin import page as admin_page
