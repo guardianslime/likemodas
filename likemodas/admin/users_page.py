@@ -4,7 +4,7 @@ from ..models import UserRole
 from ..auth.admin_auth import require_admin # Importa el decorador de admin
 from ..ui.password_input import password_input # Importa el campo de contraseña
 
-# --- INICIO: Nuevo Modal de Eliminación Permanente ---
+# --- INICIO: Modal de Eliminación Permanente (Corregido) ---
 def hard_delete_user_modal() -> rx.Component:
     """
     Modal de confirmación "Zona de Peligro" para la eliminación permanente de un usuario.
@@ -12,7 +12,8 @@ def hard_delete_user_modal() -> rx.Component:
     """
     return rx.alert_dialog.root(
         rx.alert_dialog.content(
-            style={"max_width": "450px"},
+            # --- INICIO DE LA CORRECCIÓN ---
+            # Los argumentos posicionales (hijos) van PRIMERO.
             rx.alert_dialog.title("¿Estás absolutamente seguro?"),
             rx.alert_dialog.description(
                 "Esta acción es irreversible. Se eliminará permanentemente al usuario: ",
@@ -46,13 +47,15 @@ def hard_delete_user_modal() -> rx.Component:
                 # Evento de envío del formulario
                 on_submit=AppState.confirm_hard_delete_user,
             ),
+            # El argumento con nombre (style) va DESPUÉS de los hijos.
+            style={"max_width": "450px"},
+            # --- FIN DE LA CORRECCIÓN ---
         ),
         # Controla la apertura/cierre del modal
         open=AppState.show_delete_user_modal,
         on_open_change=AppState.close_delete_modal,
     )
-# --- FIN: Nuevo Modal ---
-
+# --- FIN: Modal Corregido ---
 
 def user_status_badge(user: UserManagementDTO) -> rx.Component:
     """Devuelve un badge de estado (Vetado, Verificado, etc.)."""
