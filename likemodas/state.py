@@ -5,6 +5,7 @@ import json
 import pytz
 import reflex as rx
 import reflex_local_auth
+from requests import delete
 import sqlmodel
 from sqlmodel import select
 from sqlmodel import text # Importar text
@@ -1169,6 +1170,93 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
+    # --- INICIO: Variables para el modal de Eliminación Permanente ---
+    show_delete_user_modal: bool = False
+    user_to_delete: Optional[UserManagementDTO] = None
+    # --- FIN: Variables para el modal ---
+    
+    # --- INICIO: Manejadores para el modal de Eliminación Permanente ---
+
+    def open_delete_modal(self, user: UserManagementDTO):
+        """Abre el modal de confirmación de borrado y guarda el usuario a eliminar."""
+        if user.id == self.authenticated_user_info.id:
+            return rx.toast.warning("No puedes eliminarte a ti mismo.")
+        self.user_to_delete = user
+        self.show_delete_user_modal = True
+
+    def close_delete_modal(self):
+        """Cierra el modal de borrado y limpia el estado."""
+        self.user_to_delete = None
+        self.show_delete_user_modal = False
+
+    @rx.event
+    def confirm_hard_delete_user(self, form_data: dict):
+        """
+        Elimina permanentemente un usuario y todos sus datos asociados
+        (publicaciones, comentarios, etc.) tras verificar la contraseña del admin.
+        """
+        # 1. Validaciones de seguridad
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida. Solo los administradores pueden eliminar usuarios.")
+        
+        if not self.user_to_delete:
+            return rx.toast.error("No se ha seleccionado ningún usuario para eliminar.")
+
+        admin_password = form_data.get("admin_password")
+        if not admin_password:
+            return rx.toast.error("Se requiere tu contraseña de administrador para confirmar.")
+
+        with rx.session() as session:
+            # 2. Verificar la contraseña del Administrador
+            admin_local_user = session.get(LocalUser, self.authenticated_user.id)
+            if not admin_local_user or not bcrypt.checkpw(admin_password.encode("utf-8"), admin_local_user.password_hash):
+                return rx.toast.error("Contraseña de administrador incorrecta.")
+
+            # 3. Obtener los registros del usuario a eliminar
+            user_info_to_delete = session.get(UserInfo, self.user_to_delete.id)
+            if not user_info_to_delete:
+                yield self.close_delete_modal()
+                return rx.toast.info("El usuario ya no existía.")
+            
+            local_user_id = user_info_to_delete.user_id
+            local_user_to_delete = session.get(LocalUser, local_user_id)
+            username_to_log = local_user_to_delete.username if local_user_to_delete else f"ID {local_user_id}"
+
+            # 4. Ejecutar la eliminación en cascada
+            try:
+                # 4a. Eliminar UserInfo.
+                # Gracias a 'cascade="all, delete-orphan"' en tus modelos (UserInfo.posts, 
+                # UserInfo.comments, UserInfo.purchases, etc.), esto eliminará
+                # automáticamente todas sus publicaciones, comentarios, compras, direcciones, etc.
+                session.delete(user_info_to_delete)
+                
+                # 4b. Eliminar registros de autenticación que dependen de LocalUser
+                if local_user_to_delete:
+                    # Eliminar sesiones activas
+                    session.exec(delete(LocalAuthSession).where(LocalAuthSession.user_id == local_user_id))
+                    # Eliminar tokens de reseteo de contraseña
+                    session.exec(delete(PasswordResetToken).where(PasswordResetToken.user_id == local_user_id))
+                    
+                    # 4c. Finalmente, eliminar el LocalUser
+                    session.delete(local_user_to_delete)
+                
+                # 5. Confirmar la transacción
+                session.commit()
+
+            except Exception as e:
+                session.rollback()
+                logger.error(f"Error en la eliminación permanente del usuario {username_to_log}: {e}")
+                return rx.toast.error(f"Error al eliminar: {e}")
+
+        # 6. Actualizar la UI
+        # Quitamos al usuario de la lista de estado 'managed_users'
+        self.managed_users = [u for u in self.managed_users if u.id != self.user_to_delete.id]
+        
+        yield self.close_delete_modal()
+        yield rx.toast.success(f"Usuario '{username_to_log}' y todos sus datos han sido eliminados permanentemente.")
+
+    # --- FIN: Manejadores para el modal de Eliminación Permanente ---
             
     show_tfa_activation_modal: bool = False
     tfa_qr_code_data_uri: str = ""
