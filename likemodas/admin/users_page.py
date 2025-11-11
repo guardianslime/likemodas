@@ -4,7 +4,57 @@ from ..models import UserRole
 from ..auth.admin_auth import require_admin # Importa el decorador de admin
 from ..ui.password_input import password_input # Importa el campo de contraseña
 
-# --- INICIO: Modal de Eliminación Permanente (Corregido) ---
+def ban_user_modal() -> rx.Component:
+    """Modal para configurar la duración del veto de un usuario."""
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.title("Vetar Usuario"),
+            rx.dialog.description(
+                "Selecciona por cuánto tiempo quieres vetar a ",
+                rx.text.strong(rx.cond(AppState.user_to_ban, AppState.user_to_ban.username, "")),
+                ". El usuario no podrá iniciar sesión durante este período."
+            ),
+            rx.form(
+                rx.vstack(
+                    rx.hstack(
+                        rx.input(
+                            placeholder="Ej: 7",
+                            value=AppState.ban_duration_value,
+                            on_change=AppState.set_ban_duration_value,
+                            type="number",
+                        ),
+                        rx.select(
+                            ["días", "meses", "años"],
+                            value=AppState.ban_duration_unit,
+                            on_change=AppState.set_ban_duration_unit,
+                        ),
+                        spacing="3",
+                    ),
+                    rx.flex(
+                        rx.dialog.close(
+                            rx.button(
+                                "Cancelar", 
+                                variant="soft", 
+                                color_scheme="gray", 
+                                on_click=AppState.close_ban_modal,
+                                type="button"
+                            )
+                        ),
+                        rx.button("Confirmar Veto", type="submit", color_scheme="red"),
+                        spacing="3",
+                        margin_top="1em",
+                        justify="end",
+                    ),
+                    spacing="3",
+                    margin_top="1em",
+                ),
+                on_submit=AppState.confirm_ban,
+            ),
+        ),
+        open=AppState.show_ban_modal,
+        on_open_change=AppState.close_ban_modal,
+    )
+
 def hard_delete_user_modal() -> rx.Component:
     """
     Modal de confirmación "Zona de Peligro" para la eliminación permanente de un usuario.
@@ -12,9 +62,8 @@ def hard_delete_user_modal() -> rx.Component:
     """
     return rx.alert_dialog.root(
         rx.alert_dialog.content(
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Los argumentos posicionales (hijos) van PRIMERO.
-            rx.alert_dialog.title("¿Estás absolutamente seguro?"),
+            # Argumentos posicionales (hijos) PRIMERO
+            rx.alert_dialog.title("¿Estásolutamente seguro?"),
             rx.alert_dialog.description(
                 "Esta acción es irreversible. Se eliminará permanentemente al usuario: ",
                 rx.text.strong(rx.cond(AppState.user_to_delete, AppState.user_to_delete.username, "...")),
@@ -47,15 +96,14 @@ def hard_delete_user_modal() -> rx.Component:
                 # Evento de envío del formulario
                 on_submit=AppState.confirm_hard_delete_user,
             ),
-            # El argumento con nombre (style) va DESPUÉS de los hijos.
+            # Argumento con nombre (style) AL FINAL
             style={"max_width": "450px"},
-            # --- FIN DE LA CORRECCIÓN ---
         ),
         # Controla la apertura/cierre del modal
         open=AppState.show_delete_user_modal,
         on_open_change=AppState.close_delete_modal,
     )
-# --- FIN: Modal Corregido ---
+
 
 def user_status_badge(user: UserManagementDTO) -> rx.Component:
     """Devuelve un badge de estado (Vetado, Verificado, etc.)."""
@@ -88,7 +136,7 @@ def mobile_user_card(user: UserManagementDTO) -> rx.Component:
             rx.hstack(rx.text("Estado:", weight="medium", size="2"), rx.spacer(), user_status_badge(user), align="center", width="100%"),
             rx.divider(margin_y="0.75em"),
             
-            # --- INICIO: SECCIÓN DE ACCIONES MÓVIL (CON BOTÓN ELIMINAR) ---
+            # --- SECCIÓN DE ACCIONES MÓVIL (CON BOTÓN ELIMINAR) ---
             rx.flex(
                 # Fila 1: Acciones de Rol
                 rx.button(rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"), on_click=AppState.toggle_admin_role(user.id), size="1", flex_grow=1),
@@ -109,7 +157,6 @@ def mobile_user_card(user: UserManagementDTO) -> rx.Component:
                 wrap="wrap", # Permite que los botones se reordenen
                 width="100%"
             ),
-            # --- FIN: SECCIÓN DE ACCIONES MÓVIL ---
             
             spacing="3", width="100%",
         )
@@ -123,7 +170,7 @@ def desktop_user_row(user: UserManagementDTO) -> rx.Component:
         rx.table.cell(rx.badge(user.role)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
-            # --- INICIO: SECCIÓN DE ACCIONES ESCRITORIO (CON BOTÓN ELIMINAR) ---
+            # --- SECCIÓN DE ACCIONES ESCRITORIO (CON BOTÓN ELIMINAR) ---
             rx.hstack(
                 # Acciones de Rol
                 rx.button(rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"), on_click=AppState.toggle_admin_role(user.id), size="1"),
@@ -142,7 +189,6 @@ def desktop_user_row(user: UserManagementDTO) -> rx.Component:
                 
                 spacing="2"
             )
-            # --- FIN: SECCIÓN DE ACCIONES ESCRITORIO ---
         ),
     )
 
@@ -163,7 +209,7 @@ def user_management_page() -> rx.Component:
             ),
             rx.divider(margin_y="1.5em"),
             
-            # --- INICIO: LÓGICA RESPONSIVA ---
+            # --- LÓGICA RESPONSIVA ---
             # Vista de Tabla (Solo para escritorio)
             rx.box(
                 rx.table.root(
@@ -179,7 +225,6 @@ def user_management_page() -> rx.Component:
                 rx.vstack(rx.foreach(AppState.filtered_all_users, mobile_user_card), spacing="4", width="100%"),
                 display=["block", "block", "none"] # Visible en móvil y tablet, oculto en escritorio
             ),
-            # --- FIN: LÓGICA RESPONSIVA ---
             
             align="stretch", width="100%",
         ),
@@ -188,6 +233,6 @@ def user_management_page() -> rx.Component:
 
     return rx.fragment(
         page_content,
-        ban_user_modal(), # El modal de veto que ya tenías
+        ban_user_modal(), # El modal de veto
         hard_delete_user_modal(), # El nuevo modal de eliminación permanente
     )
