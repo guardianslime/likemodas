@@ -18,8 +18,12 @@ from .auth.tfa_verify_page import tfa_verify_page_content
 from .account import profile_page as user_profile_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module
-# Esta importación es correcta
+
+# --- INICIO DE LA CORRECCIÓN DE IMPORTACIÓN ---
+# Importamos la *función* 'display_settings_page' directamente 
+# desde su *archivo* 'display_settings_page.py'
 from .account.display_settings_page import display_settings_page
+# --- FIN DE LA CORRECCIÓN DE IMPORTACIÓN ---
 
 # Vistas de ADMINISTRADOR
 from .admin import page as admin_page
@@ -94,12 +98,10 @@ app.add_page(shipping_info_module.shipping_info_content(), route=navigation.rout
 app.add_page(saved_posts_module.saved_posts_content(), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
 # --- FIN DE LA CORRECCIÓN ---
 
-# --- INICIO DE LA MODIFICACIÓN (LÍNEA 104) ---
-# LÍNEA INCORRECTA:
-# app.add_page(display_settings_page.display_settings_page(), route="/my-account/display-settings", title="Configuración de Visualización")
-# LÍNEA CORREGIDA:
+# --- INICIO DE LA CORRECCIÓN DE LLAMADA ---
+# Como importamos la *función* 'display_settings_page', la llamamos directamente.
 app.add_page(display_settings_page(), route="/my-account/display-settings", title="Configuración de Visualización")
-# --- FIN DE LA MODIFICACIÓN ---
+# --- FIN DE LA CORRECCIÓN DE LLAMADA ---
 
 # Rutas del Proceso de Compra
 app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
