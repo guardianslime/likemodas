@@ -8787,14 +8787,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def notification_list(self) -> list[NotificationDTO]:
         return getattr(self, "_notifications", [])
     
-    # --- INICIO DE LA NUEVA LÓGICA DE VISUALIZACIÓN ---
-    
-    # Esta variable usará el LocalStorage del navegador para guardar la preferencia.
-    # False (predeterminado) = Respetar el "Modo Artista" del vendedor.
-    # True = Forzar el tema del sitio (ignorar al vendedo
-
-    # --- INICIO DE LA LÓGICA DE VISUALIZACIÓN (CORREGIDA PARA STRINGS) ---
-    
     # 1. La variable de estado que *realmente* se guarda en LocalStorage.
     #    Ahora es un string "true" o "false".
     force_site_theme_str: str = rx.LocalStorage("false", name="force_site_theme_str")
