@@ -1,0 +1,1 @@
+import{b as e}from"./basic-C-iFIitR.js";export default e();
