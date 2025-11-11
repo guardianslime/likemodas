@@ -8791,14 +8791,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     # Esta variable usará el LocalStorage del navegador para guardar la preferencia.
     # False (predeterminado) = Respetar el "Modo Artista" del vendedor.
-    # True = Forzar el tema del sitio (ignorar al vendedor).
-    
-    # --- ELIMINA ESTE BLOQUE ENTERO ---
-    force_site_theme: bool = rx.LocalStorage(False, name="force_site_theme")
-
-    def set_force_site_theme(self, value: bool):
-        self.force_site_theme = value
-    # --- FIN DEL BLOQUE A ELIMINAR ---
+    # True = Forzar el tema del sitio (ignorar al vendedo
 
     # --- INICIO DE LA LÓGICA DE VISUALIZACIÓN (CORREGIDA PARA STRINGS) ---
     
