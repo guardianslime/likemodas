@@ -141,26 +141,39 @@ def multi_select_component(
         spacing="2", align_items="stretch", width="100%",
     )
 
-
 # --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE APARIENCIA CORREGIDA) ---
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    [VERSIÓN FINAL UNIFICADA CON HEX]
+    [VERSIÓN FINAL CON PREFERENCIA DE USUARIO]
     Galería de productos que renderiza tarjetas con la lógica de apariencia
-    unificada, forzando colores absolutos.
+    unificada, respetando la preferencia 'force_site_theme' del usuario.
     """
     
     def _render_single_card(post: ProductCardData) -> rx.Component:
         
-        # --- (Lógica de color unificada - esta ya era correcta) ---
         site_theme = rx.color_mode_cond("light", "dark")
         
+        # --- INICIO DE LA CORRECCIÓN: Lógica de Apariencia ---
+        
+        # Esta es la lógica clave.
+        # 1. Comprueba si el usuario está forzando el tema.
+        # 2. Si es VERDADERO, 'card_target_appearance' será "light" o "dark" (según el tema del sitio).
+        # 3. Si es FALSO, usa la lógica original que respeta la elección del vendedor.
         card_target_appearance = rx.cond(
-            site_theme == "light",
-            post.light_mode_appearance,
-            post.dark_mode_appearance
+            AppState.force_site_theme,  # Si el usuario fuerza el tema...
+            site_theme,                 # ...usa el tema del sitio ("light" o "dark").
+            rx.cond(                    # ...de lo contrario, usa la lógica del vendedor.
+                site_theme == "light",
+                post.light_mode_appearance,
+                post.dark_mode_appearance
+            )
         )
+        
+        # --- FIN DE LA CORRECCIÓN ---
+
+        # El resto de la lógica de renderizado depende de 'card_target_appearance',
+        # por lo que funcionará automáticamente con la nueva preferencia.
         
         default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
         default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
@@ -192,7 +205,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             DEFAULT_DARK_IMAGE_BG
         )
         
-        # --- (La función _card_badge es correcta) ---
+        # ... (la función _card_badge no cambia) ...
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -202,8 +215,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                 bg=colors["bg"], color=colors["text"], padding="1px 10px",
                 border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
             )
-
-        # --- (Estilos de imagen - SIN CAMBIOS) ---
+            
+        # ... (los estilos de imagen no cambian) ...
         image_styles = post.image_styles
         zoom = image_styles.get("zoom", 1.0)
         rotation = image_styles.get("rotation", 0)
@@ -211,20 +224,18 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # --- Renderizado de la tarjeta (CON TAMAÑO DE IMAGEN UNIFICADO) ---
+        # ... (el renderizado de la tarjeta no cambia) ...
         return rx.box(
-            rx.vstack(
+             rx.vstack(
                 rx.vstack( # Contenedor clickeable
                     rx.box( # Imagen
                          rx.cond(
                             post.main_image_url != "",
                             rx.image(
                                 src=rx.get_upload_url(post.main_image_url),
-                                # --- ✨ INICIO: CORRECCIÓN DE TAMAÑO ✨ ---
                                 width="100%", 
                                 height="260px", 
                                 object_fit="contain",
-                                # --- ✨ FIN: CORRECCIÓN DE TAMAÑO ✨ ---
                                 transform=transform_style, 
                                 transition="transform 0.2s ease-out",
                             ),
@@ -275,7 +286,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             border_radius="8px", box_shadow="md", overflow="hidden"
         )
 
-    # --- Renderizado de la galería (SIN CAMBIOS) ---
+    # ... (el renderizado de la galería no cambia) ...
     return rx.cond(
         posts,
         rx.flex(

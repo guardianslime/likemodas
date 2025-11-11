@@ -8786,6 +8786,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def notification_list(self) -> list[NotificationDTO]:
         return getattr(self, "_notifications", [])
+    
+    # --- INICIO DE LA NUEVA LÓGICA DE VISUALIZACIÓN ---
+    
+    # Esta variable usará el LocalStorage del navegador para guardar la preferencia.
+    # False (predeterminado) = Respetar el "Modo Artista" del vendedor.
+    # True = Forzar el tema del sitio (ignorar al vendedor).
+    force_site_theme: bool = rx.LocalStorage(name="force_site_theme", default_value=False)
+
+    def set_force_site_theme(self, value: bool):
+        """Actualiza la preferencia de visualización del usuario."""
+        self.force_site_theme = value
+        
+    # --- FIN DE LA NUEVA LÓGICA DE VISUALIZACIÓN ---
 
     @rx.var
     def unread_count(self) -> int:

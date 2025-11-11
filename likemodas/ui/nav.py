@@ -160,6 +160,11 @@ def public_navbar() -> rx.Component:
                 rx.fragment(
                     rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/profile"), color_scheme="violet"),
                     rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases"), color_scheme="violet"),
+                    
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    rx.menu.item("Visualización", on_click=lambda: rx.redirect("/my-account/display-settings"), color_scheme="violet"),
+                    # --- FIN DE LA MODIFICACIÓN ---
+
                     rx.menu.item(
                         "Cerrar Sesión",
                         on_click=AppState.do_logout,

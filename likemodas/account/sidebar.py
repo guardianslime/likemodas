@@ -25,6 +25,7 @@ def sidebar_link(text: str, href: str) -> rx.Component:
             "color": rx.color("violet", 11),
         },
     )
+
 def account_sidebar() -> rx.Component:
     """Sidebar con diseño mejorado para la sección Mi Cuenta."""
     return rx.vstack(
@@ -33,6 +34,9 @@ def account_sidebar() -> rx.Component:
         sidebar_link("Mis Compras", navigation.routes.PURCHASE_HISTORY_ROUTE),
         sidebar_link("Información para envíos", navigation.routes.SHIPPING_INFO_ROUTE),
         sidebar_link("Publicaciones Guardadas", "/my-account/saved-posts"),
+        # --- INICIO DE LA MODIFICACIÓN ---
+        sidebar_link("Visualización", "/my-account/display-settings"), # <-- AÑADE ESTA LÍNEA
+        # --- FIN DE LA MODIFICACIÓN ---
         align_items="start",
         padding="1em",
         border_right=f"1px solid {rx.color('gray', 6)}",
