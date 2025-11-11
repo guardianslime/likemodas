@@ -18,7 +18,13 @@ from .auth.tfa_verify_page import tfa_verify_page_content
 from .account import profile_page as user_profile_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module
-from .account import display_settings_page # <-- AÑADE ESTA LÍNEA
+# --- INICIO DE LA CORRECCIÓN ---
+# LÍNEA INCORRECTA (la que tienes ahora):
+# from .account import display_settings_page 
+
+# LÍNEA CORREGIDA (reemplázala por esta):
+from .account.display_settings_page import display_settings_page
+# --- FIN DE LA CORRECCIÓN --
 
 # Vistas de ADMINISTRADOR
 from .admin import page as admin_page
