@@ -8794,7 +8794,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     # True = Forzar el tema del sitio (ignorar al vendedor).
     
     # --- CORRECCIÓN AQUÍ ---
-    # El valor por defecto 'False' es el primer argumento posicional.
     force_site_theme: bool = rx.LocalStorage(False, name="force_site_theme")
     # --- FIN DE LA CORRECCIÓN ---
 
@@ -8803,6 +8802,27 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.force_site_theme = value
         
     # --- FIN DE LA NUEVA LÓGICA DE VISUALIZACIÓN ---
+
+    # --- INICIO DE LA LÓGICA DE VISUALIZACIÓN (CORREGIDA PARA STRINGS) ---
+    
+    # 1. La variable de estado que *realmente* se guarda en LocalStorage.
+    #    Ahora es un string "true" o "false".
+    force_site_theme_str: str = rx.LocalStorage("false", name="force_site_theme_str")
+
+    # 2. La propiedad computada que el resto de la app usará.
+    #    Lee el string y devuelve un booleano real.
+    @rx.var
+    def force_site_theme(self) -> bool:
+        """Devuelve True si el usuario quiere forzar el tema, False si no."""
+        return self.force_site_theme_str == "true"
+
+    # 3. El setter que el rx.switch llamará.
+    #    Recibe un booleano (del switch) y lo guarda como string.
+    def set_force_site_theme(self, value: bool):
+        """Actualiza la preferencia de visualización del usuario."""
+        self.force_site_theme_str = "true" if value else "false"
+        
+    # --- FIN DE LA LÓGICA DE VISUALIZACIÓN (CORREGIDA PARA STRINGS) ---
 
     @rx.var
     def unread_count(self) -> int:
