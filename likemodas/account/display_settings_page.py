@@ -47,7 +47,7 @@ def display_settings_card() -> rx.Component:
                         "Modo Adaptativo: Estás viendo los estilos personalizados (Modo Artista) creados por cada vendedor."
                     )
                 ),
-                icon=rx.icon("info"),
+                icon="info", # <-- Se pasa el nombre del icono como un string
                 color_scheme=rx.cond(AppState.force_site_theme, "blue", "gray"),
                 variant="soft",
                 margin_top="1.5em",
