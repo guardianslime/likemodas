@@ -3893,16 +3893,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_main_page_data(self):
         """
-        [VERSIÓN OPTIMIZADA] Carga la página principal. Primero, muestra los
-        productos con datos básicos para una carga visual instantánea. Luego, en
-        segundo plano, recalcula los costos de envío y maneja la apertura de
-        modales si se especifica en la URL.
+        [VERSIÓN CORREGIDA Y OPTIMIZADA] Carga la página principal.
+        1. Parsea la URL para detectar 'variant_uuid' (QR) o 'product_id_to_load'.
+        2. Carga los productos básicos para visualización rápida.
+        3. En segundo plano, carga datos de envío y abre el modal si es necesario.
         """
         self.is_loading = True
         yield
 
         # Variables para parámetros de la URL
         product_id_to_load = None
+        variant_uuid_to_load = None  # <-- NUEVA VARIABLE PARA QR
         category = None
 
         # 1. Parsea la URL de forma segura para obtener parámetros
@@ -3911,16 +3912,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             if full_url and "?" in full_url:
                 query_params = parse_qs(urlparse(full_url).query)
                 
-                # Extraer ID de producto para abrir modal
+                # A. Extraer ID de producto directo (Lógica antigua/compartir enlace)
                 id_list = query_params.get("product_id_to_load")
                 if id_list:
-                    product_id_to_load = int(id_list[0])
+                    try:
+                        product_id_to_load = int(id_list[0])
+                    except ValueError:
+                        pass
                 
-                # Extraer categoría para filtrar
+                # B. Extraer UUID de variante (NUEVA LÓGICA PARA QR)
+                uuid_list = query_params.get("variant_uuid")
+                if uuid_list:
+                    variant_uuid_to_load = uuid_list[0]
+
+                # C. Extraer categoría para filtrar
                 category_list = query_params.get("category")
                 if category_list:
                     category = category_list[0]
-        except (ValueError, TypeError, IndexError) as e:
+        except Exception as e:
             logger.error(f"Error al parsear la URL en load_main_page_data: {e}")
 
         self.current_category = category if category else "todos"
@@ -3935,13 +3944,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             temp_posts = []
             for p in results:
-                # --- ✨ INICIO: CAMBIO CLAVE para main_image ✨ ---
-                # Ahora usamos la URL de la imagen principal guardada, si existe.
-                # Si no, tomamos la primera imagen del primer grupo de variantes.
+                # Usa la imagen principal guardada o la primera del grupo
                 main_image = p.main_image_url_variant or ""
                 if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
-                # --- ✨ FIN: CAMBIO CLAVE ✨ ---
 
                 moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
@@ -3956,7 +3962,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     attributes=self._build_attributes_from_post(p),
                     average_rating=p.average_rating,
                     rating_count=p.rating_count,
-                    main_image_url=main_image, # Ahora usa la variable `main_image` que ya está bien construida
+                    main_image_url=main_image,
                     shipping_cost=p.shipping_cost,
                     is_moda_completa_eligible=p.is_moda_completa_eligible,
                     free_shipping_threshold=p.free_shipping_threshold,
@@ -3982,14 +3988,34 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._raw_posts = temp_posts
             self.posts = temp_posts
 
-        # 3. Encadenamos los siguientes eventos que pueden ser más lentos
+        # 3. Encadenamos los siguientes eventos
         yield AppState.load_default_shipping_info
         yield AppState.recalculate_all_shipping_costs
         
-        # 4. Si se encontró un ID en la URL, se abre el modal correspondiente
+        # 4. LÓGICA DE APERTURA DE MODAL AUTOMÁTICA
+        
+        # CASO A: Si hay un ID directo (enlace compartido)
         if product_id_to_load:
             yield from self.open_product_detail_modal(product_id_to_load)
             # Limpiamos la URL para que un refresh no vuelva a abrir el modal
+            yield rx.call_script("window.history.replaceState(null, '', '/')")
+        
+        # CASO B: Si hay un UUID (Escaneo de QR)
+        elif variant_uuid_to_load:
+            # Buscamos el producto usando tu función auxiliar existente
+            result = self.find_variant_by_uuid(variant_uuid_to_load)
+            
+            if result:
+                post, variant = result
+                # Abrimos el modal del producto encontrado
+                yield from self.open_product_detail_modal(post.id)
+                
+                # Opcional: Aquí podrías añadir lógica extra para pre-seleccionar 
+                # la variante específica en el modal si lo deseas en el futuro.
+            else:
+                yield rx.toast.error("Producto no encontrado para este código QR.")
+
+            # Limpiamos la URL
             yield rx.call_script("window.history.replaceState(null, '', '/')")
 
         self.is_loading = False
@@ -7279,13 +7305,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
-                        
-                        # --- ✨ INICIO: CORRECCIÓN DE GENERACIÓN DE QR ✨ ---
-                        # Generamos el QR como una imagen Data URI aquí mismo
+
+                        # --- ✨ CORRECCIÓN: Generar QR con variant_uuid ---
                         qr_data_uri = ""
                         if variant_uuid:
-                            # La URL que el QR debe contener (apuntando al producto en la tienda)
-                            webpage_url = f"{base_url}/?product_id_to_load={p.id}"
+                            # CAMBIO AQUÍ: Usamos variant_uuid en lugar de product_id_to_load
+                            webpage_url = f"{base_url}/?variant_uuid={variant_uuid}"
                             try:
                                 img = qrcode.make(webpage_url)
                                 buffer = io.BytesIO()
