@@ -40,7 +40,7 @@ LISTA_TIPOS_GENERAL = sorted(list(set(
     LISTA_TIPOS_ROPA + LISTA_TIPOS_ZAPATOS + LISTA_TIPOS_MOCHILAS
 )))
 
-# --- LISTAS DE CARACTERÍSTICAS ACTUALIZADAS Y AMPLIADAS ---
+# --- LISTAS DE CARACTERÍSTICAS ACTUALIZADAS Y AMPLIADAS --
 
 LISTA_COLORES = sorted([
     "Amarillo oscuro", "Azul oscuro", "Beige oscuro", "Blanco oscuro", "Café oscuro", "Dorado oscuro", "Gris oscuro", "Morado oscuro",
