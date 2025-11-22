@@ -56,7 +56,7 @@ LISTA_NUMEROS_CALZADO = [str(i) for i in range(34, 45)]
 
 # --- ✅ LISTA DE MATERIALES AMPLIADA ---
 LISTA_MATERIALES = sorted([
-    "Algodón", "Cuero", "Cuero Sintético", "Denim", "Lana", "Lino", "Lona", 
+    "Algodón", "Cuero", "Cuero Sintético", "Denim", "Impermeable", "Lana", "Lino", "Lona", 
     "Licra", "Malla", "Nylon", "Pana", "Poliéster", "Seda", "Sintético", "Viscosa"
 ])
 
