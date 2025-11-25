@@ -3412,59 +3412,85 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
     def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
         """
-        [VERSIÓN MEJORADA CON PIPELINE INTELIGENTE]
-        Utiliza OpenCV para decodificar un QR, aplicando una secuencia de técnicas de
-        mejora de imagen para aumentar la tasa de éxito en fotos imperfectas.
+        [VERSIÓN OPTIMIZADA] Decodifica QR reduciendo primero la imagen para ahorrar RAM.
+        Incluye pipeline de mejora de imagen (Escala de grises -> Contraste -> Nitidez).
         """
+        import cv2
+        import numpy as np
+        import gc
+
         try:
-            # 1. Cargar la imagen desde los bytes en memoria
+            # 1. Cargar bytes en array (bajo consumo)
             np_arr = np.frombuffer(image_bytes, np.uint8)
-            image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            if image is None:
-                logger.error("No se pudo decodificar el buffer de la imagen con OpenCV.")
+            
+            # 2. Decodificar a imagen OpenCV
+            image_orig = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            
+            if image_orig is None:
+                logger.error("OpenCV no pudo decodificar la imagen.")
                 return None
+
+            # --- 🚀 OPTIMIZACIÓN CLAVE DE RAM 🚀 ---
+            # Si la imagen es muy grande (más de 1000px), la reducimos.
+            # Esto no afecta la lectura del QR pero ahorra muchísima RAM y CPU.
+            height, width = image_orig.shape[:2]
+            max_dimension = 1000
+            
+            if width > max_dimension or height > max_dimension:
+                scale = max_dimension / max(width, height)
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                # INTER_AREA es el mejor método para reducir tamaño sin perder calidad
+                image_to_process = cv2.resize(image_orig, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            else:
+                image_to_process = image_orig
+
+            # Liberamos la memoria de la imagen original gigante INMEDIATAMENTE
+            del image_orig
+            del np_arr
+            gc.collect() 
+            # ---------------------------------------
 
             detector = cv2.QRCodeDetector()
 
-            # --- INICIO DE LA CASCADA DE PROCESAMIENTO ---
+            # --- Pipeline de Detección Secuencial (Usando la imagen reducida) ---
 
-            # ETAPA 1: Intento con la imagen original (el más rápido)
-            logger.info("Intento de decodificación QR - Etapa 1: Imagen Original")
-            decoded_text, points, _ = detector.detectAndDecode(image)
+            # Intento 1: Imagen Normal (Redimensionada)
+            logger.info("QR: Intento 1 - Imagen Normal")
+            decoded_text, points, _ = detector.detectAndDecode(image_to_process)
             if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 1.")
                 return decoded_text
 
-            # ETAPA 2: Conversión a escala de grises
-            logger.info("Intento de decodificación QR - Etapa 2: Escala de grises")
-            gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            decoded_text, points, _ = detector.detectAndDecode(gray_image)
-            if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 2.")
-                return decoded_text
+            # Intento 2: Escala de Grises + Mejora de Contraste (CLAHE)
+            logger.info("QR: Intento 2 - Grises + CLAHE")
+            # Convertir a grises
+            if len(image_to_process.shape) == 3:
+                gray_image = cv2.cvtColor(image_to_process, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_image = image_to_process
 
-            # ETAPA 3: Umbral adaptativo (muy potente para sombras y brillos)
-            logger.info("Intento de decodificación QR - Etapa 3: Umbral Adaptativo")
-            thresh_image = cv2.adaptiveThreshold(
-                gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-            )
-            decoded_text, points, _ = detector.detectAndDecode(thresh_image)
-            if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 3.")
-                return decoded_text
+            # Aplicar CLAHE (Contrast Limited Adaptive Histogram Equalization)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced_image = clahe.apply(gray_image)
             
-            # ETAPA 4: Desenfoque ligero + Umbral (para eliminar ruido)
-            logger.info("Intento de decodificación QR - Etapa 4: Desenfoque + Umbral")
-            blur_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
-            thresh_blur_image = cv2.adaptiveThreshold(
-                blur_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-            )
-            decoded_text, points, _ = detector.detectAndDecode(thresh_blur_image)
+            decoded_text, points, _ = detector.detectAndDecode(enhanced_image)
             if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 4.")
                 return decoded_text
 
-            logger.error("El QR no pudo ser detectado después de todas las etapas de pre-procesamiento.")
+            # Intento 3: Binarización (Blanco y Negro puro)
+            logger.info("QR: Intento 3 - Binarización")
+            _, binary_image = cv2.threshold(enhanced_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            decoded_text, points, _ = detector.detectAndDecode(binary_image)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            logger.warning("No se pudo detectar QR después de todos los intentos.")
+            
+            # Limpieza final
+            del image_to_process
+            del gray_image
+            gc.collect()
+            
             return None
 
         except Exception as e:
@@ -3496,63 +3522,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
         return closed
 
-    def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
-        """
-        [VERSIÓN 2.0 - MÁS INTELIGENTE]
-        Utiliza OpenCV con un pipeline secuencial y robusto de técnicas de mejora de imagen.
-        """
-        try:
-            np_arr = np.frombuffer(image_bytes, np.uint8)
-            image_orig = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            if image_orig is None:
-                logger.error("No se pudo decodificar la imagen con OpenCV.")
-                return None
 
-            detector = cv2.QRCodeDetector()
-
-            # --- Pipeline de Detección Secuencial ---
-
-            # Intento 1: Imagen Original (para casos fáciles y rápidos)
-            logger.info("Intento de decodificación QR - Etapa 1: Imagen Original")
-            decoded_text, points, _ = detector.detectAndDecode(image_orig)
-            if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 1.")
-                return decoded_text
-
-            # Intento 2: Con mejora de contraste (CLAHE)
-            logger.info("Intento de decodificación QR - Etapa 2: Mejora de Contraste (CLAHE)")
-            image_clahe = self._apply_clahe_color(image_orig)
-            decoded_text, points, _ = detector.detectAndDecode(image_clahe)
-            if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 2.")
-                return decoded_text
-
-            # Intento 3: Con mejora de nitidez sobre la imagen ya contrastada
-            logger.info("Intento de decodificación QR - Etapa 3: Aumento de Nitidez")
-            image_sharp = self._unsharp_mask(image_clahe, strength=1.2)
-            decoded_text, points, _ = detector.detectAndDecode(image_sharp)
-            if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 3.")
-                return decoded_text
-
-            # Intento 4: Con limpieza morfológica sobre una imagen binarizada
-            logger.info("Intento de decodificación QR - Etapa 4: Limpieza Morfológica")
-            gray_sharp = cv2.cvtColor(image_sharp, cv2.COLOR_BGR2GRAY)
-            _, thresh_image = cv2.threshold(gray_sharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            image_morph = self._apply_morphological_cleanup(thresh_image)
-            decoded_text, points, _ = detector.detectAndDecode(image_morph)
-            if points is not None and decoded_text:
-                logger.info("ÉXITO en Etapa 4.")
-                return decoded_text
-
-            logger.error("El QR no pudo ser detectado después de aplicar el pipeline de pre-procesamiento avanzado.")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error fatal durante la decodificación del QR: {e}")
-            return None
-
-    # --- FIN DEL NUEVO BLOQUE DE CÓDIGO ---
 
     # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---
     async def handle_qr_image_upload(self, files: list[rx.UploadFile]):
@@ -3643,7 +3613,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            # --- OPTIMIZACIÓN: PAGINACIÓN ---
+            # En lugar de .all(), usamos limit().
+            # Esto carga solo los 20 más recientes.
+            results = session.exec(
+                query.order_by(BlogPostModel.created_at.desc()).limit(20) 
+            ).all()
 
             temp_posts = []
             for p in results:
@@ -3962,7 +3937,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            # --- OPTIMIZACIÓN: PAGINACIÓN ---
+            # En lugar de .all(), usamos limit().
+            # Esto carga solo los 20 más recientes.
+            results = session.exec(
+                query.order_by(BlogPostModel.created_at.desc()).limit(20) 
+            ).all()
 
             temp_posts = []
             for p in results:
@@ -4235,7 +4215,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            # --- OPTIMIZACIÓN: PAGINACIÓN ---
+            # En lugar de .all(), usamos limit().
+            # Esto carga solo los 20 más recientes.
+            results = session.exec(
+                query.order_by(BlogPostModel.created_at.desc()).limit(20) 
+            ).all()
             
             temp_posts = []
             for p in results:
@@ -5182,30 +5167,40 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
         """
-        [VERSIÓN CORREGIDA]
-        Maneja la subida de imágenes, las guarda en el disco y las añade
-        a la lista de imágenes "uploaded_images" para el formulario de CREACIÓN.
+        [OPTIMIZADO] Sube imágenes escribiendo directamente al disco (Streaming)
+        para no saturar la RAM.
         """
         for file in files:
             try:
-                upload_data = await file.read()
-                # Genera un nombre de archivo único
+                # Genera nombre único
                 unique_filename = f"{secrets.token_hex(8)}-{file.name}"
-                outfile = rx.get_upload_dir() / unique_filename
-                outfile.write_bytes(upload_data)
-                
-                # Añadir el nombre de archivo único a las listas de estado
+                outfile_path = rx.get_upload_dir() / unique_filename
+
+                # --- CAMBIO CLAVE: Escritura por chunks (Streaming) ---
+                with open(outfile_path, "wb") as buffer:
+                    while True:
+                        # Lee en bloques de 1MB para no llenar la RAM
+                        chunk = await file.read(1024 * 1024) 
+                        if not chunk:
+                            break
+                        buffer.write(chunk)
+                # ------------------------------------------------------
+
+                # Solo guardamos el nombre del archivo en el estado (texto ligero)
                 if unique_filename not in self.uploaded_images:
                     self.uploaded_images.append(unique_filename)
-                    # --- La línea que modificaba unassigned_uploaded_images se ha eliminado ---
 
             except Exception as e:
-                logger.error(f"Error al guardar archivo subido: {e}")
-                yield rx.toast.error(f"Error al procesar el archivo {file.name}")
+                logger.error(f"Error al guardar archivo: {e}")
+                yield rx.toast.error(f"Error al procesar {file.name}")
         
-        # Limpiar la selección temporal para crear un nuevo grupo
+        # Limpia selección
         self.image_selection_for_grouping = []
         self.selection_order_map = {}
+        
+        # Forzar recolección de basura para liberar RAM inmediatamente
+        import gc
+        gc.collect()
 
     @rx.var
     def selection_order_map(self) -> dict[str, int]:
