@@ -659,6 +659,69 @@ class AppState(reflex_local_auth.LocalAuthState):
         # El 'yield from' es por si la función original necesita ceder eventos.
         yield from self.open_product_detail_modal(post_id)
 
+    @rx.event
+    def clean_orphan_files(self):
+        """
+        Elimina archivos del disco que no están referenciados en la base de datos.
+        ¡Esto liberará espacio en tu volumen!
+        """
+        if not self.is_admin:
+            return rx.toast.error("Solo administradores pueden ejecutar mantenimiento.")
+
+        yield rx.toast.info("Iniciando limpieza de archivos huérfanos...")
+        
+        import os
+        
+        # 1. Obtener todos los archivos en la carpeta de subidas
+        upload_dir = rx.get_upload_dir()
+        if not os.path.exists(upload_dir):
+            return rx.toast.info("La carpeta de subidas no existe o está vacía.")
+            
+        files_on_disk = set(os.listdir(upload_dir))
+        
+        # 2. Obtener todos los archivos referenciados en la BD
+        files_in_db = set()
+        with rx.session() as session:
+            # Imágenes de productos (en variantes)
+            posts = session.exec(sqlmodel.select(BlogPostModel)).all()
+            for post in posts:
+                if post.variants:
+                    for variant in post.variants:
+                        for url in variant.get("image_urls", []):
+                            files_in_db.add(url)
+                # Imagen principal (si usas el campo nuevo)
+                if post.main_image_url_variant:
+                    files_in_db.add(post.main_image_url_variant)
+
+            # Avatares de usuarios
+            users = session.exec(sqlmodel.select(UserInfo)).all()
+            for user in users:
+                if user.avatar_url:
+                    files_in_db.add(user.avatar_url)
+
+        # 3. Calcular la diferencia (Archivos en disco - Archivos en BD)
+        orphan_files = files_on_disk - files_in_db
+        deleted_count = 0
+        freed_space_mb = 0.0
+
+        # 4. Borrar los huérfanos
+        for filename in orphan_files:
+            file_path = upload_dir / filename
+            try:
+                if os.path.isfile(file_path):
+                    file_size = os.path.getsize(file_path)
+                    os.remove(file_path)
+                    deleted_count += 1
+                    freed_space_mb += file_size / (1024 * 1024)
+            except Exception as e:
+                print(f"Error borrando {filename}: {e}")
+
+        # 5. Notificar resultado
+        if deleted_count > 0:
+            yield rx.toast.success(f"Limpieza completada: {deleted_count} archivos borrados. Liberados {freed_space_mb:.2f} MB.")
+        else:
+            yield rx.toast.info("El sistema está limpio. No se encontraron archivos huérfanos.")
+
     # --- INICIO: Nuevas variables para el Modal de Edición Artística ---
     
     # Controla la visibilidad del nuevo modal
