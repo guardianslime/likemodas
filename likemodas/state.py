@@ -2047,6 +2047,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_tipo: str = ""
     search_attr_tipo: str = ""
 
+    # --- VARIABLES DE BÚSQUEDA PARA EDICIÓN (NUEVAS) ---
+    edit_search_attr_talla_ropa: str = ""
+    edit_search_attr_numero_calzado: str = ""
+
+    def set_edit_search_attr_talla_ropa(self, query: str):
+        self.edit_search_attr_talla_ropa = query
+
+    def set_edit_search_attr_numero_calzado(self, query: str):
+        self.edit_search_attr_numero_calzado = query
+
+    @rx.var
+    def edit_filtered_attr_tallas_ropa(self) -> list[str]:
+        if not self.edit_search_attr_talla_ropa.strip():
+            return LISTA_TALLAS_ROPA
+        return [o for o in LISTA_TALLAS_ROPA if self.edit_search_attr_talla_ropa.lower() in o.lower()]
+
+    @rx.var
+    def edit_filtered_attr_numeros_calzado(self) -> list[str]:
+        if not self.edit_search_attr_numero_calzado.strip():
+            return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.edit_search_attr_numero_calzado.lower() in o.lower()]
+
     # --- AÑADE ESTE NUEVO SETTER ---
     def set_attr_colores(self, value: str): self.attr_colores = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
