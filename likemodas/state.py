@@ -614,7 +614,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Variables para el filtro de fechas
     finance_start_date: str = ""
     finance_end_date: str = ""
-    # --- ✨ AÑADE ESTA LÍNEA AQUÍ SI FALTA ✨ ---
+    # --- ✨ AÑADE ESTA LÍNEA AQUÍ SI FALTA ✨ --
     variant_form_data: list[VariantFormData] = []
 
     def set_finance_start_date(self, date: str):
