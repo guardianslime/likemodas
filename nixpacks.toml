@@ -1,23 +1,10 @@
-# Configuración de Nixpacks para Likemodas
-providers = ["python"]
-
+# nixpacks.toml simplificado
 [phases.setup]
-# Agregamos 'ghostscript' que ayuda con librerías gráficas
 nixPkgs = ["python311", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype", "ghostscript"]
-
-# Agregamos 'libzbar-dev' por seguridad si OpenCV falla y necesitamos fallback
 aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev"]
 
 [phases.install]
-# Instalamos dependencias. 
-# IMPORTANTE: --no-cache-dir evita que pip guarde archivos temporales, 
-# reduciendo el uso de disco y RAM durante la construcción.
-cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install -r requirements.txt"]
 
 [start]
-# Comando de inicio específico para Railway y Reflex en producción
 cmd = "reflex run --env prod --backend-only"
-
-[variables]
-# Variables de entorno para la construcción
-NIXPACKS_POETRY_VERSION = "1.8.0"
