@@ -50,7 +50,7 @@ LISTA_COLORES = sorted([
     "Blanco", "Café", "Dorado", "Gris", "Morado","Naranja", "Negro", "Plateado", "Rojo", "Rosa", "Verde", "Vino", "Multicolor"
 ])
 
-LISTA_TALLAS_ROPA = ["XS", "S", "M", "L", "XL", "XXL", "Talla Única"]
+LISTA_TALLAS_ROPA = ["XS", "S", "M", "L", "XL", "XXL", "Talla Única", "24", "26", "28", "30", "32", "34", "36"]
 
 LISTA_NUMEROS_CALZADO = [str(i) for i in range(34, 45)]
 
