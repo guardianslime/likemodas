@@ -1,10 +1,20 @@
-# nixpacks.toml simplificado
+# Configuración de Nixpacks para Likemodas
+providers = ["python"]
+
 [phases.setup]
-nixPkgs = ["python311", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype", "ghostscript"]
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev"]
+# Instalamos python y librerías de sistema necesarias para imágenes y QR
+nixPkgs = ["python311", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype"]
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev"]
 
 [phases.install]
+# Instalamos las dependencias de Python
 cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install -r requirements.txt"]
 
 [start]
-cmd = "reflex run --env prod --backend-only"
+# Comando de inicio (Ajusta según tu start.sh o comando directo)
+cmd = "sh ./start.sh"
+
+[variables]
+# Esto previene que Nixpacks meta todas tus variables secretas en la build
+# Solo pon aquí variables que SEAN necesarias para el 'pip install' (usualmente ninguna)
+NIXPACKS_POETRY_VERSION = "1.8.0"

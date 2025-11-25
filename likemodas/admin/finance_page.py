@@ -532,22 +532,6 @@ def finance_page_content() -> rx.Component:
                                 align_items="stretch", spacing="4", width="100%",
                             )
                         ),
-                        # --- SECCIÓN DE MANTENIMIENTO ---
-                        rx.card(
-                            rx.vstack(
-                                rx.heading("Mantenimiento del Sistema", size="5"),
-                                rx.text("Libera espacio en disco eliminando imágenes que no se usan.", size="2", color_scheme="gray"),
-                                rx.button(
-                                    "Limpiar Archivos Huérfanos",
-                                    on_click=AppState.clean_orphan_files,
-                                    color_scheme="orange",
-                                    variant="soft"
-                                ),
-                                align_items="start",
-                                width="100%"
-                            ),
-                            width="100%"
-                        ),
                         gastos_module(), 
                         spacing="6", width="100%",
                     )
