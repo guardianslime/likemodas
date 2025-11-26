@@ -1,14 +1,18 @@
-# Configuración de Nixpacks para Likemodas (Versión VPS Potente)
+# Configuración de Nixpacks para Likemodas (Versión Corregida)
 providers = ["python", "node"]
 
 [phases.setup]
-# Agregamos 'nodejs' y 'npm' para que funcione la parte visual
-nixPkgs = ["python311", "nodejs", "npm", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype", "ghostscript"]
+# Eliminamos 'npm' de la lista porque ya viene con 'nodejs'
+# Mantenemos ghostscript y las librerías de imágenes
+nixPkgs = ["python311", "nodejs", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype", "ghostscript"]
+
+# Paquetes del sistema operativo (Ubuntu)
 aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev"]
 
 [phases.install]
+# Instalamos dependencias de Python
 cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-# Quitamos '--backend-only' para que arranque TODO (Web + API)
+# Comando de inicio completo
 cmd = "reflex run --env prod"
