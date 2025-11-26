@@ -1,18 +1,16 @@
-# Configuración de Nixpacks para Likemodas (Versión Corregida)
+# Configuración de Nixpacks para Likemodas (Versión Minimalista)
+# Solo definimos los proveedores, Nixpacks resolverá las versiones compatibles automáticamente.
 providers = ["python", "node"]
 
 [phases.setup]
-# Eliminamos 'npm' de la lista porque ya viene con 'nodejs'
-# Mantenemos ghostscript y las librerías de imágenes
-nixPkgs = ["python311", "nodejs", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype", "ghostscript"]
-
-# Paquetes del sistema operativo (Ubuntu)
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev"]
+# Instalamos solo las librerías de sistema indispensables para Pillow/OpenCV/ZBar
+# NO especificamos nodejs/npm/python aquí para evitar conflictos con los providers.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", "ghostscript", "gcc"]
 
 [phases.install]
 # Instalamos dependencias de Python
 cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-# Comando de inicio completo
+# Comando de inicio
 cmd = "reflex run --env prod"
