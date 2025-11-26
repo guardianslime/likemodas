@@ -60,13 +60,13 @@ app = rx.App(
     # El título se define en cada página (app.add_page).
     # Aquí dejamos solo los metadatos globales para SEO.
     head_components=[
-        rx.meta(name="description", content="Compra lo mejor en moda, calzado y accesorios en Likemodas. Envíos a toda Colombia. Calidad y estilo al mejor precio."),
-        rx.meta(name="keywords", content="likemodas, ropa, calzado, colombia, moda, tienda online, zapatillas, bolsos"),
+        rx.el.meta(name="description", content="Compra lo mejor en moda, calzado y accesorios en Likemodas. Envíos a toda Colombia. Calidad y estilo al mejor precio."),
+        rx.el.meta(name="keywords", content="likemodas, ropa, calzado, colombia, moda, tienda online, zapatillas, bolsos"),
         
         # Open Graph (para que se vea bonito al compartir en WhatsApp/Facebook)
-        rx.meta(property="og:title", content="Likemodas - Estilo y Calidad"),
-        rx.meta(property="og:description", content="Descubre nuestra colección exclusiva."),
-        rx.meta(property="og:image", content="/logo.png"),
+        rx.el.meta(property="og:title", content="Likemodas - Estilo y Calidad"),
+        rx.el.meta(property="og:description", content="Descubre nuestra colección exclusiva."),
+        rx.el.meta(property="og:image", content="/logo.png"),
     ],
 
     style={
