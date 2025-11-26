@@ -1,20 +1,14 @@
-# Configuración de Nixpacks para Likemodas
-providers = ["python"]
+# Configuración de Nixpacks para Likemodas (Versión VPS Potente)
+providers = ["python", "node"]
 
 [phases.setup]
-# Instalamos python y librerías de sistema necesarias para imágenes y QR
-nixPkgs = ["python311", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype"]
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev"]
+# Agregamos 'nodejs' y 'npm' para que funcione la parte visual
+nixPkgs = ["python311", "nodejs", "npm", "gcc", "zlib", "libjpeg", "openjpeg", "libimagequant", "lcms2", "freetype", "ghostscript"]
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev"]
 
 [phases.install]
-# Instalamos las dependencias de Python
-cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install -r requirements.txt"]
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-# Comando de inicio (Ajusta según tu start.sh o comando directo)
-cmd = "sh ./start.sh"
-
-[variables]
-# Esto previene que Nixpacks meta todas tus variables secretas en la build
-# Solo pon aquí variables que SEAN necesarias para el 'pip install' (usualmente ninguna)
-NIXPACKS_POETRY_VERSION = "1.8.0"
+# Quitamos '--backend-only' para que arranque TODO (Web + API)
+cmd = "reflex run --env prod"

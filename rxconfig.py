@@ -2,38 +2,34 @@ import reflex as rx
 import os
 from dotenv import load_dotenv
 
-# Carga las variables de entorno desde un archivo .env si existe (para desarrollo local)
+# Carga las variables de entorno locales
 load_dotenv()
 
-# --- MODIFICACIÓN CRÍTICA ---
-# Leemos explícitamente la variable de entorno DATABASE_URL.
-# Si no la encuentra (como en tu entorno local), usará reflex.db por defecto.
-# En Railway, SIEMPRE encontrará la variable y usará PostgreSQL.
+# 1. Base de datos (Lee la variable de Coolify o usa local)
 database_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
-# --- FIN DE LA MODIFICACIÓN ---
 
+# 2. Configuración Dinámica de URLs
+# API_URL: Es la dirección de tu servidor en Hetzner (Coolify).
+# DEPLOY_URL: Es la dirección de tu web en Vercel.
+target_api_url = os.getenv("API_URL", "http://localhost:8000")
+target_deploy_url = os.getenv("DEPLOY_URL", "http://localhost:3000")
 
-# --- URLs de Despliegue ---
-RAILWAY_PUBLIC_URL = "https://full-stack-python-production.up.railway.app"
-PRODUCTION_DOMAIN = "https://www.likemodas.com"
-VERCEL_PREVIEW_URL = "https://full-stack-python.vercel.app"
-
-
-# --- Configuración Principal de la Aplicación ---
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
-    # Asignamos explícitamente la URL de la base de datos que leímos arriba.
     db_url=database_url,
     
-    api_url=RAILWAY_PUBLIC_URL,
-    deploy_url=PRODUCTION_DOMAIN,
+    # Aquí está la magia: Reflex usará lo que le digan las variables de entorno
+    api_url=target_api_url,
+    deploy_url=target_deploy_url,
     
+    # Permisos de seguridad (CORS)
     cors_allowed_origins=[
         "http://localhost:3000",
-        PRODUCTION_DOMAIN,
-        VERCEL_PREVIEW_URL,
+        target_deploy_url,        # Permite a Vercel conectarse
+        "https://likemodas.vercel.app", # (Opcional) Tu dominio futuro de Vercel
+        "https://www.likemodas.com"     # (Opcional) Tu dominio real
     ],
     
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],

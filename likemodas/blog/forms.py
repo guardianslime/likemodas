@@ -197,11 +197,27 @@ def blog_post_add_form() -> rx.Component:
         ropa_attributes = rx.vstack(
             rx.text("Talla"),
             rx.hstack(
-                rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button") 
+                # --- CAMBIO: Usamos searchable_select en lugar de rx.select ---
+                searchable_select(
+                    placeholder="Buscar talla...",
+                    options=AppState.filtered_attr_tallas_ropa,
+                    on_change_select=AppState.set_temp_talla,
+                    value_select=AppState.temp_talla,
+                    search_value=AppState.search_attr_talla_ropa,
+                    on_change_search=AppState.set_search_attr_talla_ropa,
+                    filter_name="talla_ropa_filter",
+                ),
+                # ------------------------------------------------------------
+                rx.button(
+                    "Añadir", 
+                    on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), 
+                    type="button"
+                ),
+                align_items="start", # Alineación para que se vea bien con el buscador
+                width="100%"
             ),
             rx.flex(
-                rx.foreach(AppState.attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")), 
+                 rx.foreach(AppState.attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")),
                 wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
             ),
             spacing="3", align_items="stretch", width="100%"
@@ -209,11 +225,27 @@ def blog_post_add_form() -> rx.Component:
         calzado_attributes = rx.vstack(
             rx.text("Número"),
             rx.hstack(
-                rx.select(LISTA_NUMEROS_CALZADO, placeholder="Añadir número...", value=AppState.temp_numero, on_change=AppState.set_temp_numero),
-                rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero), type="button") 
+                # --- CAMBIO: Usamos searchable_select en lugar de rx.select ---
+                searchable_select(
+                    placeholder="Buscar número...",
+                    options=AppState.filtered_attr_numeros_calzado,
+                    on_change_select=AppState.set_temp_numero,
+                    value_select=AppState.temp_numero,
+                    search_value=AppState.search_attr_numero_calzado,
+                    on_change_search=AppState.set_search_attr_numero_calzado,
+                    filter_name="numero_calzado_filter",
+                ),
+                # ------------------------------------------------------------
+                rx.button(
+                    "Añadir", 
+                    on_click=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero), 
+                    type="button"
+                ),
+                align_items="start", 
+                width="100%"
             ),
             rx.flex(
-                 rx.foreach(AppState.attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")), 
+                 rx.foreach(AppState.attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")),
                 wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
             ),
             spacing="3", align_items="stretch", width="100%"
@@ -555,8 +587,22 @@ def blog_post_edit_form() -> rx.Component:
         ropa_attributes = rx.vstack(
              rx.text("Talla"),
             rx.hstack(
-                rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.edit_temp_talla, on_change=AppState.set_edit_temp_talla),
-                rx.button("Añadir", on_click=AppState.add_edit_variant_attribute("Talla", AppState.edit_temp_talla), type="button")
+                # --- CAMBIO: Usamos searchable_select en modo EDICIÓN ---
+                searchable_select(
+                    placeholder="Buscar talla...",
+                    options=AppState.edit_filtered_attr_tallas_ropa, # Variable filtrada de edición
+                    on_change_select=AppState.set_edit_temp_talla,
+                    value_select=AppState.edit_temp_talla,
+                    search_value=AppState.edit_search_attr_talla_ropa, # Variable de búsqueda de edición
+                    on_change_search=AppState.set_edit_search_attr_talla_ropa,
+                    filter_name="edit_talla_ropa_filter",
+                ),
+                # ------------------------------------------------------
+                rx.button(
+                    "Añadir", 
+                    on_click=AppState.add_edit_variant_attribute("Talla", AppState.edit_temp_talla), 
+                    type="button"
+                )
             ),
             rx.flex(
                  rx.foreach(AppState.edit_attr_tallas_ropa, lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=AppState.remove_edit_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")),
@@ -564,11 +610,26 @@ def blog_post_edit_form() -> rx.Component:
              ),
             spacing="3", align_items="stretch", width="100%"
         )
+
         calzado_attributes = rx.vstack(
             rx.text("Número"),
             rx.hstack(
-                rx.select(LISTA_NUMEROS_CALZADO, placeholder="Añadir número...", value=AppState.edit_temp_numero, on_change=AppState.set_edit_temp_numero),
-                rx.button("Añadir", on_click=AppState.add_edit_variant_attribute("Número", AppState.edit_temp_numero), type="button")
+                # --- CAMBIO: Usamos searchable_select en modo EDICIÓN ---
+                searchable_select(
+                    placeholder="Buscar número...",
+                    options=AppState.edit_filtered_attr_numeros_calzado,
+                    on_change_select=AppState.set_edit_temp_numero,
+                    value_select=AppState.edit_temp_numero,
+                    search_value=AppState.edit_search_attr_numero_calzado,
+                    on_change_search=AppState.set_edit_search_attr_numero_calzado,
+                    filter_name="edit_numero_calzado_filter",
+                ),
+                # ------------------------------------------------------
+                rx.button(
+                    "Añadir", 
+                    on_click=AppState.add_edit_variant_attribute("Número", AppState.edit_temp_numero), 
+                    type="button"
+                )
             ),
             rx.flex(
                  rx.foreach(AppState.edit_attr_numeros_calzado, lambda num: rx.badge(num, rx.icon("x", size=12, on_click=AppState.remove_edit_variant_attribute("Número", num), cursor="pointer"), variant="soft", color_scheme="gray")),
