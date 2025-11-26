@@ -62,6 +62,18 @@ fastapi_app.include_router(api_tasks.router)
 # Configuración de la aplicación Reflex
 # --- INICIO DE LA CORRECCIÓN Z-INDEX ---
 app = rx.App(
+    # ESTO ES LO QUE LEE GOOGLE:
+    head_components=[
+        rx.title("Likemodas - Tienda Online de Ropa y Calzado en Colombia"),
+        rx.meta(name="description", content="Compra lo mejor en moda, calzado y accesorios en Likemodas. Envíos a toda Colombia. Calidad y estilo al mejor precio."),
+        rx.meta(name="keywords", content="likemodas, ropa, calzado, colombia, moda, tienda online, zapatillas, bolsos"),
+        
+        # Open Graph (para que se vea bonito al compartir en WhatsApp/Facebook)
+        rx.meta(property="og:title", content="Likemodas - Estilo y Calidad"),
+        rx.meta(property="og:description", content="Descubre nuestra colección exclusiva."),
+        rx.meta(property="og:image", content="/logo.png"), # Asegúrate de tener un logo.png en tu carpeta assets
+    ],
+
     style={
         "font_family": "Arial, sans-serif",
         # Esta regla CSS le dice al contenedor de notificaciones
@@ -72,6 +84,7 @@ app = rx.App(
         },
     },
     api_transformer=fastapi_app
+    
 )
 # --- FIN DE LA CORRECCIÓN Z-INDEX ---
 
