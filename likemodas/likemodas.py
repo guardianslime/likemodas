@@ -4,6 +4,7 @@ import reflex_local_auth
 
 # Módulos internos de la aplicación
 from .api import webhooks, tasks as api_tasks
+from .api import mobile_api  # <--- IMPORTAR EL NUEVO ARCHIVO
 from .state import AppState
 from .ui.base import base_page
 from . import navigation
@@ -53,6 +54,9 @@ from .returns import page as returns_page
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 fastapi_app.include_router(webhooks.router)
 fastapi_app.include_router(api_tasks.router)
+
+# Justo donde configuras fastapi_app
+fastapi_app.include_router(mobile_api.router)
 
 # Configuración de la aplicación Reflex
 app = rx.App(
