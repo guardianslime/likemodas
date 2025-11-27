@@ -10,7 +10,8 @@ from likemodas.db.session import get_session
 from likemodas.models import BlogPostModel, Category
 
 # URL base de tu servidor (cámbiala por tu dominio real en producción)
-BASE_URL = os.getenv("APP_BASE_URL", "https://api.likemodas.com")
+# Forzamos la URL correcta para evitar errores de configuración
+BASE_URL = "https://api.likemodas.com"
 
 # 1. Definimos el "DTO" (Cómo se verán los datos en el celular)
 class ProductMobileDTO(BaseModel):
