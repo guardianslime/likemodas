@@ -1,0 +1,1 @@
+import{b as e}from"./chunk-bGClEshB.js";var t=e(((exports,t)=>{t.exports=n,n.displayName=`hpkp`,n.aliases=[];function n(e){e.languages.hpkp={directive:{pattern:/\b(?:includeSubDomains|max-age|pin-sha256|preload|report-to|report-uri|strict)(?=[\s;=]|$)/i,alias:`property`},operator:/=/,punctuation:/;/}}}));export default t();
