@@ -102,12 +102,16 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
             logger.warning("Usuario no verificado")
             raise HTTPException(status_code=403, detail="Cuenta no verificada. Revisa tu correo.")
 
-        logger.info("Login exitoso")
+        # --- CORRECCIÓN DEL ROL ---
+        # Verificamos si 'role' es un Enum o un string simple
+        role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
+
+        logger.info("Login exitoso - Generando respuesta")
         return UserResponse(
             id=user_info.id,
             username=user.username,
             email=user_info.email,
-            role=user_info.role.value,
+            role=role_str, # Usamos la variable segura
             token=str(user.id)
         )
 
