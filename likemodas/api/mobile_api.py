@@ -48,35 +48,43 @@ BASE_URL = "https://api.likemodas.com"
 # --- 1. LOGIN (MODO DIAGNÓSTICO) ---
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
+    print(f"--- INTENTO DE LOGIN MÓVIL ---")
+    print(f"Usuario recibido: '{creds.username}'")
+    # Imprimimos la longitud y los primeros/últimos caracteres para no revelar la password completa en logs
+    print(f"Password recibida (longitud): {len(creds.password)}")
+    print(f"Password recibida (bytes): {creds.password.encode('utf-8')}")
+    
     try:
-        # 1. Buscar usuario
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         
         if not user:
-            # Si no encuentra el usuario, devolvemos 404
-            raise HTTPException(status_code=404, detail=f"Usuario '{creds.username}' no existe en la BD")
+            print(f"FALLO: Usuario '{creds.username}' no encontrado en BD.")
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-        # 2. Verificar contraseña con seguridad extra
-        try:
-            # Aseguramos que el hash sea bytes, no memoryview
-            hash_bytes = bytes(user.password_hash)
-            input_bytes = creds.password.encode('utf-8')
-            
-            if not bcrypt.checkpw(input_bytes, hash_bytes):
-                raise HTTPException(status_code=400, detail="Contraseña incorrecta")
-        except ValueError as ve:
-            # Captura errores específicos de bcrypt (ej: salt inválido)
-            raise HTTPException(status_code=400, detail=f"Error de formato de contraseña en BD: {str(ve)}")
+        print(f"Usuario encontrado en BD. ID: {user.id}")
+        print(f"Hash en BD (bytes): {user.password_hash}")
 
-        # 3. Obtener perfil
+        # Intento de verificación
+        input_bytes = creds.password.encode('utf-8')
+        hash_bytes = bytes(user.password_hash)
+        
+        if bcrypt.checkpw(input_bytes, hash_bytes):
+            print("¡CONTRASEÑA CORRECTA!")
+        else:
+            print("FALLO: bcrypt.checkpw devolvió False.")
+            # Prueba extra: Verificar si hay espacios en blanco
+            if bcrypt.checkpw(creds.password.strip().encode('utf-8'), hash_bytes):
+                print("AVISO: La contraseña funcionó al hacerle .strip(). El cliente envía espacios extra.")
+
+            raise HTTPException(status_code=400, detail="Contraseña incorrecta")
+        
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         
         if not user_info:
-            raise HTTPException(status_code=400, detail="Perfil de usuario (UserInfo) no encontrado")
+             raise HTTPException(status_code=400, detail="Perfil corrupto")
 
-        # 4. Verificar email
         if not user_info.is_verified:
-            raise HTTPException(status_code=403, detail="Cuenta no verificada. Revisa tu email.")
+            raise HTTPException(status_code=403, detail="Cuenta no verificada")
 
         return UserResponse(
             id=user_info.id,
@@ -85,13 +93,11 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
             role=user_info.role.value,
             token=str(user.id)
         )
-
     except HTTPException as he:
         raise he
     except Exception as e:
-        # ESTA ES LA CLAVE: En lugar de 500, devolvemos 400 con el mensaje del error real
-        print(f"CRITICAL LOGIN ERROR: {e}")
-        raise HTTPException(status_code=400, detail=f"DEBUG ERROR INTERNO: {str(e)}")
+        print(f"ERROR CRÍTICO: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # --- 2. REGISTRO ---
 @router.post("/register", response_model=UserResponse)
