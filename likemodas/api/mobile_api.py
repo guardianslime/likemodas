@@ -5,13 +5,20 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+import sqlalchemy
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel
 
+# --- AGREGAR AL INICIO CON LOS OTROS MODELOS ---
+from likemodas.models import ShippingAddressModel
+from likemodas.logic.shipping_calculator import calculate_dynamic_shipping # Asegúrate de tener esto importado
+
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,6 +89,40 @@ class AddressDTO(BaseModel):
     city: str
     neighborhood: str
     address: str
+
+# --- DTOs PARA CARRITO Y DIRECCIONES ---
+class CartItemRequest(BaseModel):
+    product_id: int
+    quantity: int
+
+class CartCalculationRequest(BaseModel):
+    items: List[CartItemRequest]
+
+class CartSummaryResponse(BaseModel):
+    subtotal: float
+    subtotal_formatted: str
+    shipping: float
+    shipping_formatted: str
+    total: float
+    total_formatted: str
+    address_id: Optional[int] = None # ID de la dirección usada para el cálculo
+
+class AddressDTO(BaseModel):
+    id: int
+    name: str
+    phone: str
+    city: str
+    neighborhood: str
+    address: str
+    is_default: bool
+
+class CreateAddressRequest(BaseModel):
+    name: str
+    phone: str
+    city: str
+    neighborhood: str
+    address: str
+    is_default: bool
 
 # --- ENDPOINTS ---
 
@@ -309,3 +350,79 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
             is_available=True, combines_shipping=p.combines_shipping, is_moda_completa=p.is_moda_completa_eligible
         ))
     return result
+
+# 1. OBTENER DIRECCIONES
+@router.get("/addresses/{user_id}", response_model=List[AddressDTO])
+async def get_addresses(user_id: int, session: Session = Depends(get_session)):
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    if not user_info: return []
+    
+    addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
+    return [AddressDTO(**addr.dict()) for addr in addresses]
+
+# 2. CREAR DIRECCIÓN (Con lógica de predeterminada)
+@router.post("/addresses/{user_id}")
+async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    if not user_info: raise HTTPException(404, "Usuario no encontrado")
+
+    # Si esta es la nueva predeterminada, quitar el flag a las otras
+    if req.is_default:
+        existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
+        for addr in existing:
+            addr.is_default = False
+            session.add(addr)
+    
+    # Si es la primera dirección, forzar que sea predeterminada
+    count = session.exec(select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).one()
+    is_def = req.is_default or (count == 0)
+
+    new_addr = ShippingAddressModel(userinfo_id=user_info.id, **req.dict(exclude={'is_default'}), is_default=is_def)
+    session.add(new_addr)
+    session.commit()
+    return {"message": "Dirección guardada"}
+
+# 3. CALCULAR TOTALES DEL CARRITO (Simulando lógica web)
+@router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
+async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    
+    # 1. Calcular Subtotal
+    subtotal = 0.0
+    for item in req.items:
+        product = session.get(BlogPostModel, item.product_id)
+        if product:
+            subtotal += product.price * item.quantity
+            
+    # 2. Calcular Envío (Basado en dirección predeterminada)
+    shipping_cost = 0.0
+    address_id = None
+    
+    if user_info:
+        default_addr = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)).first()
+        
+        if default_addr:
+            address_id = default_addr.id
+            # Aquí deberías llamar a tu lógica real de envíos (calculate_dynamic_shipping)
+            # Por simplicidad para el ejemplo, si hay dirección cobramos 12.000, si es moda completa (subtotal > 200k) es gratis.
+            # TÚ DEBES CONECTAR ESTO CON TU LÓGICA DE 'likemodas/logic/shipping_calculator.py'
+            
+            # Ejemplo simplificado:
+            if subtotal >= 200000: # Umbral moda completa ejemplo
+                shipping_cost = 0.0
+            else:
+                shipping_cost = 0.0 # O el valor base que tengas
+                
+            # NOTA: Para conectar con tu lógica real de Python, necesitarías importar y usar 
+            # calculate_dynamic_shipping pasando los barrios del vendedor y comprador.
+    
+    total = subtotal + shipping_cost
+
+    def fmt(val): return f"$ {val:,.0f}".replace(",", ".")
+
+    return CartSummaryResponse(
+        subtotal=subtotal, subtotal_formatted=fmt(subtotal),
+        shipping=shipping_cost, shipping_formatted=fmt(shipping_cost),
+        total=total, total_formatted=fmt(total),
+        address_id=address_id
+    )
