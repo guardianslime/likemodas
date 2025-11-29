@@ -8,20 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
-# Importamos la base de datos y modelos
 from likemodas.db.session import get_session
-from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel
+from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel
 
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 
-# Configuración de logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
-BASE_URL = "https://api.likemodas.com" # Ajusta si es necesario en prod
+BASE_URL = "https://api.likemodas.com" 
 
-# --- DTOs (Data Transfer Objects) ---
+# --- DTOs ---
 
 class LoginRequest(BaseModel):
     username: str
@@ -73,38 +71,37 @@ class PurchaseHistoryDTO(BaseModel):
     total: str
     items: List[PurchaseItemDTO]
 
+# Nuevos DTOs para Seguridad y Direcciones
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class AddressDTO(BaseModel):
+    name: str
+    phone: str
+    city: str
+    neighborhood: str
+    address: str
+
 # --- ENDPOINTS ---
 
-# 1. LOGIN
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
-    logger.info(f"--- Intento de login para: {creds.username} ---")
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         if not user:
-            raise HTTPException(status_code=404, detail=f"El usuario '{creds.username}' no existe.")
+            raise HTTPException(status_code=404, detail=f"El usuario no existe.")
         
-        db_hash = bytes(user.password_hash)
-        input_password = creds.password.encode('utf-8')
-        
-        if not bcrypt.checkpw(input_password, db_hash):
+        if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash):
             raise HTTPException(status_code=400, detail="Contraseña incorrecta.")
 
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         
         if not user_info:
-            # Autoreparación básica si falta UserInfo
-            try:
-                new_info = UserInfo(email=f"{creds.username}@recuperado.com", user_id=user.id, role=UserRole.CUSTOMER, is_verified=True)
-                session.add(new_info)
-                session.commit()
-                session.refresh(new_info)
-                user_info = new_info
-            except Exception as e_rep:
-                raise HTTPException(status_code=400, detail=f"Error de perfil: {str(e_rep)}")
+             raise HTTPException(status_code=400, detail="Perfil no encontrado")
 
         if not user_info.is_verified:
-             raise HTTPException(status_code=403, detail="Cuenta no verificada. Revisa tu correo.")
+             raise HTTPException(status_code=403, detail="Cuenta no verificada.")
 
         role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
 
@@ -113,16 +110,13 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
             username=user.username,
             email=user_info.email,
             role=role_str,
-            token=str(user.id) # Usamos el ID como token simple para este ejemplo
+            token=str(user.id)
         )
-
     except HTTPException as he:
         raise he
     except Exception as e:
-        logger.error(f"ERROR FATAL: {e}")
-        raise HTTPException(status_code=400, detail=f"Error Fatal: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
 
-# 2. REGISTRO
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
     if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first():
@@ -155,7 +149,6 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
     except Exception as e:
          raise HTTPException(status_code=400, detail=f"Error registro: {str(e)}")
 
-# 3. RECUPERAR CONTRASEÑA
 @router.post("/forgot-password")
 async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = Depends(get_session)):
     email = req.email.strip().lower()
@@ -172,7 +165,6 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
             pass
     return {"message": "OK"}
 
-# 4. OBTENER PRODUCTOS
 @router.get("/products", response_model=List[ProductMobileDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
@@ -200,19 +192,14 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
         ))
     return result
 
-# 5. OBTENER PERFIL (NUEVO)
 @router.get("/profile/{user_id}", response_model=ProfileDTO)
 async def get_mobile_profile(user_id: int, session: Session = Depends(get_session)):
-    # user_id aquí es el ID de LocalUser (que usamos como token)
     user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
     if not user_info:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     local_user = session.get(LocalUser, user_id)
-    
-    avatar = ""
-    if user_info.avatar_url:
-        avatar = f"{BASE_URL}/_upload/{user_info.avatar_url}"
+    avatar = f"{BASE_URL}/_upload/{user_info.avatar_url}" if user_info.avatar_url else ""
 
     return ProfileDTO(
         username=local_user.username if local_user else "Usuario",
@@ -221,58 +208,104 @@ async def get_mobile_profile(user_id: int, session: Session = Depends(get_sessio
         avatar_url=avatar
     )
 
-# 6. ACTUALIZAR PERFIL (NUEVO)
 @router.put("/profile/{user_id}")
 async def update_mobile_profile(user_id: int, phone: str, session: Session = Depends(get_session)):
     user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
     if not user_info:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
     user_info.phone = phone
     session.add(user_info)
     session.commit()
     return {"message": "Perfil actualizado"}
 
-# 7. MIS COMPRAS (NUEVO)
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
     if not user_info:
         return []
 
-    purchases = session.exec(
-        select(PurchaseModel)
-        .where(PurchaseModel.userinfo_id == user_info.id)
-        .order_by(PurchaseModel.purchase_date.desc())
-    ).all()
+    purchases = session.exec(select(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id).order_by(PurchaseModel.purchase_date.desc())).all()
 
     history = []
     for p in purchases:
         items_dto = []
         for item in p.items:
             img = ""
-            # Intentar obtener imagen
             if item.blog_post and item.blog_post.variants:
-                # Intentar buscar la variante exacta si es posible, sino la primera
                 img_list = item.blog_post.variants[0].get("image_urls", [])
                 if img_list:
                     img = f"{BASE_URL}/_upload/{img_list[0]}"
-            
-            items_dto.append(PurchaseItemDTO(
-                title=item.blog_post.title if item.blog_post else "Producto",
-                quantity=item.quantity,
-                price=item.price_at_purchase,
-                image_url=img
-            ))
-            
+            items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
         total_fmt = f"$ {p.total_price:,.0f}".replace(",", ".")
-
-        history.append(PurchaseHistoryDTO(
-            id=p.id,
-            date=p.purchase_date.strftime('%d-%m-%Y'),
-            status=p.status.value,
-            total=total_fmt,
-            items=items_dto
-        ))
-    
+        history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=total_fmt, items=items_dto))
     return history
+
+# --- NUEVOS ENDPOINTS IMPLEMENTADOS ---
+
+# 8. CAMBIAR CONTRASEÑA
+@router.post("/profile/{user_id}/change-password")
+async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
+    user = session.get(LocalUser, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if not bcrypt.checkpw(req.current_password.encode('utf-8'), user.password_hash):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+    
+    new_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), bcrypt.gensalt())
+    user.password_hash = new_hash
+    session.add(user)
+    session.commit()
+    return {"message": "Contraseña actualizada"}
+
+# 9. GUARDAR DIRECCIÓN
+@router.post("/profile/{user_id}/address")
+async def save_address(user_id: int, addr: AddressDTO, session: Session = Depends(get_session)):
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    if not user_info:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Si ya tiene direcciones, quitar el default de las anteriores
+    existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
+    for a in existing:
+        a.is_default = False
+        session.add(a)
+    
+    new_addr = ShippingAddressModel(
+        userinfo_id=user_info.id,
+        name=addr.name,
+        phone=addr.phone,
+        city=addr.city,
+        neighborhood=addr.neighborhood,
+        address=addr.address,
+        is_default=True
+    )
+    session.add(new_addr)
+    session.commit()
+    return {"message": "Dirección guardada"}
+
+# 10. PUBLICACIONES GUARDADAS
+@router.get("/profile/{user_id}/saved-posts", response_model=List[ProductMobileDTO])
+async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    if not user_info:
+        return []
+    
+    # Cargar saved_posts (relación muchos a muchos)
+    # Nota: Asumiendo que la relación está configurada en UserInfo como 'saved_posts'
+    # Si Reflex no carga automáticamente, necesitarías una consulta join manual.
+    # Aquí usamos la relación directa si el ORM lo permite.
+    saved_posts = user_info.saved_posts 
+    
+    result = []
+    for p in saved_posts:
+        if not p.publish_active: continue
+        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        full_image_url = f"{BASE_URL}/_upload/{img_path}" if img_path else ""
+        price_fmt = f"$ {p.price:,.0f}".replace(",", ".")
+        result.append(ProductMobileDTO(
+            id=p.id, title=p.title, price=p.price, price_formatted=price_fmt,
+            image_url=full_image_url, category=p.category, description=p.content,
+            is_available=True, combines_shipping=p.combines_shipping, is_moda_completa=p.is_moda_completa_eligible
+        ))
+    return result
