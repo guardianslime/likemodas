@@ -48,6 +48,7 @@ class ProductListDTO(BaseModel):
     price_formatted: str
     image_url: str
     category: str
+    description: str  # <--- AÑADE ESTA LÍNEA
     is_moda_completa: bool
     combines_shipping: bool
 
@@ -206,6 +207,7 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
             image_url=get_full_image_url(img_path), category=p.category,
+            description=p.content, # <--- AÑADE ESTA LÍNEA
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
         ))
     return result
