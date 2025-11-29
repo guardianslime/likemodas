@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
+import sqlalchemy
 from sqlmodel import select, Session, col
 from pydantic import BaseModel
 
