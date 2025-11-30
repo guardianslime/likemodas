@@ -2,6 +2,8 @@ import os
 import bcrypt
 import secrets
 import logging
+import math
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +14,7 @@ from pydantic import BaseModel
 from likemodas.db.session import get_session
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
+from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,16 +53,13 @@ class ProductListDTO(BaseModel):
     is_moda_completa: bool
     combines_shipping: bool
 
-# --- EN LA CLASE VariantDTO ---
 class VariantDTO(BaseModel):
     id: str
     title: str
     image_url: str
     price: float
     available_quantity: int
-    images: List[str] # <--- AÑADE ESTA LÍNEA
 
-# --- CORRECCIÓN 1: AÑADIMOS LOS CAMPOS QUE FALTABAN ---
 class ProductDetailDTO(BaseModel):
     id: int
     title: str
@@ -73,9 +73,9 @@ class ProductDetailDTO(BaseModel):
     is_moda_completa: bool
     combines_shipping: bool
     is_saved: bool = False
-    is_imported: bool  # <--- NUEVO
-    average_rating: float # <--- NUEVO
-    rating_count: int # <--- NUEVO
+    is_imported: bool
+    average_rating: float
+    rating_count: int
 
 class ProfileDTO(BaseModel):
     username: str
@@ -150,7 +150,6 @@ def get_full_image_url(path: str) -> str:
 
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
-    # ... (Igual que antes) ...
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
@@ -165,7 +164,6 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
 
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
-    # ... (Igual que antes) ...
     if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): raise HTTPException(400, detail="Usuario ya existe")
     try:
         hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
@@ -178,13 +176,12 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
         vt = VerificationToken(token=token_str, userinfo_id=new_info.id, expires_at=expires)
         session.add(vt); session.commit()
         try: send_verification_email(recipient_email=creds.email, token=token_str)
-        except: pass
+        except: pass 
         return UserResponse(id=new_info.id, username=new_user.username, email=new_info.email, role="customer", token=str(new_user.id))
     except Exception as e: raise HTTPException(400, detail=str(e))
 
 @router.post("/forgot-password")
 async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = Depends(get_session)):
-    # ... (Igual que antes) ...
     email = req.email.strip().lower()
     user_info = session.exec(select(UserInfo).where(UserInfo.email == email)).one_or_none()
     if user_info:
@@ -227,25 +224,16 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
     final_images = [get_full_image_url(img) for img in all_images_set if img]
     main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
 
-    # 2. Variantes (ACTUALIZADO)
     variants_dto = []
     if p.variants:
         for v in p.variants:
-            # Obtener la imagen principal de la variante
             v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
-            
-            # Obtener TODAS las imágenes de esta variante específica
-            v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
-            if not v_images_list:
-                v_images_list = [get_full_image_url(v_img)] # Fallback
-
             variants_dto.append(VariantDTO(
                 id=v.get("variant_uuid", v.get("id", "")),
                 title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
                 image_url=get_full_image_url(v_img),
                 price=v.get("price", p.price),
-                available_quantity=v.get("stock", 0),
-                images=v_images_list # <--- ASIGNAMOS LA LISTA
+                available_quantity=v.get("stock", 0)
             ))
 
     is_saved = False
@@ -260,14 +248,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         description=p.content, category=p.category,
         main_image_url=main_image_final, images=final_images, variants=variants_dto,
         is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-        is_saved=is_saved,
-        # --- CORRECCIÓN 2: ASIGNAMOS LOS VALORES ---
-        is_imported=p.is_imported,
-        average_rating=p.average_rating,
-        rating_count=p.rating_count
+        is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating, rating_count=p.rating_count
     )
 
-# ... (Resto de endpoints: toggle-save, profile, addresses, cart, etc. se mantienen igual) ...
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
@@ -354,25 +337,88 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
         history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto))
     return history
 
+# --- CÁLCULO DEL CARRITO (COMPLETO) ---
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    subtotal = 0.0
+    
+    # 1. Calcular Subtotal Base
+    subtotal_base = 0.0
+    post_map = {}
     for item in req.items:
         product = session.get(BlogPostModel, item.product_id)
         if product:
+            post_map[item.product_id] = product
             price = product.price
+            # Si seleccionó variante, buscar precio específico si lo tuviera
             if item.variant_id and product.variants:
                 variant = next((v for v in product.variants if v.get("id") == item.variant_id), None)
-                if variant: price = variant.get("price", product.price)
-            subtotal += price * item.quantity
-            
+                if variant and variant.get("price"): price = variant.get("price")
+            subtotal_base += price * item.quantity
+
+    # 2. Calcular IVA y Subtotal con IVA
+    iva = subtotal_base * 0.19
+    subtotal_con_iva = subtotal_base + iva
+
+    # 3. Calcular Envío y Moda Completa
     shipping_cost = 0.0
     address_id = None
     default_addr = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)).first()
-    
-    if default_addr:
+
+    # Verificar Moda Completa (Envío Gratis)
+    free_shipping_achieved = False
+    moda_completa_items = [p for p in post_map.values() if p.is_moda_completa_eligible]
+    if moda_completa_items:
+        valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
+        if valid_thresholds:
+            highest_threshold = max(valid_thresholds)
+            if subtotal_con_iva >= highest_threshold:
+                free_shipping_achieved = True
+
+    if not free_shipping_achieved and default_addr:
         address_id = default_addr.id
-        shipping_cost = 12000.0 # Fallback
-    total = subtotal + shipping_cost
-    return CartSummaryResponse(subtotal=subtotal, subtotal_formatted=fmt_price(subtotal), shipping=shipping_cost, shipping_formatted=fmt_price(shipping_cost), total=total, total_formatted=fmt_price(total), address_id=address_id)
+        buyer_city = default_addr.city
+        buyer_barrio = default_addr.neighborhood
+
+        # Agrupar por vendedor para calcular envíos combinados
+        seller_groups = defaultdict(list)
+        for item in req.items:
+            if item.product_id in post_map:
+                post = post_map[item.product_id]
+                for _ in range(item.quantity):
+                    seller_groups[post.userinfo_id].append(post)
+        
+        seller_ids = list(seller_groups.keys())
+        sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
+        seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
+
+        for seller_id, items in seller_groups.items():
+            seller_data = seller_data_map.get(seller_id)
+            s_city = seller_data.get("city") if seller_data else None
+            s_barrio = seller_data.get("barrio") if seller_data else None
+            
+            combinable = [p for p in items if p.combines_shipping]
+            individual = [p for p in items if not p.combines_shipping]
+
+            # Costo para individuales
+            for ind_item in individual:
+                base = ind_item.shipping_cost or 0.0
+                shipping_cost += calculate_dynamic_shipping(base, s_barrio, buyer_barrio, s_city, buyer_city)
+            
+            # Costo para combinados
+            if combinable:
+                valid_limits = [p.shipping_combination_limit for p in combinable if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
+                limit = min(valid_limits)
+                num_packages = math.ceil(len(combinable) / limit)
+                highest_base = max((p.shipping_cost or 0.0 for p in combinable), default=0.0)
+                
+                fee_per_package = calculate_dynamic_shipping(highest_base, s_barrio, buyer_barrio, s_city, buyer_city)
+                shipping_cost += (fee_per_package * num_packages)
+
+    total = subtotal_con_iva + shipping_cost
+    
+    return CartSummaryResponse(
+        subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva),
+        shipping=shipping_cost, shipping_formatted=fmt_price(shipping_cost),
+        total=total, total_formatted=fmt_price(total), address_id=address_id
+    )
