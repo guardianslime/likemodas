@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
+import sqlalchemy
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
@@ -49,12 +50,14 @@ class ProductListDTO(BaseModel):
     is_moda_completa: bool
     combines_shipping: bool
 
+# --- EN LA CLASE VariantDTO ---
 class VariantDTO(BaseModel):
     id: str
     title: str
     image_url: str
     price: float
     available_quantity: int
+    images: List[str] # <--- AÑADE ESTA LÍNEA
 
 # --- CORRECCIÓN 1: AÑADIMOS LOS CAMPOS QUE FALTABAN ---
 class ProductDetailDTO(BaseModel):
@@ -224,16 +227,25 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
     final_images = [get_full_image_url(img) for img in all_images_set if img]
     main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
 
+    # 2. Variantes (ACTUALIZADO)
     variants_dto = []
     if p.variants:
         for v in p.variants:
+            # Obtener la imagen principal de la variante
             v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
+            
+            # Obtener TODAS las imágenes de esta variante específica
+            v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
+            if not v_images_list:
+                v_images_list = [get_full_image_url(v_img)] # Fallback
+
             variants_dto.append(VariantDTO(
                 id=v.get("variant_uuid", v.get("id", "")),
                 title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
                 image_url=get_full_image_url(v_img),
                 price=v.get("price", p.price),
-                available_quantity=v.get("stock", 0)
+                available_quantity=v.get("stock", 0),
+                images=v_images_list # <--- ASIGNAMOS LA LISTA
             ))
 
     is_saved = False
