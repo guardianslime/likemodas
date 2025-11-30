@@ -2,17 +2,19 @@ import os
 import bcrypt
 import secrets
 import logging
+import math
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 import sqlalchemy
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-# --- CORRECCIÓN: Importamos SavedPostLink y NO SavedPostModel ---
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
+# Importamos la lógica de envíos que ya usas en la web
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 
 logging.basicConfig(level=logging.INFO)
@@ -144,6 +146,7 @@ def fmt_price(val): return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
     if not path: return ""
+    if path.startswith("http"): return path
     return f"{BASE_URL}/_upload/{path}"
 
 # --- ENDPOINTS ---
@@ -228,8 +231,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
     if p.variants:
         for v in p.variants:
             v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
-            
-            # Obtener TODAS las imágenes de esta variante
             v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
             if not v_images_list: v_images_list = [get_full_image_url(v_img)]
 
@@ -246,7 +247,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
     if user_id:
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
         if user_info:
-            # --- CORRECCIÓN: Usamos SavedPostLink y blogpostmodel_id ---
             saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
             is_saved = saved is not None
 
@@ -264,7 +264,6 @@ async def toggle_save_product(product_id: int, user_id: int, session: Session = 
     product = session.get(BlogPostModel, product_id)
     if not product: raise HTTPException(404, "Producto no encontrado")
     
-    # --- CORRECCIÓN: Usamos SavedPostLink ---
     existing = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == product_id)).first()
     if existing:
         session.delete(existing); session.commit()
@@ -318,7 +317,14 @@ async def change_password(user_id: int, req: ChangePasswordRequest, session: Ses
 @router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
 async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    saved_posts = user_info.saved_posts 
+    # Usamos la relación directa de SQLAlchemy
+    # Asegúrate de que UserInfo tiene la relación 'saved_posts' cargada o accedida correctamente
+    user_with_posts = session.exec(
+        select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts))
+        .where(UserInfo.id == user_info.id)
+    ).one()
+    
+    saved_posts = user_with_posts.saved_posts
     result = []
     for p in saved_posts:
         if not p.publish_active: continue
@@ -333,46 +339,160 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    purchases = session.exec(select(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id).order_by(PurchaseModel.purchase_date.desc())).all()
+    purchases = session.exec(
+        select(PurchaseModel)
+        .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
+        .where(PurchaseModel.userinfo_id == user_info.id)
+        .order_by(PurchaseModel.purchase_date.desc())
+    ).all()
     history = []
     for p in purchases:
         items_dto = []
         for item in p.items:
             img = ""
             if item.blog_post:
-                img_path = item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
+                # Intentar buscar la imagen de la variante específica
+                variant_img = ""
+                if item.blog_post.variants:
+                    for v in item.blog_post.variants:
+                         if v.get("attributes") == item.selected_variant and v.get("image_urls"):
+                             variant_img = v["image_urls"][0]
+                             break
+                
+                img_path = variant_img or item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
                 img = get_full_image_url(img_path)
+            
             items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
         history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto))
     return history
 
+# --- ENDPOINT CORREGIDO PARA CÁLCULO DEL CARRITO ---
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
+    """
+    Calcula el subtotal, envío dinámico y total del carrito usando la lógica real de negocio.
+    """
     user_info = get_user_info(session, user_id)
-    subtotal = 0.0
-    for item in req.items:
-        product = session.get(BlogPostModel, item.product_id)
-        if product:
-            price = product.price
-            if item.variant_id and product.variants:
-                variant = next((v for v in product.variants if v.get("id") == item.variant_id), None)
-                if variant: price = variant.get("price", product.price)
-            subtotal += price * item.quantity
-            
-    shipping_cost = 0.0
-    address_id = None
-    default_addr = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)).first()
     
-    if default_addr:
-        address_id = default_addr.id
-        buyer_city = default_addr.city
-        buyer_barrio = default_addr.neighborhood
-        # Lógica simplificada de envío
-        shipping_cost = 12000.0 # Fallback
+    # 1. Obtener dirección predeterminada para cálculos de envío
+    default_addr = session.exec(
+        select(ShippingAddressModel)
+        .where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)
+    ).first()
+    
+    buyer_city = default_addr.city if default_addr else None
+    buyer_barrio = default_addr.neighborhood if default_addr else None
 
-    total = subtotal + shipping_cost
+    # 2. Cargar productos de la base de datos
+    product_ids = [item.product_id for item in req.items]
+    if not product_ids:
+        return CartSummaryResponse(
+            subtotal=0, subtotal_formatted="$ 0",
+            shipping=0, shipping_formatted="$ 0",
+            total=0, total_formatted="$ 0",
+            address_id=default_addr.id if default_addr else None
+        )
+
+    db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
+    post_map = {p.id: p for p in db_posts}
+
+    # 3. Calcular Subtotal Base (Precio * Cantidad)
+    subtotal_base = 0.0
+    items_for_shipping = [] 
+    
+    for item in req.items:
+        post = post_map.get(item.product_id)
+        if post:
+            # Usar precio base del post. Si usaras precios por variante, deberías buscarlo aquí.
+            price = post.price
+            subtotal_base += price * item.quantity
+            items_for_shipping.append({"post": post, "quantity": item.quantity})
+
+    # Calcular IVA
+    iva = subtotal_base * 0.19
+    subtotal_con_iva = subtotal_base + iva
+
+    # 4. Lógica de Envío Gratis (Moda Completa)
+    free_shipping_achieved = False
+    moda_completa_items = [
+        x["post"] for x in items_for_shipping 
+        if x["post"].is_moda_completa_eligible
+    ]
+    
+    if moda_completa_items:
+        # Buscar el umbral más alto entre los productos de moda completa
+        valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
+        if valid_thresholds:
+            highest_threshold = max(valid_thresholds)
+            # Si el subtotal supera el umbral, envío gratis
+            if subtotal_con_iva >= highest_threshold:
+                free_shipping_achieved = True
+
+    # 5. Cálculo de Envío Dinámico (si no hay envío gratis)
+    final_shipping_cost = 0.0
+    
+    if not free_shipping_achieved and default_addr:
+        # Agrupar productos por vendedor para calcular envíos combinados
+        seller_groups = defaultdict(list)
+        for x in items_for_shipping:
+            post = x["post"]
+            qty = x["quantity"]
+            # Añadimos el post a la lista del vendedor tantas veces como cantidad haya
+            for _ in range(qty):
+                seller_groups[post.userinfo_id].append(post)
+
+        # Obtener datos de ubicación de los vendedores
+        seller_ids = list(seller_groups.keys())
+        sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
+        seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
+
+        for seller_id, items_from_seller in seller_groups.items():
+            combinable_items = [p for p in items_from_seller if p.combines_shipping]
+            individual_items = [p for p in items_from_seller if not p.combines_shipping]
+            
+            seller_data = seller_data_map.get(seller_id)
+            seller_city = seller_data.get("city") if seller_data else None
+            seller_barrio = seller_data.get("barrio") if seller_data else None
+
+            # Costo para items individuales
+            for individual_item in individual_items:
+                cost = calculate_dynamic_shipping(
+                    base_cost=individual_item.shipping_cost or 0.0,
+                    seller_barrio=seller_barrio,
+                    buyer_barrio=buyer_barrio,
+                    seller_city=seller_city,
+                    buyer_city=buyer_city
+                )
+                final_shipping_cost += cost
+            
+            # Costo para items combinados (paquetes)
+            if combinable_items:
+                # Usar el límite de combinación más restrictivo (el menor)
+                valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
+                limit = min(valid_limits)
+                num_fees = math.ceil(len(combinable_items) / limit)
+                
+                # Usar el costo base más alto del grupo
+                highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
+                
+                group_shipping_fee = calculate_dynamic_shipping(
+                    base_cost=highest_base_cost,
+                    seller_barrio=seller_barrio,
+                    buyer_barrio=buyer_barrio,
+                    seller_city=seller_city,
+                    buyer_city=buyer_city
+                )
+                final_shipping_cost += (group_shipping_fee * num_fees)
+
+    # 6. Total Final
+    grand_total = subtotal_con_iva + final_shipping_cost
+
     return CartSummaryResponse(
-        subtotal=subtotal, subtotal_formatted=fmt_price(subtotal),
-        shipping=shipping_cost, shipping_formatted=fmt_price(shipping_cost),
-        total=total, total_formatted=fmt_price(total), address_id=address_id
+        subtotal=subtotal_con_iva,
+        subtotal_formatted=fmt_price(subtotal_con_iva),
+        shipping=final_shipping_cost,
+        shipping_formatted=fmt_price(final_shipping_cost),
+        total=grand_total,
+        total_formatted=fmt_price(grand_total),
+        address_id=default_addr.id if default_addr else None
     )
