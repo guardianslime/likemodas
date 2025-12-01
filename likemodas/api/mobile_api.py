@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from likemodas.db.session import get_session
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
-# Importamos la lógica de envíos que ya usas en la web (Asegúrate de que este import funcione)
+# Importamos la lógica de envíos que ya usas en la web
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 
 logging.basicConfig(level=logging.INFO)
@@ -150,8 +150,6 @@ def get_full_image_url(path: str) -> str:
     return f"{BASE_URL}/_upload/{path}"
 
 # --- ENDPOINTS ---
-# (Login, Register, ForgotPassword, Products, Profile, Addresses... se mantienen igual)
-# ... Copia los endpoints anteriores aquí si los borraste, o mantén los que ya tenías ...
 
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
@@ -167,10 +165,204 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(400, detail=str(e))
 
-# ... (Otros endpoints estándar omitidos para brevedad, asegúrate de tenerlos) ...
-# Asegúrate de tener getProducts, getProductDetail, etc. tal cual estaban.
+@router.post("/register", response_model=UserResponse)
+async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
+    if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): raise HTTPException(400, detail="Usuario ya existe")
+    try:
+        hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
+        new_user = LocalUser(username=creds.username, password_hash=hashed_pw, enabled=True)
+        session.add(new_user); session.commit(); session.refresh(new_user)
+        new_info = UserInfo(email=creds.email, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
+        session.add(new_info); session.commit(); session.refresh(new_info)
+        token_str = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        vt = VerificationToken(token=token_str, userinfo_id=new_info.id, expires_at=expires)
+        session.add(vt); session.commit()
+        try: send_verification_email(recipient_email=creds.email, token=token_str)
+        except: pass 
+        return UserResponse(id=new_info.id, username=new_user.username, email=new_info.email, role="customer", token=str(new_user.id))
+    except Exception as e: raise HTTPException(400, detail=str(e))
 
-# --- AQUÍ ESTÁ LA MAGIA: EL ENDPOINT DE CÁLCULO REAL ---
+@router.post("/forgot-password")
+async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = Depends(get_session)):
+    email = req.email.strip().lower()
+    user_info = session.exec(select(UserInfo).where(UserInfo.email == email)).one_or_none()
+    if user_info:
+        token_str = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        rt = PasswordResetToken(token=token_str, user_id=user_info.user_id, expires_at=expires)
+        session.add(rt); session.commit()
+        try: send_password_reset_email(recipient_email=email, token=token_str)
+        except: pass
+    return {"message": "OK"}
+
+@router.get("/products", response_model=List[ProductListDTO])
+async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
+    query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
+    if category and category != "todos": query = query.where(BlogPostModel.category == category)
+    query = query.order_by(BlogPostModel.created_at.desc())
+    products = session.exec(query).all()
+    result = []
+    for p in products:
+        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        result.append(ProductListDTO(
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
+        ))
+    return result
+
+@router.get("/products/{product_id}", response_model=ProductDetailDTO)
+async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
+    p = session.get(BlogPostModel, product_id)
+    if not p or not p.publish_active: raise HTTPException(404, "Producto no encontrado")
+    
+    main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+    all_images_set = set()
+    if main_img: all_images_set.add(main_img)
+    if p.variants:
+        for v in p.variants:
+            for img in v.get("image_urls", []): all_images_set.add(img)
+    
+    final_images = [get_full_image_url(img) for img in all_images_set if img]
+    main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
+
+    variants_dto = []
+    if p.variants:
+        for v in p.variants:
+            v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
+            v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
+            if not v_images_list: v_images_list = [get_full_image_url(v_img)]
+
+            variants_dto.append(VariantDTO(
+                id=v.get("variant_uuid", v.get("id", "")),
+                title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
+                image_url=get_full_image_url(v_img),
+                price=v.get("price", p.price),
+                available_quantity=v.get("stock", 0),
+                images=v_images_list
+            ))
+
+    is_saved = False
+    if user_id:
+        user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+        if user_info:
+            saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
+            is_saved = saved is not None
+
+    return ProductDetailDTO(
+        id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+        description=p.content, category=p.category,
+        main_image_url=main_image_final, images=final_images, variants=variants_dto,
+        is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+        is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating, rating_count=p.rating_count
+    )
+
+@router.post("/products/{product_id}/toggle-save/{user_id}")
+async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    product = session.get(BlogPostModel, product_id)
+    if not product: raise HTTPException(404, "Producto no encontrado")
+    
+    existing = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == product_id)).first()
+    if existing:
+        session.delete(existing); session.commit()
+        return {"message": "Producto eliminado de guardados", "is_saved": False}
+    else:
+        new_saved = SavedPostLink(userinfo_id=user_info.id, blogpostmodel_id=product_id)
+        session.add(new_saved); session.commit()
+        return {"message": "Producto guardado", "is_saved": True}
+
+@router.get("/profile/{user_id}", response_model=ProfileDTO)
+async def get_mobile_profile(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    local_user = session.get(LocalUser, user_id)
+    avatar = get_full_image_url(user_info.avatar_url)
+    return ProfileDTO(username=local_user.username if local_user else "Usuario", email=user_info.email, phone=user_info.phone or "", avatar_url=avatar)
+
+@router.put("/profile/{user_id}")
+async def update_mobile_profile(user_id: int, phone: str, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    user_info.phone = phone
+    session.add(user_info); session.commit()
+    return {"message": "Perfil actualizado"}
+
+@router.get("/addresses/{user_id}", response_model=List[AddressDTO])
+async def get_addresses(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
+    return [AddressDTO(**addr.dict()) for addr in addresses]
+
+@router.post("/addresses/{user_id}")
+async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    if req.is_default:
+        existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
+        for addr in existing: addr.is_default = False; session.add(addr)
+    count = session.exec(select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).one()
+    is_def = req.is_default or (count == 0)
+    new_addr = ShippingAddressModel(userinfo_id=user_info.id, **req.dict(exclude={'is_default'}), is_default=is_def)
+    session.add(new_addr); session.commit()
+    return {"message": "Dirección guardada"}
+
+@router.post("/profile/{user_id}/change-password")
+async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
+    user = session.get(LocalUser, user_id)
+    if not user: raise HTTPException(404, "Usuario no encontrado")
+    if not bcrypt.checkpw(req.current_password.encode('utf-8'), user.password_hash): raise HTTPException(400, "Contraseña actual incorrecta")
+    user.password_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), bcrypt.gensalt())
+    session.add(user); session.commit()
+    return {"message": "Contraseña actualizada"}
+
+@router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
+async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    user_with_posts = session.exec(
+        select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts))
+        .where(UserInfo.id == user_info.id)
+    ).one()
+    
+    saved_posts = user_with_posts.saved_posts
+    result = []
+    for p in saved_posts:
+        if not p.publish_active: continue
+        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        result.append(ProductListDTO(
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
+        ))
+    return result
+
+@router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
+async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    purchases = session.exec(
+        select(PurchaseModel)
+        .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
+        .where(PurchaseModel.userinfo_id == user_info.id)
+        .order_by(PurchaseModel.purchase_date.desc())
+    ).all()
+    history = []
+    for p in purchases:
+        items_dto = []
+        for item in p.items:
+            img = ""
+            if item.blog_post:
+                variant_img = ""
+                if item.blog_post.variants:
+                    for v in item.blog_post.variants:
+                         if v.get("attributes") == item.selected_variant and v.get("image_urls"):
+                             variant_img = v["image_urls"][0]
+                             break
+                
+                img_path = variant_img or item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
+                img = get_full_image_url(img_path)
+            
+            items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
+        history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto))
+    return history
+
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
     """
@@ -213,7 +405,7 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                 subtotal_base += price * item.quantity
                 items_for_shipping.append({"post": post, "quantity": item.quantity})
 
-        # Calcular IVA (Asumimos que el precio ya lo incluye para simplificar visualización, igual que en web)
+        # Asumimos que el precio ya incluye IVA
         subtotal_con_iva = subtotal_base 
 
         # 4. Lógica de Envío Gratis (Moda Completa)
