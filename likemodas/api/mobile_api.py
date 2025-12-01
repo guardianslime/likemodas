@@ -3,7 +3,6 @@ import bcrypt
 import secrets
 import logging
 import math
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,8 +13,6 @@ from pydantic import BaseModel
 from likemodas.db.session import get_session
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
-# Importamos la lógica de envíos que ya usas en la web
-from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -363,24 +360,27 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
         history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto))
     return history
 
+# --- ENDPOINT CORREGIDO PARA CÁLCULO DEL CARRITO ---
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
     """
-    Calcula el subtotal, envío dinámico y total del carrito usando la lógica real de negocio.
+    Calcula el subtotal sumando precios.
+    Lógica pedida: 
+    1. Sumar precios de items (precio * cantidad).
+    2. Si no tiene IVA incluido, se le suma (aunque por ahora asumimos que el precio mostrado es el que es).
+    3. El envío se deja en 0.
+    4. El total es igual al subtotal.
     """
     try:
         user_info = get_user_info(session, user_id)
         
-        # 1. Obtener dirección predeterminada para cálculos de envío
+        # Buscamos dirección solo para devolver el ID, no afecta el cálculo simplificado
         default_addr = session.exec(
             select(ShippingAddressModel)
             .where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)
         ).first()
-        
-        buyer_city = default_addr.city if default_addr else None
-        buyer_barrio = default_addr.neighborhood if default_addr else None
 
-        # 2. Cargar productos de la base de datos
+        # Cargar productos
         product_ids = [item.product_id for item in req.items]
         if not product_ids:
             return CartSummaryResponse(
@@ -393,94 +393,31 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
         post_map = {p.id: p for p in db_posts}
 
-        # 3. Calcular Subtotal Base (Precio * Cantidad)
         subtotal_base = 0.0
-        items_for_shipping = [] 
         
         for item in req.items:
             post = post_map.get(item.product_id)
             if post:
-                # Usar precio base del post
                 price = post.price
+                
+                # Lógica solicitada: Si NO incluye IVA, sumarle el 19%
+                if not post.price_includes_iva:
+                    price = price * 1.19
+                
                 subtotal_base += price * item.quantity
-                items_for_shipping.append({"post": post, "quantity": item.quantity})
 
-        # Asumimos que el precio ya incluye IVA
-        subtotal_con_iva = subtotal_base 
+        # El subtotal a mostrar ya incluye todo
+        subtotal_final = subtotal_base
 
-        # 4. Lógica de Envío Gratis (Moda Completa)
-        free_shipping_achieved = False
-        moda_completa_items = [
-            x["post"] for x in items_for_shipping 
-            if x["post"].is_moda_completa_eligible
-        ]
-        
-        if moda_completa_items:
-            valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
-            if valid_thresholds:
-                highest_threshold = max(valid_thresholds)
-                if subtotal_con_iva >= highest_threshold:
-                    free_shipping_achieved = True
-
-        # 5. Cálculo de Envío Dinámico
+        # Envío en 0 como solicitado
         final_shipping_cost = 0.0
         
-        if not free_shipping_achieved and default_addr:
-            # Agrupar productos por vendedor
-            seller_groups = defaultdict(list)
-            for x in items_for_shipping:
-                post = x["post"]
-                qty = x["quantity"]
-                for _ in range(qty):
-                    seller_groups[post.userinfo_id].append(post)
-
-            # Obtener datos de ubicación de los vendedores
-            seller_ids = list(seller_groups.keys())
-            sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
-            seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-
-            for seller_id, items_from_seller in seller_groups.items():
-                combinable_items = [p for p in items_from_seller if p.combines_shipping]
-                individual_items = [p for p in items_from_seller if not p.combines_shipping]
-                
-                seller_data = seller_data_map.get(seller_id)
-                seller_city = seller_data.get("city") if seller_data else None
-                seller_barrio = seller_data.get("barrio") if seller_data else None
-
-                # Costo para items individuales
-                for individual_item in individual_items:
-                    cost = calculate_dynamic_shipping(
-                        base_cost=individual_item.shipping_cost or 0.0,
-                        seller_barrio=seller_barrio,
-                        buyer_barrio=buyer_barrio,
-                        seller_city=seller_city,
-                        buyer_city=buyer_city
-                    )
-                    final_shipping_cost += cost
-                
-                # Costo para items combinados
-                if combinable_items:
-                    valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
-                    limit = min(valid_limits)
-                    num_fees = math.ceil(len(combinable_items) / limit)
-                    
-                    highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
-                    
-                    group_shipping_fee = calculate_dynamic_shipping(
-                        base_cost=highest_base_cost,
-                        seller_barrio=seller_barrio,
-                        buyer_barrio=buyer_barrio,
-                        seller_city=seller_city,
-                        buyer_city=buyer_city
-                    )
-                    final_shipping_cost += (group_shipping_fee * num_fees)
-
-        # 6. Total Final
-        grand_total = subtotal_con_iva + final_shipping_cost
+        # Total
+        grand_total = subtotal_final + final_shipping_cost
 
         return CartSummaryResponse(
-            subtotal=subtotal_con_iva,
-            subtotal_formatted=fmt_price(subtotal_con_iva),
+            subtotal=subtotal_final,
+            subtotal_formatted=fmt_price(subtotal_final),
             shipping=final_shipping_cost,
             shipping_formatted=fmt_price(final_shipping_cost),
             total=grand_total,
