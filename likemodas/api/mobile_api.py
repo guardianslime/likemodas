@@ -14,9 +14,8 @@ from pydantic import BaseModel
 from likemodas.db.session import get_session
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
-# Lógica de envíos y datos geográficos
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
-from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES, CITY_SPECIFIC_DATA
+from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -150,20 +149,18 @@ def get_full_image_url(path: str) -> str:
     if path.startswith("http"): return path
     return f"{BASE_URL}/_upload/{path}"
 
-# --- ENDPOINTS DE GEOGRAFÍA (NUEVO) ---
+# --- ENDPOINTS ---
 
+# 1. Geografía
 @router.get("/geography/cities", response_model=List[str])
 async def get_cities():
-    """Devuelve la lista de ciudades soportadas para el cálculo de envíos."""
     return ALL_CITIES
 
 @router.post("/geography/neighborhoods", response_model=List[str])
 async def get_neighborhoods(city: str = Body(..., embed=True)):
-    """Devuelve los barrios de una ciudad específica."""
     return COLOMBIA_LOCATIONS.get(city, [])
 
-# --- ENDPOINTS DE USUARIO ---
-
+# 2. Auth y Perfil
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
     try:
@@ -209,6 +206,7 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         except: pass
     return {"message": "OK"}
 
+# 3. Productos
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
@@ -300,40 +298,58 @@ async def update_mobile_profile(user_id: int, phone: str, session: Session = Dep
     session.add(user_info); session.commit()
     return {"message": "Perfil actualizado"}
 
+# 4. Direcciones (ACTUALIZADO)
 @router.get("/addresses/{user_id}", response_model=List[AddressDTO])
 async def get_addresses(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
-    return [AddressDTO(**addr.dict()) for addr in addresses]
+    # Mapeo manual
+    return [AddressDTO(
+        id=a.id,
+        name=a.name,
+        phone=a.phone,
+        city=a.city,
+        neighborhood=a.neighborhood,
+        address=a.address,
+        is_default=a.is_default
+    ) for a in addresses]
 
 @router.post("/addresses/{user_id}")
 async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    
-    # Si la nueva dirección se marca como predeterminada, quitamos el flag de las demás
     if req.is_default:
         existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
         for addr in existing:
             addr.is_default = False
             session.add(addr)
     
-    # Si es la primera dirección, la hacemos predeterminada obligatoriamente
     count = session.exec(select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).one()
     is_def = req.is_default or (count == 0)
     
     new_addr = ShippingAddressModel(
         userinfo_id=user_info.id, 
-        name=req.name,
-        phone=req.phone,
-        city=req.city,
-        neighborhood=req.neighborhood,
-        address=req.address,
-        is_default=is_def
+        name=req.name, phone=req.phone, city=req.city, neighborhood=req.neighborhood, address=req.address, is_default=is_def
     )
-    session.add(new_addr)
-    session.commit()
+    session.add(new_addr); session.commit()
     return {"message": "Dirección guardada"}
 
+@router.put("/addresses/{user_id}/set_default/{address_id}")
+async def set_default_address(user_id: int, address_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
+    for addr in existing:
+        addr.is_default = False
+        session.add(addr)
+    
+    target = session.get(ShippingAddressModel, address_id)
+    if target and target.userinfo_id == user_info.id:
+        target.is_default = True
+        session.add(target)
+        session.commit()
+        return {"message": "Dirección actualizada"}
+    raise HTTPException(404, "Dirección no encontrada")
+
+# 5. Otros
 @router.post("/profile/{user_id}/change-password")
 async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
     user = session.get(LocalUser, user_id)
@@ -350,7 +366,6 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
         select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts))
         .where(UserInfo.id == user_info.id)
     ).one()
-    
     saved_posts = user_with_posts.saved_posts
     result = []
     for p in saved_posts:
@@ -384,7 +399,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                          if v.get("attributes") == item.selected_variant and v.get("image_urls"):
                              variant_img = v["image_urls"][0]
                              break
-                
                 img_path = variant_img or item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
                 img = get_full_image_url(img_path)
             
@@ -394,13 +408,8 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
 
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
-    """
-    Calcula el subtotal, envío dinámico y total del carrito usando la lógica real de negocio.
-    """
     try:
         user_info = get_user_info(session, user_id)
-        
-        # 1. Obtener dirección predeterminada para cálculos de envío
         default_addr = session.exec(
             select(ShippingAddressModel)
             .where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)
@@ -409,20 +418,13 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         buyer_city = default_addr.city if default_addr else None
         buyer_barrio = default_addr.neighborhood if default_addr else None
 
-        # 2. Cargar productos de la base de datos
         product_ids = [item.product_id for item in req.items]
         if not product_ids:
-            return CartSummaryResponse(
-                subtotal=0, subtotal_formatted="$ 0",
-                shipping=0, shipping_formatted="$ 0",
-                total=0, total_formatted="$ 0",
-                address_id=default_addr.id if default_addr else None
-            )
+            return CartSummaryResponse(subtotal=0, subtotal_formatted="$ 0", shipping=0, shipping_formatted="$ 0", total=0, total_formatted="$ 0", address_id=default_addr.id if default_addr else None)
 
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
         post_map = {p.id: p for p in db_posts}
 
-        # 3. Calcular Subtotal Base (Precio * Cantidad)
         subtotal_base = 0.0
         items_for_shipping = [] 
         
@@ -432,18 +434,12 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                 price = post.price
                 if not post.price_includes_iva:
                     price = price * 1.19
-                
                 subtotal_base += price * item.quantity
                 items_for_shipping.append({"post": post, "quantity": item.quantity})
 
         subtotal_con_iva = subtotal_base
-
-        # 4. Lógica de Envío Gratis (Moda Completa)
         free_shipping_achieved = False
-        moda_completa_items = [
-            x["post"] for x in items_for_shipping 
-            if x["post"].is_moda_completa_eligible
-        ]
+        moda_completa_items = [x["post"] for x in items_for_shipping if x["post"].is_moda_completa_eligible]
         
         if moda_completa_items:
             valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
@@ -452,9 +448,7 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                 if subtotal_con_iva >= highest_threshold:
                     free_shipping_achieved = True
 
-        # 5. Cálculo de Envío Dinámico
         final_shipping_cost = 0.0
-        
         if not free_shipping_achieved and default_addr:
             seller_groups = defaultdict(list)
             for x in items_for_shipping:
@@ -476,43 +470,19 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                 seller_barrio = seller_data.get("barrio") if seller_data else None
 
                 for individual_item in individual_items:
-                    cost = calculate_dynamic_shipping(
-                        base_cost=individual_item.shipping_cost or 0.0,
-                        seller_barrio=seller_barrio,
-                        buyer_barrio=buyer_barrio,
-                        seller_city=seller_city,
-                        buyer_city=buyer_city
-                    )
+                    cost = calculate_dynamic_shipping(base_cost=individual_item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
                     final_shipping_cost += cost
                 
                 if combinable_items:
                     valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
                     limit = min(valid_limits)
                     num_fees = math.ceil(len(combinable_items) / limit)
-                    
                     highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
-                    
-                    group_shipping_fee = calculate_dynamic_shipping(
-                        base_cost=highest_base_cost,
-                        seller_barrio=seller_barrio,
-                        buyer_barrio=buyer_barrio,
-                        seller_city=seller_city,
-                        buyer_city=buyer_city
-                    )
+                    group_shipping_fee = calculate_dynamic_shipping(base_cost=highest_base_cost, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
                     final_shipping_cost += (group_shipping_fee * num_fees)
 
-        # 6. Total Final
         grand_total = subtotal_con_iva + final_shipping_cost
-
-        return CartSummaryResponse(
-            subtotal=subtotal_con_iva,
-            subtotal_formatted=fmt_price(subtotal_con_iva),
-            shipping=final_shipping_cost,
-            shipping_formatted=fmt_price(final_shipping_cost),
-            total=grand_total,
-            total_formatted=fmt_price(grand_total),
-            address_id=default_addr.id if default_addr else None
-        )
+        return CartSummaryResponse(subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva), shipping=final_shipping_cost, shipping_formatted=fmt_price(final_shipping_cost), total=grand_total, total_formatted=fmt_price(grand_total), address_id=default_addr.id if default_addr else None)
     except Exception as e:
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
