@@ -123,9 +123,20 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
+    # Añadimos imagen opcional para devolverla si se calcula
+    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
+
+# Modificamos la respuesta para incluir items detallados con su imagen correcta
+class CartItemResponse(BaseModel):
+    product_id: int
+    variant_id: Optional[str]
+    title: str
+    price_formatted: str
+    quantity: int
+    image_url: str
 
 class CartSummaryResponse(BaseModel):
     subtotal: float
@@ -135,6 +146,8 @@ class CartSummaryResponse(BaseModel):
     total: float
     total_formatted: str
     address_id: Optional[int] = None
+    # Lista opcional de items con detalles actualizados (útil si el front quiere refrescar)
+    items: List[CartItemResponse] = []
 
 # --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
@@ -151,7 +164,6 @@ def get_full_image_url(path: str) -> str:
 
 # --- ENDPOINTS ---
 
-# 1. Geografía
 @router.get("/geography/cities", response_model=List[str])
 async def get_cities():
     return ALL_CITIES
@@ -160,7 +172,6 @@ async def get_cities():
 async def get_neighborhoods(city: str = Body(..., embed=True)):
     return COLOMBIA_LOCATIONS.get(city, [])
 
-# 2. Auth y Perfil
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
     try:
@@ -206,7 +217,6 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         except: pass
     return {"message": "OK"}
 
-# 3. Productos
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
@@ -298,38 +308,21 @@ async def update_mobile_profile(user_id: int, phone: str, session: Session = Dep
     session.add(user_info); session.commit()
     return {"message": "Perfil actualizado"}
 
-# 4. Direcciones (ACTUALIZADO)
 @router.get("/addresses/{user_id}", response_model=List[AddressDTO])
 async def get_addresses(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
-    # Mapeo manual
-    return [AddressDTO(
-        id=a.id,
-        name=a.name,
-        phone=a.phone,
-        city=a.city,
-        neighborhood=a.neighborhood,
-        address=a.address,
-        is_default=a.is_default
-    ) for a in addresses]
+    return [AddressDTO(id=a.id, name=a.name, phone=a.phone, city=a.city, neighborhood=a.neighborhood, address=a.address, is_default=a.is_default) for a in addresses]
 
 @router.post("/addresses/{user_id}")
 async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     if req.is_default:
         existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
-        for addr in existing:
-            addr.is_default = False
-            session.add(addr)
-    
+        for addr in existing: addr.is_default = False; session.add(addr)
     count = session.exec(select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).one()
     is_def = req.is_default or (count == 0)
-    
-    new_addr = ShippingAddressModel(
-        userinfo_id=user_info.id, 
-        name=req.name, phone=req.phone, city=req.city, neighborhood=req.neighborhood, address=req.address, is_default=is_def
-    )
+    new_addr = ShippingAddressModel(userinfo_id=user_info.id, name=req.name, phone=req.phone, city=req.city, neighborhood=req.neighborhood, address=req.address, is_default=is_def)
     session.add(new_addr); session.commit()
     return {"message": "Dirección guardada"}
 
@@ -337,19 +330,13 @@ async def create_address(user_id: int, req: CreateAddressRequest, session: Sessi
 async def set_default_address(user_id: int, address_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
-    for addr in existing:
-        addr.is_default = False
-        session.add(addr)
-    
+    for addr in existing: addr.is_default = False; session.add(addr)
     target = session.get(ShippingAddressModel, address_id)
     if target and target.userinfo_id == user_info.id:
-        target.is_default = True
-        session.add(target)
-        session.commit()
+        target.is_default = True; session.add(target); session.commit()
         return {"message": "Dirección actualizada"}
     raise HTTPException(404, "Dirección no encontrada")
 
-# 5. Otros
 @router.post("/profile/{user_id}/change-password")
 async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
     user = session.get(LocalUser, user_id)
@@ -362,43 +349,35 @@ async def change_password(user_id: int, req: ChangePasswordRequest, session: Ses
 @router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
 async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    user_with_posts = session.exec(
-        select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts))
-        .where(UserInfo.id == user_info.id)
-    ).one()
+    user_with_posts = session.exec(select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts)).where(UserInfo.id == user_info.id)).one()
     saved_posts = user_with_posts.saved_posts
     result = []
     for p in saved_posts:
         if not p.publish_active: continue
         img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
-        result.append(ProductListDTO(
-            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
-            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
-        ))
+        result.append(ProductListDTO(id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), image_url=get_full_image_url(img_path), category=p.category, description=p.content, is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping))
     return result
 
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    purchases = session.exec(
-        select(PurchaseModel)
-        .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
-        .where(PurchaseModel.userinfo_id == user_info.id)
-        .order_by(PurchaseModel.purchase_date.desc())
-    ).all()
+    purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_info.id).order_by(PurchaseModel.purchase_date.desc())).all()
     history = []
     for p in purchases:
         items_dto = []
         for item in p.items:
             img = ""
             if item.blog_post:
+                # Intentar obtener la imagen de la variante específica comprada
                 variant_img = ""
-                if item.blog_post.variants:
-                    for v in item.blog_post.variants:
-                         if v.get("attributes") == item.selected_variant and v.get("image_urls"):
-                             variant_img = v["image_urls"][0]
-                             break
+                if item.blog_post.variants and item.selected_variant:
+                     # Buscar la variante que coincida con los atributos guardados
+                     # Nota: item.selected_variant es un dict {Color: Azul, Talla: M}
+                     target_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
+                     if target_variant and target_variant.get("image_urls"):
+                         variant_img = target_variant["image_urls"][0]
+                
+                # Fallback: imagen principal o primera del grupo
                 img_path = variant_img or item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
                 img = get_full_image_url(img_path)
             
@@ -410,10 +389,7 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
-        default_addr = session.exec(
-            select(ShippingAddressModel)
-            .where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)
-        ).first()
+        default_addr = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)).first()
         
         buyer_city = default_addr.city if default_addr else None
         buyer_barrio = default_addr.neighborhood if default_addr else None
@@ -426,7 +402,8 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         post_map = {p.id: p for p in db_posts}
 
         subtotal_base = 0.0
-        items_for_shipping = [] 
+        items_for_shipping = []
+        cart_items_response = []
         
         for item in req.items:
             post = post_map.get(item.product_id)
@@ -436,6 +413,27 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                     price = price * 1.19
                 subtotal_base += price * item.quantity
                 items_for_shipping.append({"post": post, "quantity": item.quantity})
+
+                # --- BUSCAR IMAGEN DE LA VARIANTE ESPECÍFICA ---
+                variant_image_url = post.main_image_url_variant
+                if item.variant_id:
+                     # Buscar la variante por UUID
+                     target_variant = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
+                     if target_variant and target_variant.get("image_urls"):
+                         variant_image_url = target_variant["image_urls"][0]
+                
+                # Fallback: primera imagen disponible
+                if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
+                    variant_image_url = post.variants[0]["image_urls"][0]
+                
+                cart_items_response.append(CartItemResponse(
+                    product_id=post.id,
+                    variant_id=item.variant_id,
+                    title=post.title,
+                    price_formatted=fmt_price(price),
+                    quantity=item.quantity,
+                    image_url=get_full_image_url(variant_image_url)
+                ))
 
         subtotal_con_iva = subtotal_base
         free_shipping_achieved = False
@@ -482,7 +480,16 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                     final_shipping_cost += (group_shipping_fee * num_fees)
 
         grand_total = subtotal_con_iva + final_shipping_cost
-        return CartSummaryResponse(subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva), shipping=final_shipping_cost, shipping_formatted=fmt_price(final_shipping_cost), total=grand_total, total_formatted=fmt_price(grand_total), address_id=default_addr.id if default_addr else None)
+        return CartSummaryResponse(
+            subtotal=subtotal_con_iva, 
+            subtotal_formatted=fmt_price(subtotal_con_iva), 
+            shipping=final_shipping_cost, 
+            shipping_formatted=fmt_price(final_shipping_cost), 
+            total=grand_total, 
+            total_formatted=fmt_price(grand_total), 
+            address_id=default_addr.id if default_addr else None,
+            items=cart_items_response
+        )
     except Exception as e:
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
