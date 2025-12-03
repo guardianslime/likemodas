@@ -13,6 +13,7 @@ from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
+# Aseguramos importar CommentModel
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
@@ -245,10 +246,18 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     products = session.exec(query).all()
     result = []
     for p in products:
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        # Protección extra por si variants es None o está vacío
+        img_path = p.main_image_url_variant
+        if not img_path:
+            if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
+                urls = p.variants[0].get("image_urls")
+                if urls and isinstance(urls, list) and len(urls) > 0:
+                    img_path = urls[0]
+        
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            image_url=get_full_image_url(img_path or ""), 
+            category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
         ))
     return result
@@ -261,10 +270,17 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
     
     result = []
     for p in products:
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        img_path = p.main_image_url_variant
+        if not img_path:
+            if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
+                urls = p.variants[0].get("image_urls")
+                if urls and isinstance(urls, list) and len(urls) > 0:
+                    img_path = urls[0]
+
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            image_url=get_full_image_url(img_path or ""), 
+            category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
         ))
     return result
@@ -272,8 +288,7 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # ### CORRECCIÓN DE UNIÓN (JOIN) ###
-        # Usamos left outer join para evitar crash si el usuario dueño fue borrado
+        # 1. Consulta Principal con JOIN seguros
         statement = (
             select(BlogPostModel, LocalUser.username)
             .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id, isouter=True)
@@ -284,37 +299,81 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not result: raise HTTPException(404, "Producto no encontrado")
         p, author_name = result
         
-        # Si el autor no existe (usuario borrado), ponemos un default
+        # Nombre de autor por defecto si no existe
         if not author_name: author_name = "Likemodas"
-        
         seller_info_id = p.userinfo_id
 
-        main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        # 2. Lógica de Imágenes (Blindada contra listas vacías o Nulos)
+        main_img = p.main_image_url_variant
         all_images_set = set()
+        
+        # Obtener variantes de forma segura
+        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+
+        # Si no hay imagen principal, intentar sacar la primera de las variantes
+        if not main_img and safe_variants:
+            first_v_urls = safe_variants[0].get("image_urls")
+            if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0:
+                main_img = first_v_urls[0]
+
         if main_img: all_images_set.add(main_img)
-        if p.variants:
-            for v in p.variants:
-                for img in v.get("image_urls", []): all_images_set.add(img)
+
+        # Recolectar todas las imágenes
+        for v in safe_variants:
+            if isinstance(v, dict): # Asegurar que v sea un diccionario
+                urls = v.get("image_urls", [])
+                if urls and isinstance(urls, list):
+                    for img in urls: 
+                        if img: all_images_set.add(img)
         
         final_images = [get_full_image_url(img) for img in all_images_set if img]
-        main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
+        main_image_final = get_full_image_url(main_img or "")
+        
+        if not main_image_final and final_images:
+            main_image_final = final_images[0]
 
+        # 3. Construir DTO de Variantes
         variants_dto = []
-        if p.variants:
-            for v in p.variants:
-                v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
-                v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
-                if not v_images_list: v_images_list = [get_full_image_url(v_img)]
+        for v in safe_variants:
+            if not isinstance(v, dict): continue # Saltar datos corruptos
+            
+            v_urls = v.get("image_urls", [])
+            v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_img
+            
+            # Construir lista de imágenes para esta variante
+            v_images_list = []
+            if v_urls and isinstance(v_urls, list):
+                v_images_list = [get_full_image_url(img) for img in v_urls if img]
+            
+            if not v_images_list: 
+                v_images_list = [main_image_final]
 
-                variants_dto.append(VariantDTO(
-                    id=v.get("variant_uuid", v.get("id", "")),
-                    title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
-                    image_url=get_full_image_url(v_img),
-                    price=v.get("price", p.price),
-                    available_quantity=v.get("stock", 0),
-                    images=v_images_list
-                ))
+            # Construir título seguro
+            attrs = v.get("attributes", {})
+            if not isinstance(attrs, dict): attrs = {}
+            
+            # Extraer atributos con seguridad
+            color = attrs.get("Color", "")
+            if isinstance(color, list): color = color[0] if color else ""
+            
+            talla = attrs.get("Talla") or attrs.get("Número") or ""
+            if isinstance(talla, list): talla = talla[0] if talla else ""
+            
+            title_parts = []
+            if color: title_parts.append(str(color))
+            if talla: title_parts.append(str(talla))
+            v_title = " ".join(title_parts) if title_parts else "Estándar"
 
+            variants_dto.append(VariantDTO(
+                id=str(v.get("variant_uuid") or v.get("id") or ""),
+                title=v_title,
+                image_url=get_full_image_url(v_img_raw or ""),
+                price=float(v.get("price") or p.price or 0.0),
+                available_quantity=int(v.get("stock") or 0),
+                images=v_images_list
+            ))
+
+        # 4. Estado de guardado y revisión
         is_saved = False
         can_review = False
         
@@ -324,34 +383,37 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
                 is_saved = saved is not None
                 
+                # Check de compra para permitir review
                 has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == p.id)).first() is not None
                 already_reviewed = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == p.id)).first() is not None
                 can_review = has_bought and not already_reviewed
 
-        # ### CORRECCIÓN CRÍTICA PARA HTTP 500 ###
-        # Iteramos los comentarios con protección contra valores Nulos (None)
+        # 5. Obtener Opiniones (PROTEGIDO CONTRA NULLS)
         reviews_list = []
         db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
         
         for r in db_reviews:
-            # 1. Proteger fecha nula
-            date_str = ""
-            if r.created_at:
-                date_str = r.created_at.strftime("%d/%m/%Y")
-            
-            # 2. Proteger nombre nulo
-            u_name = r.author_username if r.author_username else "Usuario"
-            
-            # 3. Proteger contenido nulo
-            c_content = r.content if r.content else ""
+            try:
+                # Proteger fecha
+                date_str = ""
+                if r.created_at:
+                    date_str = r.created_at.strftime("%d/%m/%Y")
+                
+                # Proteger valores nulos
+                u_name = r.author_username if r.author_username else "Usuario"
+                c_content = r.content if r.content else ""
+                r_rating = r.rating if r.rating is not None else 5 # Default 5 estrellas si es nulo
 
-            reviews_list.append(ReviewDTO(
-                id=r.id, 
-                username=u_name, 
-                rating=r.rating, 
-                comment=c_content, 
-                date=date_str
-            ))
+                reviews_list.append(ReviewDTO(
+                    id=r.id, 
+                    username=u_name, 
+                    rating=int(r_rating), 
+                    comment=c_content, 
+                    date=date_str
+                ))
+            except Exception as e:
+                print(f"Error procesando review {r.id}: {e}")
+                continue # Saltar esta review si está corrupta, no romper todo
 
         # Proteger fecha de creación del producto
         date_created_str = ""
@@ -363,14 +425,18 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             description=p.content, category=p.category,
             main_image_url=main_image_final, images=final_images, variants=variants_dto,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-            is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating or 0.0, rating_count=p.rating_count or 0,
+            is_saved=is_saved, is_imported=p.is_imported, 
+            average_rating=p.average_rating or 0.0, 
+            rating_count=p.rating_count or 0,
             author=author_name, author_id=seller_info_id, 
-            created_at=date_created_str, # Usamos la fecha protegida
+            created_at=date_created_str, 
             reviews=reviews_list, can_review=can_review
         )
     except Exception as e:
-        print(f"Error 500 en get_product_detail: {e}") # Para que salga en los logs del servidor
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+        # Log del error en el servidor para que puedas verlo
+        print(f"CRITICAL ERROR 500 en get_product_detail id={product_id}: {str(e)}")
+        # Devolver el detalle del error al cliente para depurar
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, review: CreateReviewRequest, user_id: int = Body(..., embed=True), session: Session = Depends(get_session)):
