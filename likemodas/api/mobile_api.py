@@ -1,37 +1,30 @@
-from collections import defaultdict
-import math
 import os
 import bcrypt
 import secrets
 import logging
-from typing import List, Optional
+import math
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 import sqlalchemy
+from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session
-from sqlalchemy.orm import joinedload
 from pydantic import BaseModel
 
-# Importaciones internas
 from likemodas.db.session import get_session
-from likemodas.models import (
-    BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, 
-    PasswordResetToken, PurchaseModel, PurchaseItemModel, 
-    ShippingAddressModel, SavedPostLink, CommentModel
-)
+from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
+from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 
-# Configuración de logs para ver errores en Railway
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
 BASE_URL = "https://api.likemodas.com"
 
-# --- DTOs (Data Transfer Objects) ---
-
+# --- DTOs ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -99,11 +92,7 @@ class ProductDetailDTO(BaseModel):
     reviews: List[ReviewDTO] = []
     can_review: bool = False
 
-class CreateReviewRequest(BaseModel):
-    rating: int
-    comment: str
-    user_id: int
-
+# Nuevo DTO unificado para recibir reviews desde Android
 class ReviewSubmissionBody(BaseModel):
     rating: int
     comment: str
@@ -114,23 +103,6 @@ class ProfileDTO(BaseModel):
     email: str
     phone: str
     avatar_url: str
-
-class AddressDTO(BaseModel):
-    id: int
-    name: str
-    phone: str
-    city: str
-    neighborhood: str
-    address: str
-    is_default: bool
-
-class CreateAddressRequest(BaseModel):
-    name: str
-    phone: str
-    city: str
-    neighborhood: str
-    address: str
-    is_default: bool
 
 class PurchaseItemDTO(BaseModel):
     title: str
@@ -148,6 +120,23 @@ class PurchaseHistoryDTO(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+class AddressDTO(BaseModel):
+    id: int
+    name: str
+    phone: str
+    city: str
+    neighborhood: str
+    address: str
+    is_default: bool
+
+class CreateAddressRequest(BaseModel):
+    name: str
+    phone: str
+    city: str
+    neighborhood: str
+    address: str
+    is_default: bool
 
 class CartItemRequest(BaseModel):
     product_id: int
@@ -175,16 +164,14 @@ class CartSummaryResponse(BaseModel):
     address_id: Optional[int] = None
     items: List[CartItemResponse] = []
 
-# --- Funciones Auxiliares ---
-
+# --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
     user_info = session.exec(
         select(UserInfo)
         .options(joinedload(UserInfo.user))
         .where(UserInfo.user_id == user_id)
     ).one_or_none()
-    if not user_info:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if not user_info: raise HTTPException(404, "Usuario no encontrado")
     return user_info
 
 def fmt_price(val): 
@@ -210,57 +197,33 @@ async def get_neighborhoods(city: str = Body(..., embed=True)):
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
-        if not user: 
-            raise HTTPException(status_code=404, detail="Usuario no existe")
-        if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): 
-            raise HTTPException(status_code=400, detail="Contraseña incorrecta")
-        
+        if not user: raise HTTPException(404, detail="Usuario no existe")
+        if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): raise HTTPException(400, detail="Contraseña incorrecta")
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
-        if not user_info: 
-            raise HTTPException(status_code=400, detail="Perfil no encontrado")
-        if not user_info.is_verified: 
-            raise HTTPException(status_code=403, detail="Cuenta no verificada")
-        
+        if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
+        if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
         role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
-        return UserResponse(
-            id=user_info.id, 
-            username=user.username, 
-            email=user_info.email, 
-            role=role_str, 
-            token=str(user.id)
-        )
-    except HTTPException as he: 
-        raise he
-    except Exception as e: 
-        logger.error(f"Login error: {e}")
-        raise HTTPException(status_code=400, detail="Error en login")
+        return UserResponse(id=user_info.id, username=user.username, email=user_info.email, role=role_str, token=str(user.id))
+    except HTTPException as he: raise he
+    except Exception as e: raise HTTPException(400, detail=str(e))
 
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
-    if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first():
-        raise HTTPException(status_code=400, detail="Usuario ya existe")
+    if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): raise HTTPException(400, detail="Usuario ya existe")
     try:
         hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
         new_user = LocalUser(username=creds.username, password_hash=hashed_pw, enabled=True)
         session.add(new_user); session.commit(); session.refresh(new_user)
-        
         new_info = UserInfo(email=creds.email, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
         session.add(new_info); session.commit(); session.refresh(new_info)
-        
         token_str = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=24)
         vt = VerificationToken(token=token_str, userinfo_id=new_info.id, expires_at=expires)
         session.add(vt); session.commit()
-        
-        try: 
-            send_verification_email(recipient_email=creds.email, token=token_str)
-        except Exception as e:
-            logger.error(f"Email error: {e}")
-            
+        try: send_verification_email(recipient_email=creds.email, token=token_str)
+        except: pass 
         return UserResponse(id=new_info.id, username=new_user.username, email=new_info.email, role="customer", token=str(new_user.id))
-    except Exception as e: 
-        logger.error(f"Register error: {e}")
-        raise HTTPException(status_code=400, detail="Error en registro")
+    except Exception as e: raise HTTPException(400, detail=str(e))
 
 @router.post("/forgot-password")
 async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = Depends(get_session)):
@@ -271,21 +234,16 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
         rt = PasswordResetToken(token=token_str, user_id=user_info.user_id, expires_at=expires)
         session.add(rt); session.commit()
-        try: 
-            send_password_reset_email(recipient_email=email, token=token_str)
-        except: 
-            pass
+        try: send_password_reset_email(recipient_email=email, token=token_str)
+        except: pass
     return {"message": "OK"}
 
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
-    if category and category != "todos": 
-        query = query.where(BlogPostModel.category == category)
-    
+    if category and category != "todos": query = query.where(BlogPostModel.category == category)
     query = query.order_by(BlogPostModel.created_at.desc())
     products = session.exec(query).all()
-    
     result = []
     for p in products:
         img_path = p.main_image_url_variant
@@ -326,11 +284,10 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- ENDPOINT CRÍTICO CORREGIDO ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Consulta Principal optimizada
+        # 1. Consulta Principal con JOIN seguros
         statement = (
             select(BlogPostModel, LocalUser.username)
             .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id, isouter=True)
@@ -338,18 +295,18 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             .where(BlogPostModel.id == product_id)
         )
         result = session.exec(statement).first()
-        if not result: 
-            raise HTTPException(status_code=404, detail="Producto no encontrado")
-        
+        if not result: raise HTTPException(404, "Producto no encontrado")
         p, author_name = result
         
+        # Nombre de autor por defecto si no existe
         if not author_name: author_name = "Likemodas"
-        # FIX: Asegurar que el ID sea entero, nunca None
+        # Importante: Usar un valor por defecto (0) si userinfo_id es None
         seller_info_id = p.userinfo_id if p.userinfo_id else 0
 
-        # 2. Imágenes
+        # 2. Lógica de Imágenes (Blindada contra listas vacías o Nulos)
         main_img = p.main_image_url_variant
         all_images_set = set()
+        
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
 
         if not main_img and safe_variants:
@@ -368,10 +325,11 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         
         final_images = [get_full_image_url(img) for img in all_images_set if img]
         main_image_final = get_full_image_url(main_img or "")
+        
         if not main_image_final and final_images:
             main_image_final = final_images[0]
 
-        # 3. Variantes DTO
+        # 3. Construir DTO de Variantes
         variants_dto = []
         for v in safe_variants:
             if not isinstance(v, dict): continue
@@ -382,6 +340,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             v_images_list = []
             if v_urls and isinstance(v_urls, list):
                 v_images_list = [get_full_image_url(img) for img in v_urls if img]
+            
             if not v_images_list: v_images_list = [main_image_final]
 
             attrs = v.get("attributes", {})
@@ -406,10 +365,11 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # 4. Lógica de usuario (Guardado/Revisión)
+        # 4. Estado de guardado y revisión
         is_saved = False
         can_review = False
-        if user_id and user_id > 0:
+        
+        if user_id:
             user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
             if user_info:
                 saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
@@ -419,17 +379,20 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 already_reviewed = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == p.id)).first() is not None
                 can_review = has_bought and not already_reviewed
 
-        # 5. Obtener Opiniones y CALCULAR MANUALMENTE EL RATING
+        # 5. Obtener Opiniones (SOLUCIÓN ERROR 500: Cálculo Manual)
         reviews_list = []
+        # Traemos todos los comentarios del producto
         db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
         
-        # --- FIX CRÍTICO: Cálculo manual ---
-        # Evita usar p.average_rating que dispara lazy loading y el error 500
+        # --- INICIO CORRECCIÓN: Cálculo manual para evitar Lazy Loading ---
         ratings = [r.rating for r in db_reviews if r.rating is not None]
-        manual_rating_count = len(ratings)
-        manual_average_rating = sum(ratings) / manual_rating_count if manual_rating_count > 0 else 0.0
-        # ----------------------------------
-
+        ratings_count = len(ratings)
+        if ratings_count > 0:
+            average_rating = sum(ratings) / ratings_count
+        else:
+            average_rating = 0.0
+        # --- FIN CORRECCIÓN ---
+        
         for r in db_reviews:
             try:
                 date_str = ""
@@ -448,8 +411,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     date=date_str
                 ))
             except Exception as e:
-                logger.error(f"Skipping broken review {r.id}: {e}")
-                continue
+                print(f"Error procesando review {r.id}: {e}")
+                continue 
 
         date_created_str = ""
         if p.created_at:
@@ -461,36 +424,31 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             main_image_url=main_image_final, images=final_images, variants=variants_dto,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, 
-            
             # Usamos los valores calculados manualmente
-            average_rating=manual_average_rating, 
-            rating_count=manual_rating_count,
-            
+            average_rating=average_rating, 
+            rating_count=ratings_count,
             author=author_name, author_id=seller_info_id, 
             created_at=date_created_str, 
             reviews=reviews_list, can_review=can_review
         )
-
     except Exception as e:
-        # Imprimir el error real en los logs de Railway para debuggear si persiste
-        logger.error(f"CRITICAL ERROR 500 in get_product_detail ID {product_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        print(f"CRITICAL ERROR 500 en get_product_detail id={product_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
-    user_id = body.user_id
+    # Extraemos los datos del body unificado
+    user_id = body.userId
     rating = body.rating
     comment = body.comment
 
     user_info = get_user_info(session, user_id)
     
     has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first() is not None
-    if not has_bought: 
-        raise HTTPException(status_code=400, detail="Debes comprar el producto para opinar.")
+    if not has_bought: raise HTTPException(400, "Debes comprar el producto para opinar.")
     
     existing = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
-    if existing: 
-        raise HTTPException(status_code=400, detail="Ya has opinado sobre este producto.")
+    if existing: raise HTTPException(400, "Ya has opinado sobre este producto.")
     
     username = "Usuario"
     initial = "U"
@@ -529,8 +487,7 @@ async def get_mobile_profile(user_id: int, session: Session = Depends(get_sessio
     user_info = get_user_info(session, user_id)
     local_user = session.get(LocalUser, user_id)
     avatar = get_full_image_url(user_info.avatar_url)
-    username = local_user.username if local_user else "Usuario"
-    return ProfileDTO(username=username, email=user_info.email, phone=user_info.phone or "", avatar_url=avatar)
+    return ProfileDTO(username=local_user.username if local_user else "Usuario", email=user_info.email, phone=user_info.phone or "", avatar_url=avatar)
 
 @router.put("/profile/{user_id}")
 async def update_mobile_profile(user_id: int, phone: str, session: Session = Depends(get_session)):
@@ -551,10 +508,7 @@ async def create_address(user_id: int, req: CreateAddressRequest, session: Sessi
     if req.is_default:
         existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
         for addr in existing: addr.is_default = False; session.add(addr)
-    
-    count_q = select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)
-    count = session.exec(count_q).one()
-    
+    count = session.exec(select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).one()
     is_def = req.is_default or (count == 0)
     new_addr = ShippingAddressModel(userinfo_id=user_info.id, name=req.name, phone=req.phone, city=req.city, neighborhood=req.neighborhood, address=req.address, is_default=is_def)
     session.add(new_addr); session.commit()
@@ -620,17 +574,12 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         buyer_city = default_addr.city if default_addr else None
         buyer_barrio = default_addr.neighborhood if default_addr else None
         product_ids = [item.product_id for item in req.items]
-        
-        if not product_ids: 
-            return CartSummaryResponse(subtotal=0, subtotal_formatted="$ 0", shipping=0, shipping_formatted="$ 0", total=0, total_formatted="$ 0", address_id=default_addr.id if default_addr else None)
-        
+        if not product_ids: return CartSummaryResponse(subtotal=0, subtotal_formatted="$ 0", shipping=0, shipping_formatted="$ 0", total=0, total_formatted="$ 0", address_id=default_addr.id if default_addr else None)
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
         post_map = {p.id: p for p in db_posts}
-        
         subtotal_base = 0.0
         items_for_shipping = []
         cart_items_response = []
-        
         for item in req.items:
             post = post_map.get(item.product_id)
             if post:
@@ -644,48 +593,38 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
                      if target_variant and target_variant.get("image_urls"): variant_image_url = target_variant["image_urls"][0]
                 if not variant_image_url and post.variants and post.variants[0].get("image_urls"): variant_image_url = post.variants[0]["image_urls"][0]
                 cart_items_response.append(CartItemResponse(product_id=post.id, variant_id=item.variant_id, title=post.title, price_formatted=fmt_price(price), quantity=item.quantity, image_url=get_full_image_url(variant_image_url)))
-        
         subtotal_con_iva = subtotal_base
         free_shipping_achieved = False
         moda_completa_items = [x["post"] for x in items_for_shipping if x["post"].is_moda_completa_eligible]
         if moda_completa_items:
             valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
             if valid_thresholds and subtotal_con_iva >= max(valid_thresholds): free_shipping_achieved = True
-        
         final_shipping_cost = 0.0
-        from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
-        
         if not free_shipping_achieved and default_addr:
             seller_groups = defaultdict(list)
             for x in items_for_shipping:
                 post = x["post"]; qty = x["quantity"]
                 for _ in range(qty): seller_groups[post.userinfo_id].append(post)
-            
             seller_ids = list(seller_groups.keys())
             sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
             seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-            
             for seller_id, items_from_seller in seller_groups.items():
                 combinable_items = [p for p in items_from_seller if p.combines_shipping]
                 individual_items = [p for p in items_from_seller if not p.combines_shipping]
-                
                 seller_data = seller_data_map.get(seller_id)
                 seller_city = seller_data.get("city") if seller_data else None
                 seller_barrio = seller_data.get("barrio") if seller_data else None
-                
                 for individual_item in individual_items:
                     cost = calculate_dynamic_shipping(base_cost=individual_item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
                     final_shipping_cost += cost
-                
                 if combinable_items:
                     highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
                     limit = min([p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1])
                     num_fees = math.ceil(len(combinable_items) / limit)
                     group_shipping_fee = calculate_dynamic_shipping(base_cost=highest_base_cost, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
                     final_shipping_cost += (group_shipping_fee * num_fees)
-        
         grand_total = subtotal_con_iva + final_shipping_cost
         return CartSummaryResponse(subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva), shipping=final_shipping_cost, shipping_formatted=fmt_price(final_shipping_cost), total=grand_total, total_formatted=fmt_price(grand_total), address_id=default_addr.id if default_addr else None, items=cart_items_response)
     except Exception as e:
-        logger.error(f"Error calculando carrito: {e}")
+        print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
