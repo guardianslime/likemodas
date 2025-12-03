@@ -71,13 +71,17 @@ class ProductDetailDTO(BaseModel):
     category: str
     main_image_url: str
     images: List[str]
-    variants: List[VariantDTO]
+    variants: List[Any] # Simplificado para brevedad, usa tu VariantDTO
     is_moda_completa: bool
     combines_shipping: bool
     is_saved: bool = False
     is_imported: bool
     average_rating: float
     rating_count: int
+    # --- NUEVOS CAMPOS ---
+    author: str
+    author_id: int
+    created_at: str
 
 class ProfileDTO(BaseModel):
     username: str
@@ -235,9 +239,23 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
 
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
-    p = session.get(BlogPostModel, product_id)
-    if not p or not p.publish_active: raise HTTPException(404, "Producto no encontrado")
+    # Hacemos JOIN para obtener el username del vendedor (LocalUser) a través de UserInfo
+    statement = (
+        select(BlogPostModel, LocalUser.username, LocalUser.id)
+        .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id)
+        .join(LocalUser, UserInfo.user_id == LocalUser.id)
+        .where(BlogPostModel.id == product_id)
+    )
+    result = session.exec(statement).first()
     
+    if not result:
+        raise HTTPException(404, "Producto no encontrado")
+    
+    p, author_name, author_original_id = result # author_original_id es el ID de LocalUser (para perfil), usaremos UserInfo.id para filtrar productos si prefieres, o LocalUser.id. Usaré UserInfo ID para consistencia interna.
+    
+    # Recuperamos el UserInfo ID para el endpoint de productos del vendedor
+    seller_info_id = p.userinfo_id
+
     main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
     all_images_set = set()
     if main_img: all_images_set.add(main_img)
@@ -255,14 +273,14 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
             if not v_images_list: v_images_list = [get_full_image_url(v_img)]
 
-            variants_dto.append(VariantDTO(
-                id=v.get("variant_uuid", v.get("id", "")),
-                title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
-                image_url=get_full_image_url(v_img),
-                price=v.get("price", p.price),
-                available_quantity=v.get("stock", 0),
-                images=v_images_list
-            ))
+            variants_dto.append({
+                "id": v.get("variant_uuid", v.get("id", "")),
+                "title": f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
+                "image_url": get_full_image_url(v_img),
+                "price": v.get("price", p.price),
+                "available_quantity": v.get("stock", 0),
+                "images": v_images_list
+            })
 
     is_saved = False
     if user_id:
@@ -271,13 +289,47 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
             is_saved = saved is not None
 
+    # Formatear fecha
+    date_str = p.created_at.strftime("%d de %B del %Y")
+    # Traducción básica de meses si es necesario, o dejar que el frontend formatee. Python locale puede fallar en servers.
+    meses = {"January": "Enero", "February": "Febrero", "March": "Marzo", "April": "Abril", "May": "Mayo", "June": "Junio", "July": "Julio", "August": "Agosto", "September": "Septiembre", "October": "Octubre", "November": "Noviembre", "December": "Diciembre"}
+    for eng, esp in meses.items():
+        date_str = date_str.replace(eng, esp)
+
     return ProductDetailDTO(
         id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
         description=p.content, category=p.category,
         main_image_url=main_image_final, images=final_images, variants=variants_dto,
         is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-        is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating, rating_count=p.rating_count
+        is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating, rating_count=p.rating_count,
+        # NUEVOS
+        author=author_name,
+        author_id=seller_info_id, # Usamos el ID de UserInfo para buscar sus productos
+        created_at=date_str
     )
+
+# --- NUEVO ENDPOINT: PRODUCTOS POR VENDEDOR ---
+@router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO]) # Usa ProductListDTO que ya tienes definido arriba en tu archivo original
+async def get_seller_products(seller_id: int, session: Session = Depends(get_session)):
+    query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id)
+    query = query.order_by(BlogPostModel.created_at.desc())
+    products = session.exec(query).all()
+    
+    result = []
+    for p in products:
+        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        result.append({
+            "id": p.id, 
+            "title": p.title, 
+            "price": p.price, 
+            "price_formatted": fmt_price(p.price),
+            "image_url": get_full_image_url(img_path), 
+            "category": p.category, 
+            "description": p.content,
+            "is_moda_completa": p.is_moda_completa_eligible, 
+            "combines_shipping": p.combines_shipping
+        })
+    return result
 
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
