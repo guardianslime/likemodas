@@ -8,11 +8,13 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 import sqlalchemy
+from sqlalchemy.orm import joinedload # Importante para cargar relaciones
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, RatingModel
+# --- CAMBIO: Usamos CommentModel en lugar de RatingModel ---
+from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
@@ -166,7 +168,12 @@ class CartSummaryResponse(BaseModel):
 
 # --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
-    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    # Usamos joinedload para traer el usuario de una vez y obtener el username
+    user_info = session.exec(
+        select(UserInfo)
+        .options(joinedload(UserInfo.user))
+        .where(UserInfo.user_id == user_id)
+    ).one_or_none()
     if not user_info: raise HTTPException(404, "Usuario no encontrado")
     return user_info
 
@@ -312,18 +319,20 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
             is_saved = saved is not None
             
-            # Lógica para saber si puede comentar:
-            # 1. Debe haber comprado el producto
-            # 2. No debe haber comentado ya
+            # Lógica para saber si puede comentar (Adaptada para CommentModel):
             has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == p.id)).first() is not None
-            already_reviewed = session.exec(select(RatingModel).where(RatingModel.userinfo_id == user_info.id, RatingModel.blogpostmodel_id == p.id)).first() is not None
+            # Verifica si ya existe un comentario de este usuario para este post
+            already_reviewed = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == p.id)).first() is not None
             can_review = has_bought and not already_reviewed
 
-    # Obtener reseñas
+    # --- CAMBIO: Obtener reseñas desde CommentModel ---
     reviews_list = []
-    db_reviews = session.exec(select(RatingModel, LocalUser.username).join(UserInfo).join(LocalUser).where(RatingModel.blogpostmodel_id == p.id)).all()
-    for r, uname in db_reviews:
-        reviews_list.append(ReviewDTO(id=r.id, username=uname, rating=r.rating, comment=r.comment, date=r.created_at.strftime("%d/%m/%Y")))
+    # Consultamos CommentModel directamente. CommentModel ya tiene author_username.
+    db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
+    
+    for r in db_reviews:
+        # Mapeamos 'content' (BD) a 'comment' (App DTO)
+        reviews_list.append(ReviewDTO(id=r.id, username=r.author_username, rating=r.rating, comment=r.content, date=r.created_at.strftime("%d/%m/%Y")))
 
     date_str = p.created_at.strftime("%d de %B del %Y")
 
@@ -345,22 +354,33 @@ async def create_product_review(product_id: int, review: CreateReviewRequest, us
     has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first() is not None
     if not has_bought: raise HTTPException(400, "Debes comprar el producto para opinar.")
     
-    # Verificar duplicado
-    existing = session.exec(select(RatingModel).where(RatingModel.userinfo_id == user_info.id, RatingModel.blogpostmodel_id == product_id)).first()
+    # Verificar duplicado usando CommentModel
+    existing = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
     if existing: raise HTTPException(400, "Ya has opinado sobre este producto.")
     
-    new_review = RatingModel(
+    # --- CAMBIO: Crear registro en CommentModel ---
+    # Obtenemos el nombre de usuario para guardarlo en el comentario
+    username = "Usuario"
+    initial = "U"
+    if user_info.user:
+        username = user_info.user.username
+        initial = username[0].upper()
+
+    new_review = CommentModel(
         userinfo_id=user_info.id,
-        blogpostmodel_id=product_id,
+        blog_post_id=product_id,
         rating=review.rating,
-        comment=review.comment,
-        created_at=datetime.now(timezone.utc)
+        content=review.comment, # La app envía 'comment', la BD guarda en 'content'
+        author_username=username,
+        author_initial=initial,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     session.add(new_review)
     
-    # Recalcular promedio
+    # Recalcular promedio usando CommentModel
     product = session.get(BlogPostModel, product_id)
-    all_ratings = session.exec(select(RatingModel.rating).where(RatingModel.blogpostmodel_id == product_id)).all()
+    all_ratings = session.exec(select(CommentModel.rating).where(CommentModel.blog_post_id == product_id)).all()
     all_ratings.append(review.rating) # Incluir el actual
     product.rating_count = len(all_ratings)
     product.average_rating = sum(all_ratings) / len(all_ratings)
