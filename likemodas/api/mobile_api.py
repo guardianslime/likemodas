@@ -1,3 +1,5 @@
+# likemodas/api/mobile_api.py
+
 import os
 import bcrypt
 import secrets
@@ -13,7 +15,6 @@ from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-# Aseguramos importar CommentModel
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
@@ -96,6 +97,7 @@ class ProductDetailDTO(BaseModel):
 class CreateReviewRequest(BaseModel):
     rating: int
     comment: str
+    user_id: int # Añadido para recibir el ID desde el wrapper de Android
 
 class ProfileDTO(BaseModel):
     username: str
@@ -141,7 +143,6 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
-    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
@@ -246,7 +247,6 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     products = session.exec(query).all()
     result = []
     for p in products:
-        # Protección extra por si variants es None o está vacío
         img_path = p.main_image_url_variant
         if not img_path:
             if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
@@ -301,16 +301,13 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         
         # Nombre de autor por defecto si no existe
         if not author_name: author_name = "Likemodas"
-        seller_info_id = p.userinfo_id
+        seller_info_id = p.userinfo_id or 0 # <-- CORRECCIÓN: Valor por defecto 0 si es None
 
-        # 2. Lógica de Imágenes (Blindada contra listas vacías o Nulos)
+        # 2. Lógica de Imágenes (Blindada)
         main_img = p.main_image_url_variant
         all_images_set = set()
-        
-        # Obtener variantes de forma segura
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
 
-        # Si no hay imagen principal, intentar sacar la primera de las variantes
         if not main_img and safe_variants:
             first_v_urls = safe_variants[0].get("image_urls")
             if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0:
@@ -318,9 +315,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         if main_img: all_images_set.add(main_img)
 
-        # Recolectar todas las imágenes
         for v in safe_variants:
-            if isinstance(v, dict): # Asegurar que v sea un diccionario
+            if isinstance(v, dict):
                 urls = v.get("image_urls", [])
                 if urls and isinstance(urls, list):
                     for img in urls: 
@@ -335,27 +331,21 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         # 3. Construir DTO de Variantes
         variants_dto = []
         for v in safe_variants:
-            if not isinstance(v, dict): continue # Saltar datos corruptos
+            if not isinstance(v, dict): continue
             
             v_urls = v.get("image_urls", [])
             v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_img
             
-            # Construir lista de imágenes para esta variante
             v_images_list = []
             if v_urls and isinstance(v_urls, list):
                 v_images_list = [get_full_image_url(img) for img in v_urls if img]
-            
-            if not v_images_list: 
-                v_images_list = [main_image_final]
+            if not v_images_list: v_images_list = [main_image_final]
 
-            # Construir título seguro
             attrs = v.get("attributes", {})
             if not isinstance(attrs, dict): attrs = {}
             
-            # Extraer atributos con seguridad
             color = attrs.get("Color", "")
             if isinstance(color, list): color = color[0] if color else ""
-            
             talla = attrs.get("Talla") or attrs.get("Número") or ""
             if isinstance(talla, list): talla = talla[0] if talla else ""
             
@@ -383,26 +373,32 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
                 is_saved = saved is not None
                 
-                # Check de compra para permitir review
                 has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == p.id)).first() is not None
                 already_reviewed = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == p.id)).first() is not None
                 can_review = has_bought and not already_reviewed
 
-        # 5. Obtener Opiniones (PROTEGIDO CONTRA NULLS)
+        # 5. Obtener Opiniones (PROTEGIDO CONTRA NULLS y LAZY LOADING)
         reviews_list = []
         db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
         
+        # --- CORRECCIÓN CLAVE: Cálculo Manual de Ratings ---
+        valid_ratings = [r.rating for r in db_reviews if r.rating is not None]
+        calc_rating_count = len(valid_ratings)
+        calc_average_rating = sum(valid_ratings) / calc_rating_count if calc_rating_count > 0 else 0.0
+        # --------------------------------------------------
+
         for r in db_reviews:
             try:
-                # Proteger fecha
                 date_str = ""
-                if r.created_at:
-                    date_str = r.created_at.strftime("%d/%m/%Y")
-                
-                # Proteger valores nulos
+                try:
+                    if r.created_at:
+                        date_str = r.created_at.strftime("%d/%m/%Y")
+                except Exception:
+                    pass # Si falla la fecha, enviamos cadena vacía
+
                 u_name = r.author_username if r.author_username else "Usuario"
                 c_content = r.content if r.content else ""
-                r_rating = r.rating if r.rating is not None else 5 # Default 5 estrellas si es nulo
+                r_rating = r.rating if r.rating is not None else 5
 
                 reviews_list.append(ReviewDTO(
                     id=r.id, 
@@ -413,12 +409,14 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 ))
             except Exception as e:
                 print(f"Error procesando review {r.id}: {e}")
-                continue # Saltar esta review si está corrupta, no romper todo
+                continue 
 
-        # Proteger fecha de creación del producto
         date_created_str = ""
-        if p.created_at:
-            date_created_str = p.created_at.strftime("%d de %B del %Y")
+        try:
+            if p.created_at:
+                date_created_str = p.created_at.strftime("%d de %B del %Y")
+        except Exception:
+            pass
 
         return ProductDetailDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
@@ -426,20 +424,25 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             main_image_url=main_image_final, images=final_images, variants=variants_dto,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, 
-            average_rating=p.average_rating or 0.0, 
-            rating_count=p.rating_count or 0,
+            
+            # --- CORRECCIÓN: Usar valores calculados manualmente ---
+            average_rating=calc_average_rating, 
+            rating_count=calc_rating_count,
+            # ------------------------------------------------------
+
             author=author_name, author_id=seller_info_id, 
             created_at=date_created_str, 
             reviews=reviews_list, can_review=can_review
         )
     except Exception as e:
-        # Log del error en el servidor para que puedas verlo
         print(f"CRITICAL ERROR 500 en get_product_detail id={product_id}: {str(e)}")
-        # Devolver el detalle del error al cliente para depurar
+        # Esto permite ver el error en la consola del servidor, pero envía un mensaje genérico al cliente si es necesario
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
 @router.post("/products/{product_id}/reviews")
-async def create_product_review(product_id: int, review: CreateReviewRequest, user_id: int = Body(..., embed=True), session: Session = Depends(get_session)):
+async def create_product_review(product_id: int, review: CreateReviewRequest, session: Session = Depends(get_session)):
+    # Nota: El wrapper de Android envía user_id en el cuerpo, así que lo extraemos de `review`
+    user_id = review.user_id
     user_info = get_user_info(session, user_id)
     
     has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first() is not None
@@ -465,14 +468,6 @@ async def create_product_review(product_id: int, review: CreateReviewRequest, us
         updated_at=datetime.now(timezone.utc)
     )
     session.add(new_review)
-    
-    product = session.get(BlogPostModel, product_id)
-    all_ratings = session.exec(select(CommentModel.rating).where(CommentModel.blog_post_id == product_id)).all()
-    all_ratings.append(review.rating)
-    product.rating_count = len(all_ratings)
-    product.average_rating = sum(all_ratings) / len(all_ratings)
-    session.add(product)
-    
     session.commit()
     return {"message": "Opinión guardada"}
 
