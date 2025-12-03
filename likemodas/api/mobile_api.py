@@ -97,7 +97,15 @@ class ProductDetailDTO(BaseModel):
 class CreateReviewRequest(BaseModel):
     rating: int
     comment: str
-    user_id: int # Añadido para recibir el ID desde el wrapper de Android
+    # Opcional porque lo extraemos del body manualmente si hace falta, 
+    # pero lo definimos aquí para claridad.
+    user_id: int 
+
+# Nuevo DTO unificado para recibir reviews (por si acaso hay conflicto de parámetros)
+class ReviewSubmissionBody(BaseModel):
+    rating: int
+    comment: str
+    user_id: int
 
 class ProfileDTO(BaseModel):
     username: str
@@ -285,10 +293,11 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
+# --- ESTE ES EL ENDPOINT QUE ESTABA FALLANDO ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Consulta Principal con JOIN seguros
+        # 1. Consulta Principal
         statement = (
             select(BlogPostModel, LocalUser.username)
             .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id, isouter=True)
@@ -299,9 +308,10 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not result: raise HTTPException(404, "Producto no encontrado")
         p, author_name = result
         
-        # Nombre de autor por defecto si no existe
+        # Manejo seguro del nombre de autor
         if not author_name: author_name = "Likemodas"
-        seller_info_id = p.userinfo_id or 0 # <-- CORRECCIÓN: Valor por defecto 0 si es None
+        # Manejo seguro del ID del autor (evita que sea None)
+        seller_info_id = p.userinfo_id if p.userinfo_id else 0 
 
         # 2. Lógica de Imágenes (Blindada)
         main_img = p.main_image_url_variant
@@ -367,7 +377,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         is_saved = False
         can_review = False
         
-        if user_id:
+        if user_id and user_id > 0: # Asegurarse de que sea un ID válido
             user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
             if user_info:
                 saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
@@ -379,12 +389,16 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         # 5. Obtener Opiniones (PROTEGIDO CONTRA NULLS y LAZY LOADING)
         reviews_list = []
+        # Traemos los comentarios
         db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
         
-        # --- CORRECCIÓN CLAVE: Cálculo Manual de Ratings ---
+        # --- ARREGLO CRÍTICO: Cálculo manual del rating ---
+        # NO USAR p.average_rating NI p.rating_count aquí, porque intenta cargar comentarios de nuevo
+        # y causa el error 500 en algunos contextos.
+        
         valid_ratings = [r.rating for r in db_reviews if r.rating is not None]
-        calc_rating_count = len(valid_ratings)
-        calc_average_rating = sum(valid_ratings) / calc_rating_count if calc_rating_count > 0 else 0.0
+        manual_rating_count = len(valid_ratings)
+        manual_average_rating = sum(valid_ratings) / manual_rating_count if manual_rating_count > 0 else 0.0
         # --------------------------------------------------
 
         for r in db_reviews:
@@ -394,7 +408,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     if r.created_at:
                         date_str = r.created_at.strftime("%d/%m/%Y")
                 except Exception:
-                    pass # Si falla la fecha, enviamos cadena vacía
+                    pass 
 
                 u_name = r.author_username if r.author_username else "Usuario"
                 c_content = r.content if r.content else ""
@@ -411,6 +425,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 print(f"Error procesando review {r.id}: {e}")
                 continue 
 
+        # Fecha de creación segura
         date_created_str = ""
         try:
             if p.created_at:
@@ -425,24 +440,27 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, 
             
-            # --- CORRECCIÓN: Usar valores calculados manualmente ---
-            average_rating=calc_average_rating, 
-            rating_count=calc_rating_count,
-            # ------------------------------------------------------
+            # --- USAMOS LOS VALORES CALCULADOS MANUALMENTE ---
+            average_rating=manual_average_rating, 
+            rating_count=manual_rating_count,
+            # ------------------------------------------------
 
             author=author_name, author_id=seller_info_id, 
             created_at=date_created_str, 
             reviews=reviews_list, can_review=can_review
         )
     except Exception as e:
+        # Esto imprimirá el error real en los logs de Railway
         print(f"CRITICAL ERROR 500 en get_product_detail id={product_id}: {str(e)}")
-        # Esto permite ver el error en la consola del servidor, pero envía un mensaje genérico al cliente si es necesario
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
+# En el wrapper de Android, usaremos ReviewSubmissionBody para enviar todos los datos juntos
 @router.post("/products/{product_id}/reviews")
-async def create_product_review(product_id: int, review: CreateReviewRequest, session: Session = Depends(get_session)):
-    # Nota: El wrapper de Android envía user_id en el cuerpo, así que lo extraemos de `review`
-    user_id = review.user_id
+async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
+    user_id = body.user_id
+    rating = body.rating
+    comment = body.comment
+
     user_info = get_user_info(session, user_id)
     
     has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first() is not None
@@ -460,8 +478,8 @@ async def create_product_review(product_id: int, review: CreateReviewRequest, se
     new_review = CommentModel(
         userinfo_id=user_info.id,
         blog_post_id=product_id,
-        rating=review.rating,
-        content=review.comment, 
+        rating=rating,
+        content=comment, 
         author_username=username,
         author_initial=initial,
         created_at=datetime.now(timezone.utc),
