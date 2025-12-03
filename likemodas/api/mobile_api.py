@@ -8,12 +8,11 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 import sqlalchemy
-from sqlalchemy.orm import joinedload # Importante para cargar relaciones
+from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-# --- CAMBIO: Usamos CommentModel en lugar de RatingModel ---
 from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
@@ -64,7 +63,6 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
-# Nuevo DTO para las opiniones
 class ReviewDTO(BaseModel):
     id: int
     username: str
@@ -91,7 +89,6 @@ class ProductDetailDTO(BaseModel):
     author: str
     author_id: int
     created_at: str
-    # --- NUEVOS CAMPOS PARA RESEÑAS ---
     reviews: List[ReviewDTO] = []
     can_review: bool = False
 
@@ -168,7 +165,6 @@ class CartSummaryResponse(BaseModel):
 
 # --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
-    # Usamos joinedload para traer el usuario de una vez y obtener el username
     user_info = session.exec(
         select(UserInfo)
         .options(joinedload(UserInfo.user))
@@ -177,7 +173,9 @@ def get_user_info(session: Session, user_id: int) -> UserInfo:
     if not user_info: raise HTTPException(404, "Usuario no encontrado")
     return user_info
 
-def fmt_price(val): return f"$ {val:,.0f}".replace(",", ".")
+def fmt_price(val): 
+    if val is None: return "$ 0"
+    return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
     if not path: return ""
@@ -273,93 +271,117 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
 
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
-    statement = (
-        select(BlogPostModel, LocalUser.username)
-        .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id)
-        .join(LocalUser, UserInfo.user_id == LocalUser.id)
-        .where(BlogPostModel.id == product_id)
-    )
-    result = session.exec(statement).first()
-    if not result: raise HTTPException(404, "Producto no encontrado")
-    p, author_name = result
-    seller_info_id = p.userinfo_id
+    try:
+        # ### CORRECCIÓN DE UNIÓN (JOIN) ###
+        # Usamos left outer join para evitar crash si el usuario dueño fue borrado
+        statement = (
+            select(BlogPostModel, LocalUser.username)
+            .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id, isouter=True)
+            .join(LocalUser, UserInfo.user_id == LocalUser.id, isouter=True)
+            .where(BlogPostModel.id == product_id)
+        )
+        result = session.exec(statement).first()
+        if not result: raise HTTPException(404, "Producto no encontrado")
+        p, author_name = result
+        
+        # Si el autor no existe (usuario borrado), ponemos un default
+        if not author_name: author_name = "Likemodas"
+        
+        seller_info_id = p.userinfo_id
 
-    main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
-    all_images_set = set()
-    if main_img: all_images_set.add(main_img)
-    if p.variants:
-        for v in p.variants:
-            for img in v.get("image_urls", []): all_images_set.add(img)
-    
-    final_images = [get_full_image_url(img) for img in all_images_set if img]
-    main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
+        main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        all_images_set = set()
+        if main_img: all_images_set.add(main_img)
+        if p.variants:
+            for v in p.variants:
+                for img in v.get("image_urls", []): all_images_set.add(img)
+        
+        final_images = [get_full_image_url(img) for img in all_images_set if img]
+        main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
 
-    variants_dto = []
-    if p.variants:
-        for v in p.variants:
-            v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
-            v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
-            if not v_images_list: v_images_list = [get_full_image_url(v_img)]
+        variants_dto = []
+        if p.variants:
+            for v in p.variants:
+                v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
+                v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
+                if not v_images_list: v_images_list = [get_full_image_url(v_img)]
 
-            variants_dto.append(VariantDTO(
-                id=v.get("variant_uuid", v.get("id", "")),
-                title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
-                image_url=get_full_image_url(v_img),
-                price=v.get("price", p.price),
-                available_quantity=v.get("stock", 0),
-                images=v_images_list
+                variants_dto.append(VariantDTO(
+                    id=v.get("variant_uuid", v.get("id", "")),
+                    title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
+                    image_url=get_full_image_url(v_img),
+                    price=v.get("price", p.price),
+                    available_quantity=v.get("stock", 0),
+                    images=v_images_list
+                ))
+
+        is_saved = False
+        can_review = False
+        
+        if user_id:
+            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+            if user_info:
+                saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
+                is_saved = saved is not None
+                
+                has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == p.id)).first() is not None
+                already_reviewed = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == p.id)).first() is not None
+                can_review = has_bought and not already_reviewed
+
+        # ### CORRECCIÓN CRÍTICA PARA HTTP 500 ###
+        # Iteramos los comentarios con protección contra valores Nulos (None)
+        reviews_list = []
+        db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
+        
+        for r in db_reviews:
+            # 1. Proteger fecha nula
+            date_str = ""
+            if r.created_at:
+                date_str = r.created_at.strftime("%d/%m/%Y")
+            
+            # 2. Proteger nombre nulo
+            u_name = r.author_username if r.author_username else "Usuario"
+            
+            # 3. Proteger contenido nulo
+            c_content = r.content if r.content else ""
+
+            reviews_list.append(ReviewDTO(
+                id=r.id, 
+                username=u_name, 
+                rating=r.rating, 
+                comment=c_content, 
+                date=date_str
             ))
 
-    is_saved = False
-    can_review = False
-    
-    if user_id:
-        user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
-        if user_info:
-            saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
-            is_saved = saved is not None
-            
-            # Lógica para saber si puede comentar (Adaptada para CommentModel):
-            has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == p.id)).first() is not None
-            # Verifica si ya existe un comentario de este usuario para este post
-            already_reviewed = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == p.id)).first() is not None
-            can_review = has_bought and not already_reviewed
+        # Proteger fecha de creación del producto
+        date_created_str = ""
+        if p.created_at:
+            date_created_str = p.created_at.strftime("%d de %B del %Y")
 
-    # --- CAMBIO: Obtener reseñas desde CommentModel ---
-    reviews_list = []
-    # Consultamos CommentModel directamente. CommentModel ya tiene author_username.
-    db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
-    
-    for r in db_reviews:
-        # Mapeamos 'content' (BD) a 'comment' (App DTO)
-        reviews_list.append(ReviewDTO(id=r.id, username=r.author_username, rating=r.rating, comment=r.content, date=r.created_at.strftime("%d/%m/%Y")))
-
-    date_str = p.created_at.strftime("%d de %B del %Y")
-
-    return ProductDetailDTO(
-        id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-        description=p.content, category=p.category,
-        main_image_url=main_image_final, images=final_images, variants=variants_dto,
-        is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-        is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating, rating_count=p.rating_count,
-        author=author_name, author_id=seller_info_id, created_at=date_str,
-        reviews=reviews_list, can_review=can_review
-    )
+        return ProductDetailDTO(
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+            description=p.content, category=p.category,
+            main_image_url=main_image_final, images=final_images, variants=variants_dto,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating or 0.0, rating_count=p.rating_count or 0,
+            author=author_name, author_id=seller_info_id, 
+            created_at=date_created_str, # Usamos la fecha protegida
+            reviews=reviews_list, can_review=can_review
+        )
+    except Exception as e:
+        print(f"Error 500 en get_product_detail: {e}") # Para que salga en los logs del servidor
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, review: CreateReviewRequest, user_id: int = Body(..., embed=True), session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     
-    # Verificar compra
     has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first() is not None
     if not has_bought: raise HTTPException(400, "Debes comprar el producto para opinar.")
     
-    # Verificar duplicado usando CommentModel
     existing = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
     if existing: raise HTTPException(400, "Ya has opinado sobre este producto.")
     
-    # --- CAMBIO: Crear registro en CommentModel ---
-    # Obtenemos el nombre de usuario para guardarlo en el comentario
     username = "Usuario"
     initial = "U"
     if user_info.user:
@@ -370,7 +392,7 @@ async def create_product_review(product_id: int, review: CreateReviewRequest, us
         userinfo_id=user_info.id,
         blog_post_id=product_id,
         rating=review.rating,
-        content=review.comment, # La app envía 'comment', la BD guarda en 'content'
+        content=review.comment, 
         author_username=username,
         author_initial=initial,
         created_at=datetime.now(timezone.utc),
@@ -378,10 +400,9 @@ async def create_product_review(product_id: int, review: CreateReviewRequest, us
     )
     session.add(new_review)
     
-    # Recalcular promedio usando CommentModel
     product = session.get(BlogPostModel, product_id)
     all_ratings = session.exec(select(CommentModel.rating).where(CommentModel.blog_post_id == product_id)).all()
-    all_ratings.append(review.rating) # Incluir el actual
+    all_ratings.append(review.rating)
     product.rating_count = len(all_ratings)
     product.average_rating = sum(all_ratings) / len(all_ratings)
     session.add(product)
