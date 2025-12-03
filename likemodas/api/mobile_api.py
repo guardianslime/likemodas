@@ -12,7 +12,7 @@ from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
+from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, RatingModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
@@ -62,6 +62,14 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
+# Nuevo DTO para las opiniones
+class ReviewDTO(BaseModel):
+    id: int
+    username: str
+    rating: int
+    comment: str
+    date: str
+
 class ProductDetailDTO(BaseModel):
     id: int
     title: str
@@ -71,17 +79,23 @@ class ProductDetailDTO(BaseModel):
     category: str
     main_image_url: str
     images: List[str]
-    variants: List[Any] # Simplificado para brevedad, usa tu VariantDTO
+    variants: List[VariantDTO]
     is_moda_completa: bool
     combines_shipping: bool
     is_saved: bool = False
     is_imported: bool
     average_rating: float
     rating_count: int
-    # --- NUEVOS CAMPOS ---
     author: str
     author_id: int
     created_at: str
+    # --- NUEVOS CAMPOS PARA RESEÑAS ---
+    reviews: List[ReviewDTO] = []
+    can_review: bool = False
+
+class CreateReviewRequest(BaseModel):
+    rating: int
+    comment: str
 
 class ProfileDTO(BaseModel):
     username: str
@@ -127,13 +141,11 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
-    # Añadimos imagen opcional para devolverla si se calcula
     image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
 
-# Modificamos la respuesta para incluir items detallados con su imagen correcta
 class CartItemResponse(BaseModel):
     product_id: int
     variant_id: Optional[str]
@@ -150,7 +162,6 @@ class CartSummaryResponse(BaseModel):
     total: float
     total_formatted: str
     address_id: Optional[int] = None
-    # Lista opcional de items con detalles actualizados (útil si el front quiere refrescar)
     items: List[CartItemResponse] = []
 
 # --- HELPERS ---
@@ -237,23 +248,33 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
         ))
     return result
 
+@router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO])
+async def get_seller_products(seller_id: int, session: Session = Depends(get_session)):
+    query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id)
+    query = query.order_by(BlogPostModel.created_at.desc())
+    products = session.exec(query).all()
+    
+    result = []
+    for p in products:
+        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        result.append(ProductListDTO(
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
+        ))
+    return result
+
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
-    # Hacemos JOIN para obtener el username del vendedor (LocalUser) a través de UserInfo
     statement = (
-        select(BlogPostModel, LocalUser.username, LocalUser.id)
+        select(BlogPostModel, LocalUser.username)
         .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id)
         .join(LocalUser, UserInfo.user_id == LocalUser.id)
         .where(BlogPostModel.id == product_id)
     )
     result = session.exec(statement).first()
-    
-    if not result:
-        raise HTTPException(404, "Producto no encontrado")
-    
-    p, author_name, author_original_id = result # author_original_id es el ID de LocalUser (para perfil), usaremos UserInfo.id para filtrar productos si prefieres, o LocalUser.id. Usaré UserInfo ID para consistencia interna.
-    
-    # Recuperamos el UserInfo ID para el endpoint de productos del vendedor
+    if not result: raise HTTPException(404, "Producto no encontrado")
+    p, author_name = result
     seller_info_id = p.userinfo_id
 
     main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
@@ -273,28 +294,38 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
             if not v_images_list: v_images_list = [get_full_image_url(v_img)]
 
-            variants_dto.append({
-                "id": v.get("variant_uuid", v.get("id", "")),
-                "title": f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
-                "image_url": get_full_image_url(v_img),
-                "price": v.get("price", p.price),
-                "available_quantity": v.get("stock", 0),
-                "images": v_images_list
-            })
+            variants_dto.append(VariantDTO(
+                id=v.get("variant_uuid", v.get("id", "")),
+                title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
+                image_url=get_full_image_url(v_img),
+                price=v.get("price", p.price),
+                available_quantity=v.get("stock", 0),
+                images=v_images_list
+            ))
 
     is_saved = False
+    can_review = False
+    
     if user_id:
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
         if user_info:
             saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
             is_saved = saved is not None
+            
+            # Lógica para saber si puede comentar:
+            # 1. Debe haber comprado el producto
+            # 2. No debe haber comentado ya
+            has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == p.id)).first() is not None
+            already_reviewed = session.exec(select(RatingModel).where(RatingModel.userinfo_id == user_info.id, RatingModel.blogpostmodel_id == p.id)).first() is not None
+            can_review = has_bought and not already_reviewed
 
-    # Formatear fecha
+    # Obtener reseñas
+    reviews_list = []
+    db_reviews = session.exec(select(RatingModel, LocalUser.username).join(UserInfo).join(LocalUser).where(RatingModel.blogpostmodel_id == p.id)).all()
+    for r, uname in db_reviews:
+        reviews_list.append(ReviewDTO(id=r.id, username=uname, rating=r.rating, comment=r.comment, date=r.created_at.strftime("%d/%m/%Y")))
+
     date_str = p.created_at.strftime("%d de %B del %Y")
-    # Traducción básica de meses si es necesario, o dejar que el frontend formatee. Python locale puede fallar en servers.
-    meses = {"January": "Enero", "February": "Febrero", "March": "Marzo", "April": "Abril", "May": "Mayo", "June": "Junio", "July": "Julio", "August": "Agosto", "September": "Septiembre", "October": "Octubre", "November": "Noviembre", "December": "Diciembre"}
-    for eng, esp in meses.items():
-        date_str = date_str.replace(eng, esp)
 
     return ProductDetailDTO(
         id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
@@ -302,41 +333,45 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         main_image_url=main_image_final, images=final_images, variants=variants_dto,
         is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
         is_saved=is_saved, is_imported=p.is_imported, average_rating=p.average_rating, rating_count=p.rating_count,
-        # NUEVOS
-        author=author_name,
-        author_id=seller_info_id, # Usamos el ID de UserInfo para buscar sus productos
-        created_at=date_str
+        author=author_name, author_id=seller_info_id, created_at=date_str,
+        reviews=reviews_list, can_review=can_review
     )
 
-# --- NUEVO ENDPOINT: PRODUCTOS POR VENDEDOR ---
-@router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO]) # Usa ProductListDTO que ya tienes definido arriba en tu archivo original
-async def get_seller_products(seller_id: int, session: Session = Depends(get_session)):
-    query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id)
-    query = query.order_by(BlogPostModel.created_at.desc())
-    products = session.exec(query).all()
+@router.post("/products/{product_id}/reviews")
+async def create_product_review(product_id: int, review: CreateReviewRequest, user_id: int = Body(..., embed=True), session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
     
-    result = []
-    for p in products:
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
-        result.append({
-            "id": p.id, 
-            "title": p.title, 
-            "price": p.price, 
-            "price_formatted": fmt_price(p.price),
-            "image_url": get_full_image_url(img_path), 
-            "category": p.category, 
-            "description": p.content,
-            "is_moda_completa": p.is_moda_completa_eligible, 
-            "combines_shipping": p.combines_shipping
-        })
-    return result
+    # Verificar compra
+    has_bought = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first() is not None
+    if not has_bought: raise HTTPException(400, "Debes comprar el producto para opinar.")
+    
+    # Verificar duplicado
+    existing = session.exec(select(RatingModel).where(RatingModel.userinfo_id == user_info.id, RatingModel.blogpostmodel_id == product_id)).first()
+    if existing: raise HTTPException(400, "Ya has opinado sobre este producto.")
+    
+    new_review = RatingModel(
+        userinfo_id=user_info.id,
+        blogpostmodel_id=product_id,
+        rating=review.rating,
+        comment=review.comment,
+        created_at=datetime.now(timezone.utc)
+    )
+    session.add(new_review)
+    
+    # Recalcular promedio
+    product = session.get(BlogPostModel, product_id)
+    all_ratings = session.exec(select(RatingModel.rating).where(RatingModel.blogpostmodel_id == product_id)).all()
+    all_ratings.append(review.rating) # Incluir el actual
+    product.rating_count = len(all_ratings)
+    product.average_rating = sum(all_ratings) / len(all_ratings)
+    session.add(product)
+    
+    session.commit()
+    return {"message": "Opinión guardada"}
 
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    product = session.get(BlogPostModel, product_id)
-    if not product: raise HTTPException(404, "Producto no encontrado")
-    
     existing = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == product_id)).first()
     if existing:
         session.delete(existing); session.commit()
@@ -420,19 +455,12 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
         for item in p.items:
             img = ""
             if item.blog_post:
-                # Intentar obtener la imagen de la variante específica comprada
                 variant_img = ""
                 if item.blog_post.variants and item.selected_variant:
-                     # Buscar la variante que coincida con los atributos guardados
-                     # Nota: item.selected_variant es un dict {Color: Azul, Talla: M}
                      target_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
-                     if target_variant and target_variant.get("image_urls"):
-                         variant_img = target_variant["image_urls"][0]
-                
-                # Fallback: imagen principal o primera del grupo
+                     if target_variant and target_variant.get("image_urls"): variant_img = target_variant["image_urls"][0]
                 img_path = variant_img or item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
                 img = get_full_image_url(img_path)
-            
             items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
         history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto))
     return history
@@ -442,106 +470,60 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
     try:
         user_info = get_user_info(session, user_id)
         default_addr = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)).first()
-        
         buyer_city = default_addr.city if default_addr else None
         buyer_barrio = default_addr.neighborhood if default_addr else None
-
         product_ids = [item.product_id for item in req.items]
-        if not product_ids:
-            return CartSummaryResponse(subtotal=0, subtotal_formatted="$ 0", shipping=0, shipping_formatted="$ 0", total=0, total_formatted="$ 0", address_id=default_addr.id if default_addr else None)
-
+        if not product_ids: return CartSummaryResponse(subtotal=0, subtotal_formatted="$ 0", shipping=0, shipping_formatted="$ 0", total=0, total_formatted="$ 0", address_id=default_addr.id if default_addr else None)
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
         post_map = {p.id: p for p in db_posts}
-
         subtotal_base = 0.0
         items_for_shipping = []
         cart_items_response = []
-        
         for item in req.items:
             post = post_map.get(item.product_id)
             if post:
                 price = post.price
-                if not post.price_includes_iva:
-                    price = price * 1.19
+                if not post.price_includes_iva: price = price * 1.19
                 subtotal_base += price * item.quantity
                 items_for_shipping.append({"post": post, "quantity": item.quantity})
-
-                # --- BUSCAR IMAGEN DE LA VARIANTE ESPECÍFICA ---
                 variant_image_url = post.main_image_url_variant
                 if item.variant_id:
-                     # Buscar la variante por UUID
                      target_variant = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
-                     if target_variant and target_variant.get("image_urls"):
-                         variant_image_url = target_variant["image_urls"][0]
-                
-                # Fallback: primera imagen disponible
-                if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
-                    variant_image_url = post.variants[0]["image_urls"][0]
-                
-                cart_items_response.append(CartItemResponse(
-                    product_id=post.id,
-                    variant_id=item.variant_id,
-                    title=post.title,
-                    price_formatted=fmt_price(price),
-                    quantity=item.quantity,
-                    image_url=get_full_image_url(variant_image_url)
-                ))
-
+                     if target_variant and target_variant.get("image_urls"): variant_image_url = target_variant["image_urls"][0]
+                if not variant_image_url and post.variants and post.variants[0].get("image_urls"): variant_image_url = post.variants[0]["image_urls"][0]
+                cart_items_response.append(CartItemResponse(product_id=post.id, variant_id=item.variant_id, title=post.title, price_formatted=fmt_price(price), quantity=item.quantity, image_url=get_full_image_url(variant_image_url)))
         subtotal_con_iva = subtotal_base
         free_shipping_achieved = False
         moda_completa_items = [x["post"] for x in items_for_shipping if x["post"].is_moda_completa_eligible]
-        
         if moda_completa_items:
             valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
-            if valid_thresholds:
-                highest_threshold = max(valid_thresholds)
-                if subtotal_con_iva >= highest_threshold:
-                    free_shipping_achieved = True
-
+            if valid_thresholds and subtotal_con_iva >= max(valid_thresholds): free_shipping_achieved = True
         final_shipping_cost = 0.0
         if not free_shipping_achieved and default_addr:
             seller_groups = defaultdict(list)
             for x in items_for_shipping:
-                post = x["post"]
-                qty = x["quantity"]
-                for _ in range(qty):
-                    seller_groups[post.userinfo_id].append(post)
-
+                post = x["post"]; qty = x["quantity"]
+                for _ in range(qty): seller_groups[post.userinfo_id].append(post)
             seller_ids = list(seller_groups.keys())
             sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
             seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-
             for seller_id, items_from_seller in seller_groups.items():
                 combinable_items = [p for p in items_from_seller if p.combines_shipping]
                 individual_items = [p for p in items_from_seller if not p.combines_shipping]
-                
                 seller_data = seller_data_map.get(seller_id)
                 seller_city = seller_data.get("city") if seller_data else None
                 seller_barrio = seller_data.get("barrio") if seller_data else None
-
                 for individual_item in individual_items:
                     cost = calculate_dynamic_shipping(base_cost=individual_item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
                     final_shipping_cost += cost
-                
                 if combinable_items:
-                    valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
-                    limit = min(valid_limits)
-                    num_fees = math.ceil(len(combinable_items) / limit)
                     highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
+                    limit = min([p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1])
+                    num_fees = math.ceil(len(combinable_items) / limit)
                     group_shipping_fee = calculate_dynamic_shipping(base_cost=highest_base_cost, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
                     final_shipping_cost += (group_shipping_fee * num_fees)
-
         grand_total = subtotal_con_iva + final_shipping_cost
-        return CartSummaryResponse(
-            subtotal=subtotal_con_iva, 
-            subtotal_formatted=fmt_price(subtotal_con_iva), 
-            shipping=final_shipping_cost, 
-            shipping_formatted=fmt_price(final_shipping_cost), 
-            total=grand_total, 
-            total_formatted=fmt_price(grand_total), 
-            address_id=default_addr.id if default_addr else None,
-            items=cart_items_response
-        )
+        return CartSummaryResponse(subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva), shipping=final_shipping_cost, shipping_formatted=fmt_price(final_shipping_cost), total=grand_total, total_formatted=fmt_price(grand_total), address_id=default_addr.id if default_addr else None, items=cart_items_response)
     except Exception as e:
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
