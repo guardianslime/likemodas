@@ -1,11 +1,12 @@
+import os
+import logging
+from datetime import datetime, timedelta, timezone
+import secrets
+from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
-import os
+
 import bcrypt
-import secrets
-import logging
-from typing import List, Optional
-from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Body
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
@@ -13,10 +14,17 @@ from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
+# Importamos los modelos y servicios necesarios
+from likemodas.models import (
+    BlogPostModel, LocalUser, UserInfo, UserRole, 
+    VerificationToken, PasswordResetToken, PurchaseModel, 
+    PurchaseItemModel, ShippingAddressModel, SavedPostLink, 
+    CommentModel, PurchaseStatus
+)
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
+from likemodas.services import wompi_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,7 +71,6 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
-# DTO simple para Reviews
 class ReviewDTO(BaseModel):
     id: int
     username: str
@@ -71,7 +78,6 @@ class ReviewDTO(BaseModel):
     comment: str
     date: str
 
-# DTO de entrada (Igual al de direcciones, simple y directo)
 class ReviewSubmissionBody(BaseModel):
     rating: int
     comment: str
@@ -91,13 +97,10 @@ class ProductDetailDTO(BaseModel):
     combines_shipping: bool
     is_saved: bool = False
     is_imported: bool
-    
-    # Campos de Opiniones
     average_rating: float = 0.0
     rating_count: int = 0
     reviews: List[ReviewDTO] = [] 
     can_review: bool = False
-
     author: str
     author_id: int
     created_at: str
@@ -146,6 +149,7 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
+    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
@@ -168,9 +172,25 @@ class CartSummaryResponse(BaseModel):
     address_id: Optional[int] = None
     items: List[CartItemResponse] = []
 
+# --- DTOs PARA CHECKOUT ---
+class CheckoutRequest(BaseModel):
+    items: List[CartItemRequest]
+    address_id: int
+    payment_method: str  # "Online" o "Contra Entrega"
+
+class CheckoutResponse(BaseModel):
+    success: bool
+    message: str
+    payment_url: Optional[str] = None
+    purchase_id: Optional[int] = None
+
 # --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
-    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    user_info = session.exec(
+        select(UserInfo)
+        .options(joinedload(UserInfo.user))
+        .where(UserInfo.user_id == user_id)
+    ).one_or_none()
     if not user_info: raise HTTPException(404, "Usuario no encontrado")
     return user_info
 
@@ -284,15 +304,13 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- ENDPOINT BLINDADO TIPO "ADDRESS" ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Cargar Producto (Simple)
         p = session.get(BlogPostModel, product_id)
-        if not p: raise HTTPException(404, "Producto no encontrado")
+        if not p or not p.publish_active: 
+            raise HTTPException(404, "Producto no encontrado")
 
-        # 2. Cargar Autor (Simple)
         author_name = "Likemodas"
         seller_info_id = p.userinfo_id if p.userinfo_id else 0
         
@@ -302,20 +320,16 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 if user_info:
                     local_user = session.get(LocalUser, user_info.user_id)
                     if local_user: author_name = local_user.username
-        except:
-            pass # Si falla cargar el autor, usamos "Likemodas"
+        except: pass
 
-        # 3. Imágenes y Variantes
         main_img = p.main_image_url_variant
         all_images_set = set()
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
 
         if not main_img and safe_variants:
-            first_v = safe_variants[0]
-            if isinstance(first_v, dict):
-                urls = first_v.get("image_urls")
-                if urls and isinstance(urls, list) and len(urls) > 0:
-                    main_img = urls[0]
+            first_v_urls = safe_variants[0].get("image_urls")
+            if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0:
+                main_img = first_v_urls[0]
 
         if main_img: all_images_set.add(main_img)
 
@@ -334,94 +348,98 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         variants_dto = []
         for v in safe_variants:
             if not isinstance(v, dict): continue
-            
             v_urls = v.get("image_urls", [])
             v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_image_final
             v_images_list = [get_full_image_url(img) for img in v_urls if img] if v_urls else [main_image_final]
+            
+            attrs = v.get("attributes", {})
+            if not isinstance(attrs, dict): attrs = {}
+            
+            title_parts = []
+            if attrs.get("Color"): title_parts.append(str(attrs.get("Color")))
+            if attrs.get("Talla"): title_parts.append(str(attrs.get("Talla")))
+            if attrs.get("Número"): title_parts.append(str(attrs.get("Número")))
+            v_title = " ".join(title_parts) if title_parts else "Estándar"
 
             variants_dto.append(VariantDTO(
                 id=str(v.get("variant_uuid") or v.get("id") or ""),
-                title="Estándar", # Simplificado para evitar errores de atributos
+                title=v_title,
                 image_url=get_full_image_url(v_img_raw or ""),
                 price=float(v.get("price") or p.price or 0.0),
                 available_quantity=int(v.get("stock") or 0),
                 images=v_images_list
             ))
 
-        # 4. OPINIONES (Estilo "Address": Leer y listar)
         reviews_list = []
         average_rating = 0.0
         rating_count = 0
         
         try:
-            # Buscamos comentarios crudos
             db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
-            
             ratings_sum = 0
             for r in db_reviews:
-                # Protección total campo por campo
                 try:
                     r_val = r.rating if r.rating is not None else 5
                     ratings_sum += r_val
                     rating_count += 1
-                    
                     u_name = r.author_username if r.author_username else "Anónimo"
                     content = r.content if r.content else ""
                     date_str = r.created_at.strftime("%d/%m/%Y") if r.created_at else ""
-
-                    reviews_list.append(ReviewDTO(
-                        id=r.id, username=u_name, rating=int(r_val), comment=content, date=date_str
-                    ))
+                    reviews_list.append(ReviewDTO(id=r.id, username=u_name, rating=int(r_val), comment=content, date=date_str))
                 except: continue
-            
             if rating_count > 0:
                 average_rating = ratings_sum / rating_count
-                
         except Exception:
-            # SI FALLA AL LEER COMENTARIOS, LOS IGNORAMOS Y SEGUIMOS.
-            # Así la pantalla del producto carga sí o sí.
             reviews_list = []
 
-        # 5. Retorno
         date_created_str = ""
         if p.created_at: date_created_str = p.created_at.strftime("%d de %B del %Y")
+
+        is_saved = False
+        if user_id and user_id > 0:
+             saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_id, SavedPostLink.blogpostmodel_id == p.id)).first()
+             is_saved = saved is not None
 
         return ProductDetailDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
             description=p.content, category=p.category,
             main_image_url=main_image_final, images=final_images, variants=variants_dto,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-            is_saved=False, is_imported=p.is_imported, 
-            
-            average_rating=average_rating, 
-            rating_count=rating_count,
-            reviews=reviews_list,
-            
-            author=author_name, author_id=seller_info_id, 
-            created_at=date_created_str, 
-            can_review=True # Siempre true para simplificar
+            is_saved=is_saved, is_imported=p.is_imported, 
+            average_rating=average_rating, rating_count=rating_count, reviews=reviews_list,
+            author=author_name, author_id=seller_info_id, created_at=date_created_str, can_review=True
         )
     except Exception as e:
         print(f"CRITICAL ERROR 500: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# --- ENDPOINT DE CREACIÓN (Igual a create_address) ---
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
     try:
-        # 1. Obtener info básica
         user_info = get_user_info(session, body.user_id)
-        username = "Anónimo"
-        initial = "A"
         
-        # Intentamos sacar el nombre, si falla no importa
-        try:
-            if user_info.user:
-                username = user_info.user.username
-                initial = username[0].upper()
-        except: pass
+        # 1. Buscar la compra válida (para vincular en web)
+        purchase_item = session.exec(
+            select(PurchaseItemModel)
+            .join(PurchaseModel)
+            .where(
+                PurchaseModel.userinfo_id == user_info.id, 
+                PurchaseItemModel.blogpostmodel_id == product_id
+            )
+        ).first()
+        
+        if not purchase_item: 
+            raise HTTPException(400, "Debes comprar el producto para opinar.")
+        
+        existing = session.exec(select(CommentModel.id).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
+        if existing: raise HTTPException(400, "Ya has opinado sobre este producto.")
+        
+        username = "Usuario"
+        initial = "U"
+        if user_info.user:
+            username = user_info.user.username
+            initial = username[0].upper() if username else "U"
 
-        # 2. Crear el registro (Directo a la tabla, sin lógica extra)
         new_review = CommentModel(
             userinfo_id=user_info.id,
             blog_post_id=product_id,
@@ -430,17 +448,15 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             author_username=username,
             author_initial=initial,
             created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc)
+            updated_at=datetime.now(timezone.utc),
+            purchase_item_id=purchase_item.id # Vinculación importante
         )
         session.add(new_review)
         session.commit()
-        
         return {"message": "Opinión guardada"}
     except Exception as e:
-        print(f"Error saving review: {e}")
         raise HTTPException(500, f"Error interno: {str(e)}")
 
-# ... (Resto de endpoints igual que antes: toggle-save, profile, addresses, cart, etc.) ...
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
@@ -599,3 +615,104 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
     except Exception as e:
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- NUEVO ENDPOINT CHECKOUT ---
+@router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
+async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
+    try:
+        user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+        if not user_info: raise HTTPException(404, "Usuario no encontrado")
+        address = session.get(ShippingAddressModel, req.address_id)
+        if not address or address.userinfo_id != user_info.id: raise HTTPException(400, "Dirección no válida")
+
+        product_ids = [item.product_id for item in req.items]
+        db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
+        post_map = {p.id: p for p in db_posts}
+        
+        subtotal_base = 0.0
+        items_to_create = []
+        seller_groups = {} 
+        buyer_city = address.city
+        buyer_barrio = address.neighborhood
+
+        for item in req.items:
+            post = post_map.get(item.product_id)
+            if not post: continue
+            price = post.price
+            if not post.price_includes_iva: price *= 1.19
+            subtotal_base += price * item.quantity
+            
+            if post.userinfo_id not in seller_groups: seller_groups[post.userinfo_id] = []
+            seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
+
+            # Construir variante seleccionada para guardar
+            selected_variant_dict = {}
+            if item.variant_id and post.variants:
+                target_variant = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
+                if target_variant:
+                     selected_variant_dict = target_variant.get("attributes", {})
+
+            items_to_create.append({
+                "blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": post.price, "selected_variant": selected_variant_dict
+            })
+
+        # Calculo Envío (Reutilizado)
+        subtotal_con_iva = subtotal_base
+        free_shipping = False
+        moda_completa_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
+        if moda_completa_items:
+             thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold]
+             if thresholds and subtotal_con_iva >= max(thresholds): free_shipping = True
+
+        final_shipping_cost = 0.0
+        if not free_shipping:
+            sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_groups.keys()))).all()
+            seller_map = {u.id: u for u in sellers_info}
+            for uid, products in seller_groups.items():
+                seller = seller_map.get(uid)
+                s_city = seller.seller_city if seller else None
+                s_barrio = seller.seller_barrio if seller else None
+                combinables = [x["post"] for x in products if x["post"].combines_shipping]
+                individuales = [x["post"] for x in products if not x["post"].combines_shipping]
+                for p in individuales:
+                    cost = calculate_dynamic_shipping(p.shipping_cost or 0, s_barrio, buyer_barrio, s_city, buyer_city)
+                    qty = next(x["qty"] for x in products if x["post"].id == p.id)
+                    final_shipping_cost += (cost * qty)
+                if combinables:
+                    base = max((p.shipping_cost or 0 for p in combinables), default=0)
+                    cost_group = calculate_dynamic_shipping(base, s_barrio, buyer_barrio, s_city, buyer_city)
+                    final_shipping_cost += cost_group
+
+        total_price = subtotal_con_iva + final_shipping_cost
+        status = PurchaseStatus.PENDING_PAYMENT if req.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
+        
+        new_purchase = PurchaseModel(
+            userinfo_id=user_info.id, total_price=total_price, shipping_applied=final_shipping_cost, status=status,
+            payment_method=req.payment_method, shipping_name=address.name, shipping_city=address.city,
+            shipping_neighborhood=address.neighborhood, shipping_address=address.address, shipping_phone=address.phone,
+            purchase_date=datetime.now(timezone.utc)
+        )
+        session.add(new_purchase)
+        session.commit()
+        session.refresh(new_purchase)
+
+        for item_data in items_to_create:
+            db_item = PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=item_data["blog_post_id"], quantity=item_data["quantity"], price_at_purchase=item_data["price_at_purchase"], selected_variant=item_data["selected_variant"])
+            session.add(db_item)
+        session.commit()
+
+        payment_url = None
+        if req.payment_method == "Online":
+            link_tuple = await wompi_service.create_wompi_payment_link(new_purchase.id, total_price)
+            if link_tuple:
+                payment_url, link_id = link_tuple
+                new_purchase.wompi_payment_link_id = link_id
+                session.add(new_purchase); session.commit()
+            else:
+                raise HTTPException(500, "Error generando link de pago Wompi")
+
+        return CheckoutResponse(success=True, message="Orden creada", payment_url=payment_url, purchase_id=new_purchase.id)
+
+    except Exception as e:
+        print(f"Error en checkout: {e}")
+        raise HTTPException(500, f"Error procesando compra: {str(e)}")
