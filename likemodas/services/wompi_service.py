@@ -1,14 +1,12 @@
-# likemodas/services/wompi_service.py (CORREGIDO)
-
 import os
 import httpx
 from typing import Optional, Tuple
 
+# Configuración de entorno
 WOMPI_API_BASE_URL = os.getenv("WOMPI_API_BASE_URL", "https://sandbox.wompi.co/v1")
 WOMPI_PRIVATE_KEY = os.getenv("WOMPI_PRIVATE_KEY_ACTIVE")
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000")
 
-# --- ✨ FUNCIÓN MODIFICADA ✨ ---
 async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Optional[Tuple[str, str]]:
     """
     Crea un enlace de pago en Wompi.
@@ -27,8 +25,8 @@ async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Opt
         "collect_shipping": False,
         "amount_in_cents": int(total_price * 100),
         "currency": "COP",
-        "redirect_url": f"{APP_BASE_URL}/my-purchases",
-        "reference": str(purchase_id), # Mantenemos la referencia original
+        "redirect_url": f"{APP_BASE_URL}/my-purchases", # URL de retorno (importante para web)
+        "reference": str(purchase_id), # Referencia única = ID de compra
     }
 
     async with httpx.AsyncClient() as client:
@@ -41,7 +39,7 @@ async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Opt
             
             if payment_link_id:
                 checkout_url = f"https://checkout.wompi.co/l/{payment_link_id}"
-                return checkout_url, payment_link_id  # Devolvemos ambos valores
+                return checkout_url, payment_link_id
             else:
                 print(f"Error: No se encontró 'id' en la respuesta de Wompi: {response_data}")
                 return None
@@ -53,17 +51,10 @@ async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Opt
             return None
         
 async def get_wompi_transaction_details(transaction_id: str) -> Optional[dict]:
-    """
-    Consulta los detalles de una transacción específica en Wompi usando su ID.
-    Devuelve el diccionario de la transacción o None si falla.
-    """
+    """Consulta los detalles de una transacción específica por su ID."""
     if not WOMPI_PRIVATE_KEY:
-        print("Error: La variable de entorno WOMPI_PRIVATE_KEY_ACTIVE no está configurada.")
         return None
 
-    # Para consultar transacciones, Wompi pide usar la LLAVE PÚBLICA.
-    # Asegúrate de tener una variable para ella, por ejemplo WOMPI_PUBLIC_KEY_ACTIVE
-    # Si no la tienes, por ahora podemos probar con la privada, pero la pública es lo correcto.
     headers = {"Authorization": f"Bearer {WOMPI_PRIVATE_KEY}"}
     url = f"{WOMPI_API_BASE_URL}/transactions/{transaction_id}"
 
@@ -72,23 +63,16 @@ async def get_wompi_transaction_details(transaction_id: str) -> Optional[dict]:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
             return response.json().get("data")
-        except httpx.HTTPStatusError as e:
-            # Un 404 es normal si la transacción aún no existe o es incorrecta
-            if e.response.status_code == 404:
-                print(f"Info: Transacción Wompi con ID '{transaction_id}' no encontrada (404).")
-            else:
-                print(f"Error HTTP al consultar transacción Wompi: {e.response.status_code} - {e.response.text}")
-            return None
         except Exception as e:
-            print(f"Error inesperado al consultar transacción Wompi: {e}")
+            print(f"Error consultando transacción Wompi {transaction_id}: {e}")
             return None
         
 async def get_transaction_by_reference(reference: str) -> Optional[dict]:
     """
-    Busca la primera transacción de Wompi que coincida con una referencia dada.
+    [CORREGIDO] Busca en TODAS las transacciones asociadas a una referencia (ID de compra)
+    y devuelve la primera que esté APROBADA. Si no hay aprobadas, devuelve la última.
     """
     if not WOMPI_PRIVATE_KEY:
-        print("Error: WOMPI_PRIVATE_KEY_ACTIVE no está configurada.")
         return None
 
     headers = {"Authorization": f"Bearer {WOMPI_PRIVATE_KEY}"}
@@ -100,8 +84,19 @@ async def get_transaction_by_reference(reference: str) -> Optional[dict]:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
             transactions = response.json().get("data", [])
-            # Devuelve la primera transacción encontrada, si existe
-            return transactions[0] if transactions else None
+            
+            if not transactions:
+                return None
+            
+            # --- LÓGICA CORREGIDA ---
+            # Iterar para buscar una aprobada
+            for tx in transactions:
+                if tx.get("status") == "APPROVED":
+                    return tx
+            
+            # Si ninguna está aprobada, devolvemos la primera (la más reciente usualmente) para ver el error
+            return transactions[0]
+
         except Exception as e:
             print(f"Error al buscar transacción por referencia {reference}: {e}")
             return None
