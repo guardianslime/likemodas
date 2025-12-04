@@ -5,6 +5,7 @@ import secrets
 from typing import List, Optional
 from collections import defaultdict
 import math
+import pytz
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body
@@ -14,16 +15,14 @@ from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-# Importamos todos los modelos necesarios
 from likemodas.models import (
     BlogPostModel, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
-    VerificationToken, PasswordResetToken, UserRole
+    VerificationToken, PasswordResetToken, UserRole, NotificationModel
 )
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
-# Importamos el servicio de Wompi para los pagos
 from likemodas.services import wompi_service 
 
 logging.basicConfig(level=logging.INFO)
@@ -92,13 +91,10 @@ class ProductDetailDTO(BaseModel):
     combines_shipping: bool
     is_saved: bool = False
     is_imported: bool
-    
-    # Campos calculados manualmente para seguridad
     average_rating: float = 0.0
     rating_count: int = 0
     reviews: List[ReviewDTO] = [] 
     can_review: bool = False
-    
     author: str
     author_id: int
     created_at: str
@@ -126,6 +122,10 @@ class PurchaseHistoryDTO(BaseModel):
     status: str
     total: str
     items: List[PurchaseItemDTO]
+    # --- CAMPOS NUEVOS ---
+    estimated_delivery: Optional[str] = None
+    can_confirm_delivery: bool = False
+    tracking_message: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -220,11 +220,14 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
-        import bcrypt # Aseguramos import
-        if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): raise HTTPException(400, detail="Contraseña incorrecta")
+        
+        if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): 
+            raise HTTPException(400, detail="Contraseña incorrecta")
+            
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
         if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
+        
         role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
         return UserResponse(id=user_info.id, username=user.username, email=user_info.email, role=role_str, token=str(user.id))
     except HTTPException as he: raise he
@@ -232,20 +235,24 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
 
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
-    if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): raise HTTPException(400, detail="Usuario ya existe")
+    if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): 
+        raise HTTPException(400, detail="Usuario ya existe")
     try:
-        import bcrypt
         hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
         new_user = LocalUser(username=creds.username, password_hash=hashed_pw, enabled=True)
         session.add(new_user); session.commit(); session.refresh(new_user)
+       
         new_info = UserInfo(email=creds.email, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
         session.add(new_info); session.commit(); session.refresh(new_info)
+        
         token_str = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=24)
         vt = VerificationToken(token=token_str, userinfo_id=new_info.id, expires_at=expires)
         session.add(vt); session.commit()
+        
         try: send_verification_email(recipient_email=creds.email, token=token_str)
         except: pass 
+        
         return UserResponse(id=new_info.id, username=new_user.username, email=new_info.email, role="customer", token=str(new_user.id))
     except Exception as e: raise HTTPException(400, detail=str(e))
 
@@ -308,7 +315,6 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- ENDPOINT DETALLE PRODUCTO BLINDADO (SIN ERROR 500) ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
@@ -379,7 +385,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # 5. OPINIONES (MANUAL Y SEGURO - NO USA p.average_rating)
+        # 5. OPINIONES
         reviews_list = []
         average_rating = 0.0
         rating_count = 0
@@ -405,7 +411,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if rating_count > 0:
                 average_rating = ratings_sum / rating_count
         except:
-            pass # Si falla la carga de reviews, seguimos con lista vacía
+            pass
 
         # 6. Estado de Usuario
         is_saved = False
@@ -437,7 +443,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# --- CHECKOUT (PAGOS) ---
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
 async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
     try:
@@ -465,6 +470,7 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
             
             seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
             selected_variant = {}
+        
             if item.variant_id and post.variants:
                 target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
                 if target: selected_variant = target.get("attributes", {})
@@ -534,12 +540,11 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         print(f"Checkout error: {e}")
         raise HTTPException(500, f"Error procesando compra: {str(e)}")
 
-# ... (Reviews, Toggle Save, Profile, Addresses, Cart Calculate... se mantienen)
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, body.user_id)
-        purchase_item = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first()
+        purchase_item = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blog_post_id == product_id)).first()
         if not purchase_item: raise HTTPException(400, "Debes comprar para opinar.")
         
         existing = session.exec(select(CommentModel.id).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
@@ -638,26 +643,6 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
         result.append(ProductListDTO(id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), image_url=get_full_image_url(img_path), category=p.category, description=p.content, is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping))
     return result
 
-@router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
-async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_info.id).order_by(PurchaseModel.purchase_date.desc())).all()
-    history = []
-    for p in purchases:
-        items_dto = []
-        for item in p.items:
-            img = ""
-            if item.blog_post:
-                variant_img = ""
-                if item.blog_post.variants and item.selected_variant:
-                     target_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
-                     if target_variant and target_variant.get("image_urls"): variant_img = target_variant["image_urls"][0]
-                img_path = variant_img or item.blog_post.main_image_url_variant or (item.blog_post.variants[0]["image_urls"][0] if item.blog_post.variants and item.blog_post.variants[0].get("image_urls") else "")
-                img = get_full_image_url(img_path)
-            items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
-        history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto))
-    return history
-
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
     try:
@@ -720,3 +705,109 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
     except Exception as e:
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- NUEVO ENDPOINT ACTUALIZADO PARA COMPRAS ---
+@router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
+async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
+    try:
+        user_info = get_user_info(session, user_id)
+        
+        # Carga segura con options para evitar errores de Lazy Loading
+        purchases = session.exec(
+            select(PurchaseModel)
+            .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
+            .where(PurchaseModel.userinfo_id == user_info.id)
+            .order_by(PurchaseModel.purchase_date.desc())
+        ).all()
+        
+        history = []
+        for p in purchases:
+            items_dto = []
+            for item in p.items:
+                img = ""
+                # Lógica segura para obtener imagen
+                try:
+                    if item.blog_post:
+                        variant_img = ""
+                        if item.blog_post.variants and item.selected_variant:
+                             target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                             if target_variant and target_variant.get("image_urls"): 
+                                 variant_img = target_variant["image_urls"][0]
+                        img_path = variant_img or item.blog_post.main_image_url_variant or ""
+                        if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
+                             first_v = item.blog_post.variants[0]
+                             if isinstance(first_v, dict) and first_v.get("image_urls"):
+                                 img_path = first_v["image_urls"][0]
+                        img = get_full_image_url(img_path)
+                except Exception:
+                    img = ""
+
+                items_dto.append(PurchaseItemDTO(
+                    title=item.blog_post.title if item.blog_post else "Producto", 
+                    quantity=item.quantity, 
+                    price=item.price_at_purchase, 
+                    image_url=img
+                ))
+            
+            estimated_str = None
+            can_confirm = False
+            tracking_msg = None
+
+            try:
+                if p.status == PurchaseStatus.SHIPPED:
+                    can_confirm = True
+                    if p.estimated_delivery_date:
+                        local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
+                        estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
+                        tracking_msg = f"Llega aprox: {estimated_str}"
+                    else:
+                        tracking_msg = "En camino"
+                elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
+                     tracking_msg = "Esperando confirmación del vendedor"
+            except Exception:
+                tracking_msg = ""
+
+            history.append(PurchaseHistoryDTO(
+                id=p.id, 
+                date=p.purchase_date.strftime('%d-%m-%Y'), 
+                status=p.status.value, 
+                total=fmt_price(p.total_price), 
+                items=items_dto,
+                estimated_delivery=estimated_str,
+                can_confirm_delivery=can_confirm,
+                tracking_message=tracking_msg
+            ))
+        return history
+    except Exception as e:
+        print(f"ERROR CRÍTICO EN PURCHASES: {e}")
+        return []
+
+@router.post("/purchases/{purchase_id}/confirm-delivery/{user_id}")
+async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
+    try:
+        user_info = get_user_info(session, user_id)
+        purchase = session.get(PurchaseModel, purchase_id)
+        
+        if not purchase or purchase.userinfo_id != user_info.id:
+            raise HTTPException(404, "Compra no encontrada")
+            
+        if purchase.status != PurchaseStatus.SHIPPED:
+             raise HTTPException(400, "La compra no está en estado 'Enviado'")
+             
+        purchase.status = PurchaseStatus.DELIVERED
+        purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
+        session.add(purchase)
+        
+        note = NotificationModel(
+            userinfo_id=user_info.id,
+            message=f"Has confirmado la entrega del pedido #{purchase.id}. ¡Gracias!",
+            url="/my-purchases"
+        )
+        session.add(note)
+        session.commit()
+        
+        return {"message": "Entrega confirmada exitosamente"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(500, str(e))
