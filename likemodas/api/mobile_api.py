@@ -1,11 +1,10 @@
-import os
-import bcrypt
-import secrets
+from collections import defaultdict
 import logging
 import math
-from collections import defaultdict
+import secrets
+from typing import List, Optional
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
@@ -63,7 +62,6 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
-# DTO para las opiniones
 class ReviewDTO(BaseModel):
     id: int
     username: str
@@ -90,10 +88,9 @@ class ProductDetailDTO(BaseModel):
     author: str
     author_id: int
     created_at: str
-    reviews: List[ReviewDTO] = [] # Lista de opiniones
-    can_review: bool = False      # Si el usuario puede opinar
+    reviews: List[ReviewDTO] = []
+    can_review: bool = False
 
-# DTO para recibir la reseña desde Android
 class ReviewSubmissionBody(BaseModel):
     rating: int
     comment: str
@@ -185,17 +182,17 @@ def get_full_image_url(path: str) -> str:
     return f"{BASE_URL}/_upload/{path}"
 
 # --- ENDPOINTS ---
+# ... (Login, Register, Geography se mantienen igual) ...
 
 @router.get("/geography/cities", response_model=List[str])
-async def get_cities():
-    return ALL_CITIES
+async def get_cities(): return ALL_CITIES
 
 @router.post("/geography/neighborhoods", response_model=List[str])
-async def get_neighborhoods(city: str = Body(..., embed=True)):
-    return COLOMBIA_LOCATIONS.get(city, [])
+async def get_neighborhoods(city: str = Body(..., embed=True)): return COLOMBIA_LOCATIONS.get(city, [])
 
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
+    # ... (Lógica de login igual a la versión funcional) ...
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
@@ -210,6 +207,7 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
 
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
+    # ... (Lógica de registro igual a la versión funcional) ...
     if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): raise HTTPException(400, detail="Usuario ya existe")
     try:
         hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
@@ -228,6 +226,7 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
 
 @router.post("/forgot-password")
 async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = Depends(get_session)):
+    # ... (Igual a versión funcional) ...
     email = req.email.strip().lower()
     user_info = session.exec(select(UserInfo).where(UserInfo.email == email)).one_or_none()
     if user_info:
@@ -247,6 +246,7 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     products = session.exec(query).all()
     result = []
     for p in products:
+        # Lógica de imagen segura
         img_path = p.main_image_url_variant
         if not img_path:
             if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
@@ -285,39 +285,36 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- AQUÍ ESTÁ EL ENDPOINT QUE ESTABA FALLANDO, AHORA BLINDADO ---
+# --- ENDPOINT CRÍTICO REPARADO ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Consulta SEGURA del producto (Left Join para evitar fallos si no hay usuario)
-        statement = (
-            select(BlogPostModel, LocalUser.username)
-            .join(UserInfo, BlogPostModel.userinfo_id == UserInfo.id, isouter=True)
-            .join(LocalUser, UserInfo.user_id == LocalUser.id, isouter=True)
-            .where(BlogPostModel.id == product_id)
-        )
-        result = session.exec(statement).first()
-        
-        if not result: 
-            raise HTTPException(404, "Producto no encontrado")
+        # 1. Consulta PRINCIPAL (Simple, sin joins complejos que pueden fallar)
+        p = session.get(BlogPostModel, product_id)
+        if not p: raise HTTPException(404, "Producto no encontrado")
 
-        p, author_name = result
-        
-        # Protección contra autor nulo
-        if not author_name: author_name = "Likemodas"
-        seller_info_id = p.userinfo_id if p.userinfo_id else 0
+        # 2. Obtener Autor (Manualmente para evitar error de relación nula)
+        author_name = "Likemodas"
+        seller_info_id = 0
+        if p.userinfo_id:
+            user_info_owner = session.get(UserInfo, p.userinfo_id)
+            if user_info_owner:
+                # Cargar LocalUser aparte
+                local_user_owner = session.get(LocalUser, user_info_owner.user_id)
+                if local_user_owner:
+                    author_name = local_user_owner.username
+                seller_info_id = user_info_owner.id
 
-        # 2. Gestión de Imágenes (Lista vacía si no hay)
+        # 3. Lógica de Imágenes (Blindada)
         main_img = p.main_image_url_variant
         all_images_set = set()
+        
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
 
         if not main_img and safe_variants:
-            first_v = safe_variants[0]
-            if isinstance(first_v, dict):
-                urls = first_v.get("image_urls")
-                if urls and isinstance(urls, list) and len(urls) > 0:
-                    main_img = urls[0]
+            first_v_urls = safe_variants[0].get("image_urls")
+            if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0:
+                main_img = first_v_urls[0]
 
         if main_img: all_images_set.add(main_img)
 
@@ -333,7 +330,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not main_image_final and final_images:
             main_image_final = final_images[0]
 
-        # 3. Variantes
+        # 4. Variantes
         variants_dto = []
         for v in safe_variants:
             if not isinstance(v, dict): continue
@@ -342,15 +339,15 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_image_final
             v_images_list = [get_full_image_url(img) for img in v_urls if img] if v_urls else [main_image_final]
 
+            # Título seguro
             attrs = v.get("attributes", {})
             if not isinstance(attrs, dict): attrs = {}
             
-            # Construcción segura del título
-            title_parts = []
-            if attrs.get("Color"): title_parts.append(str(attrs.get("Color")))
-            if attrs.get("Talla"): title_parts.append(str(attrs.get("Talla")))
-            if attrs.get("Número"): title_parts.append(str(attrs.get("Número")))
-            v_title = " ".join(title_parts) if title_parts else "Estándar"
+            parts = []
+            if attrs.get("Color"): parts.append(str(attrs.get("Color")))
+            if attrs.get("Talla"): parts.append(str(attrs.get("Talla")))
+            if attrs.get("Número"): parts.append(str(attrs.get("Número")))
+            v_title = " ".join(parts) if parts else "Estándar"
 
             variants_dto.append(VariantDTO(
                 id=str(v.get("variant_uuid") or v.get("id") or ""),
@@ -361,38 +358,36 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # 4. OPINIONES: Consulta SEPARADA para evitar Error 500 por Lazy Loading
+        # 5. OPINIONES (Carga separada y segura)
         reviews_list = []
+        # Consulta directa a la tabla de comentarios
         db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
         
-        # Cálculo manual del promedio
-        ratings = [r.rating for r in db_reviews if r.rating is not None]
-        ratings_count = len(ratings)
-        average_rating = (sum(ratings) / ratings_count) if ratings_count > 0 else 0.0
+        ratings_sum = 0
+        ratings_count = 0
 
         for r in db_reviews:
             try:
-                # Manejo de fechas y nulos
+                ratings_sum += r.rating
+                ratings_count += 1
+                
                 date_str = ""
                 if r.created_at:
                     date_str = r.created_at.strftime("%d/%m/%Y")
                 
-                u_name = r.author_username if r.author_username else "Usuario"
-                c_content = r.content if r.content else ""
-                r_val = r.rating if r.rating is not None else 5
-
                 reviews_list.append(ReviewDTO(
-                    id=r.id, 
-                    username=u_name, 
-                    rating=int(r_val), 
-                    comment=c_content, 
+                    id=r.id,
+                    username=r.author_username or "Usuario",
+                    rating=r.rating,
+                    comment=r.content or "",
                     date=date_str
                 ))
             except Exception:
-                # Si una reseña falla, la saltamos para no romper la app
-                continue 
+                continue
 
-        # 5. Permisos de usuario
+        avg_rating = (ratings_sum / ratings_count) if ratings_count > 0 else 0.0
+
+        # 6. Estado Usuario
         is_saved = False
         can_review = False
         
@@ -400,14 +395,15 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_id, SavedPostLink.blogpostmodel_id == p.id)).first()
             is_saved = saved is not None
             
-            has_bought_check = session.exec(
+            # Verificación simple de compra
+            has_bought = session.exec(
                 select(PurchaseItemModel.id)
                 .join(PurchaseModel)
                 .where(PurchaseModel.userinfo_id == user_id, PurchaseItemModel.blogpostmodel_id == p.id)
             ).first()
             
             already_reviewed = any(r.userinfo_id == user_id for r in db_reviews)
-            can_review = (has_bought_check is not None) and (not already_reviewed)
+            can_review = (has_bought is not None) and (not already_reviewed)
 
         date_created_str = ""
         if p.created_at:
@@ -418,18 +414,14 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             description=p.content, category=p.category,
             main_image_url=main_image_final, images=final_images, variants=variants_dto,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-            is_saved=is_saved, is_imported=p.is_imported, 
-            
-            # Valores calculados manualmente
-            average_rating=average_rating, 
+            is_saved=is_saved, is_imported=p.is_imported,
+            average_rating=avg_rating, 
             rating_count=ratings_count,
-            
-            author=author_name, author_id=seller_info_id, 
+            author=author_name, author_id=seller_info_id,
             created_at=date_created_str, 
             reviews=reviews_list, can_review=can_review
         )
     except Exception as e:
-        # Loguear error en consola pero devolver respuesta de error al cliente
         print(f"CRITICAL ERROR 500: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
@@ -466,6 +458,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     except Exception as e:
         raise HTTPException(500, f"Error: {str(e)}")
 
+# ... (Resto de endpoints: toggle-save, profile, etc. se mantienen igual) ...
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
