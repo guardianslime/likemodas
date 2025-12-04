@@ -89,11 +89,13 @@ class ProductDetailDTO(BaseModel):
     combines_shipping: bool
     is_saved: bool = False
     is_imported: bool
-    # Campos seguros
+    
+    # Campos calculados manualmente para evitar Error 500
     average_rating: float = 0.0
     rating_count: int = 0
     reviews: List[ReviewDTO] = [] 
     can_review: bool = False
+    
     author: str
     author_id: int
     created_at: str
@@ -147,7 +149,6 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
-    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
@@ -170,7 +171,6 @@ class CartSummaryResponse(BaseModel):
     address_id: Optional[int] = None
     items: List[CartItemResponse] = []
 
-# --- DTOs CHECKOUT ---
 class CheckoutRequest(BaseModel):
     items: List[CartItemRequest]
     address_id: int
@@ -302,31 +302,37 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- ENDPOINT DETALLE DEL PRODUCTO (BLINDADO) ---
+# --- ENDPOINT CRÍTICO CORREGIDO: NO USA p.average_rating ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
+        # 1. Obtener producto (Sin joins complejos iniciales)
         p = session.get(BlogPostModel, product_id)
-        if not p or not p.publish_active: raise HTTPException(404, "Producto no encontrado")
+        if not p or not p.publish_active: 
+            raise HTTPException(404, "Producto no encontrado")
 
+        # 2. Obtener Autor con consulta separada (Seguro)
         author_name = "Likemodas"
         seller_info_id = p.userinfo_id if p.userinfo_id else 0
         if p.userinfo_id:
             try:
                 user_info = session.get(UserInfo, p.userinfo_id)
-                if user_info and user_info.user:
-                    # Acceso seguro a través de la relación cargada o consulta simple
+                if user_info:
                     local_user = session.get(LocalUser, user_info.user_id)
                     if local_user: author_name = local_user.username
+                    seller_info_id = user_info.id
             except: pass
 
+        # 3. Imágenes
         main_img = p.main_image_url_variant
         all_images_set = set()
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+
         if not main_img and safe_variants:
             first_v_urls = safe_variants[0].get("image_urls")
             if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0:
                 main_img = first_v_urls[0]
+
         if main_img: all_images_set.add(main_img)
         for v in safe_variants:
             if isinstance(v, dict):
@@ -337,7 +343,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         
         final_images = [get_full_image_url(img) for img in all_images_set if img]
         main_image_final = get_full_image_url(main_img or "")
-        if not main_image_final and final_images: main_image_final = final_images[0]
+        if not main_image_final and final_images:
+            main_image_final = final_images[0]
 
         variants_dto = []
         for v in safe_variants:
@@ -345,31 +352,45 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             v_urls = v.get("image_urls", [])
             v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_image_final
             v_images_list = [get_full_image_url(img) for img in v_urls if img] if v_urls else [main_image_final]
+            
+            attrs = v.get("attributes", {})
+            if not isinstance(attrs, dict): attrs = {}
+            
+            title_parts = []
+            if attrs.get("Color"): title_parts.append(str(attrs.get("Color")))
+            if attrs.get("Talla"): title_parts.append(str(attrs.get("Talla")))
+            if attrs.get("Número"): title_parts.append(str(attrs.get("Número")))
+            v_title = " ".join(title_parts) if title_parts else "Estándar"
+
             variants_dto.append(VariantDTO(
                 id=str(v.get("variant_uuid") or v.get("id") or ""),
-                title=f"{v.get('attributes', {}).get('Color', '')} {v.get('attributes', {}).get('Talla', v.get('attributes', {}).get('Número', ''))}",
+                title=v_title,
                 image_url=get_full_image_url(v_img_raw or ""),
                 price=float(v.get("price") or p.price or 0.0),
                 available_quantity=int(v.get("stock") or 0),
                 images=v_images_list
             ))
 
-        # Carga SEGURA de opiniones
+        # 4. OPINIONES (MANUAL): Consultamos la tabla explícitamente
         reviews_list = []
         average_rating = 0.0
         rating_count = 0
-        try:
-            db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
-            if db_reviews:
-                ratings = [r.rating for r in db_reviews if r.rating is not None]
-                rating_count = len(ratings)
-                average_rating = (sum(ratings) / rating_count) if rating_count > 0 else 0.0
-                for r in db_reviews:
-                    try:
-                        date_str = r.created_at.strftime("%d/%m/%Y") if r.created_at else ""
-                        reviews_list.append(ReviewDTO(id=r.id, username=r.author_username or "Usuario", rating=int(r.rating or 5), comment=r.content or "", date=date_str))
-                    except: continue
-        except: pass
+        
+        # Consulta separada a CommentModel
+        db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
+        
+        ratings = [r.rating for r in db_reviews if r.rating is not None]
+        rating_count = len(ratings)
+        average_rating = (sum(ratings) / rating_count) if rating_count > 0 else 0.0
+        
+        for r in db_reviews:
+            try:
+                date_str = r.created_at.strftime("%d/%m/%Y") if r.created_at else ""
+                u_name = r.author_username or "Usuario"
+                r_val = r.rating or 5
+                content = r.content or ""
+                reviews_list.append(ReviewDTO(id=r.id, username=u_name, rating=int(r_val), comment=content, date=date_str))
+            except: continue
 
         is_saved = False
         can_review = False
@@ -384,15 +405,21 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         return ProductDetailDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            description=p.content, category=p.category, main_image_url=main_image_final, 
-            images=final_images, variants=variants_dto, is_moda_completa=p.is_moda_completa_eligible, 
-            combines_shipping=p.combines_shipping, is_saved=is_saved, is_imported=p.is_imported, 
-            average_rating=average_rating, rating_count=rating_count, reviews=reviews_list,
+            description=p.content, category=p.category,
+            main_image_url=main_image_final, images=final_images, variants=variants_dto,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            is_saved=is_saved, is_imported=p.is_imported, 
+            
+            # Usamos valores calculados manualmente
+            average_rating=average_rating, 
+            rating_count=rating_count,
+            reviews=reviews_list,
+            
             author=author_name, author_id=seller_info_id, created_at=date_created_str, can_review=can_review
         )
     except Exception as e:
-        print(f"ERROR CRITICO PRODUCTO: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # --- CHECKOUT ---
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
@@ -419,30 +446,22 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
             price = post.price
             if not post.price_includes_iva: price *= 1.19
             subtotal_base += price * item.quantity
-            seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
             
+            seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
             selected_variant = {}
             if item.variant_id and post.variants:
                 target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
                 if target: selected_variant = target.get("attributes", {})
-            
             items_to_create.append({"blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": price, "selected_variant": selected_variant})
 
-        # Calculo simplificado de envío para mobile
         subtotal_con_iva = subtotal_base
-        final_shipping_cost = 0.0
-        
-        # ... (Lógica de envío similar a calculate_cart) ...
-        # Para simplificar este ejemplo y evitar errores, usamos una lógica básica
-        # Si ya tienes calculate_cart funcionando, usa el valor que envía la app o recálculalo
-        # Aquí asumimos recálculo para seguridad:
-        
         free_shipping = False
         moda_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
         if moda_items:
             thresholds = [p.free_shipping_threshold for p in moda_items if p.free_shipping_threshold]
             if thresholds and subtotal_con_iva >= max(thresholds): free_shipping = True
-        
+
+        final_shipping_cost = 0.0
         if not free_shipping:
             sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_groups.keys()))).all()
             seller_map = {u.id: u for u in sellers_info}
@@ -450,13 +469,17 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
                 seller = seller_map.get(uid)
                 s_city = seller.seller_city if seller else None
                 s_barrio = seller.seller_barrio if seller else None
-                
-                for p_data in products:
-                    p = p_data["post"]
+                combinables = [x["post"] for x in products if x["post"].combines_shipping]
+                individuales = [x["post"] for x in products if not x["post"].combines_shipping]
+                for p in individuales:
                     cost = calculate_dynamic_shipping(p.shipping_cost or 0, s_barrio, buyer_barrio, s_city, buyer_city)
-                    if not p.combines_shipping: final_shipping_cost += (cost * p_data["qty"])
-                    else: final_shipping_cost += cost # Simplificado para combinados
-        
+                    qty = next(x["qty"] for x in products if x["post"].id == p.id)
+                    final_shipping_cost += (cost * qty)
+                if combinables:
+                    base = max((p.shipping_cost or 0 for p in combinables), default=0)
+                    cost_group = calculate_dynamic_shipping(base, s_barrio, buyer_barrio, s_city, buyer_city)
+                    final_shipping_cost += cost_group
+
         total_price = subtotal_con_iva + final_shipping_cost
         status = PurchaseStatus.PENDING_PAYMENT if req.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
         
@@ -492,7 +515,7 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         print(f"CHECKOUT ERROR: {e}")
         raise HTTPException(500, str(e))
 
-# ... (Resto de endpoints igual: reviews, toggle-save, etc) ...
+# ... (Resto de endpoints: reviews, toggle-save, etc)
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
     try:
