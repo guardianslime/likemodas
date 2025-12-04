@@ -1,18 +1,19 @@
+from collections import defaultdict
+import math
 import os
 import bcrypt
 import secrets
 import logging
-import math
-from collections import defaultdict
+from typing import List, Optional
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 import sqlalchemy
+from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
-from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink
+from likemodas.models import BlogPostModel, LocalUser, UserInfo, UserRole, VerificationToken, PasswordResetToken, PurchaseModel, PurchaseItemModel, ShippingAddressModel, SavedPostLink, CommentModel
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
@@ -62,7 +63,6 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
-# Agregamos estos DTOs aunque estén vacíos para que la App no falle al deserializar
 class ReviewDTO(BaseModel):
     id: int
     username: str
@@ -84,11 +84,18 @@ class ProductDetailDTO(BaseModel):
     combines_shipping: bool
     is_saved: bool = False
     is_imported: bool
-    # Campos agregados con valores por defecto para compatibilidad visual
-    average_rating: float = 0.0
-    rating_count: int = 0
-    reviews: List[ReviewDTO] = [] 
+    average_rating: float
+    rating_count: int
+    author: str
+    author_id: int
+    created_at: str
+    reviews: List[ReviewDTO] = []
     can_review: bool = False
+
+class ReviewSubmissionBody(BaseModel):
+    rating: int
+    comment: str
+    user_id: int 
 
 class ProfileDTO(BaseModel):
     username: str
@@ -134,7 +141,6 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
-    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
@@ -159,11 +165,17 @@ class CartSummaryResponse(BaseModel):
 
 # --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
-    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+    user_info = session.exec(
+        select(UserInfo)
+        .options(joinedload(UserInfo.user))
+        .where(UserInfo.user_id == user_id)
+    ).one_or_none()
     if not user_info: raise HTTPException(404, "Usuario no encontrado")
     return user_info
 
-def fmt_price(val): return f"$ {val:,.0f}".replace(",", ".")
+def fmt_price(val): 
+    if val is None: return "$ 0"
+    return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
     if not path: return ""
@@ -233,10 +245,17 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     products = session.exec(query).all()
     result = []
     for p in products:
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        img_path = p.main_image_url_variant
+        if not img_path:
+            if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
+                urls = p.variants[0].get("image_urls")
+                if urls and isinstance(urls, list) and len(urls) > 0:
+                    img_path = urls[0]
+        
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            image_url=get_full_image_url(img_path or ""), 
+            category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
         ))
     return result
@@ -246,82 +265,204 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id)
     query = query.order_by(BlogPostModel.created_at.desc())
     products = session.exec(query).all()
+    
     result = []
     for p in products:
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        img_path = p.main_image_url_variant
+        if not img_path:
+            if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
+                urls = p.variants[0].get("image_urls")
+                if urls and isinstance(urls, list) and len(urls) > 0:
+                    img_path = urls[0]
+
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path), category=p.category, description=p.content,
+            image_url=get_full_image_url(img_path or ""), 
+            category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
         ))
     return result
 
+# --- ENDPOINT DETALLE PRODUCTO (SOLUCIÓN DEFINITIVA ERROR 500) ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
-    # --- VERSIÓN SEGURA (SIN REVIEWS NI CALCULOS COMPLEJOS) ---
-    p = session.get(BlogPostModel, product_id)
-    if not p or not p.publish_active: raise HTTPException(404, "Producto no encontrado")
-    
-    main_img = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
-    all_images_set = set()
-    if main_img: all_images_set.add(main_img)
-    if p.variants:
-        for v in p.variants:
-            for img in v.get("image_urls", []): all_images_set.add(img)
-    
-    final_images = [get_full_image_url(img) for img in all_images_set if img]
-    main_image_final = get_full_image_url(main_img) if main_img else (final_images[0] if final_images else "")
+    try:
+        # 1. Obtener producto (Sin joins complejos al principio)
+        p = session.get(BlogPostModel, product_id)
+        if not p or not p.publish_active:
+            raise HTTPException(404, "Producto no encontrado")
 
-    variants_dto = []
-    if p.variants:
-        for v in p.variants:
-            v_img = v.get("image_urls", [])[0] if v.get("image_urls") else main_img
-            v_images_list = [get_full_image_url(img) for img in v.get("image_urls", [])]
-            if not v_images_list: v_images_list = [get_full_image_url(v_img)]
+        # 2. Obtener Autor (Consulta separada)
+        author_name = "Likemodas"
+        seller_info_id = 0
+        if p.userinfo_id:
+            seller_info_id = p.userinfo_id
+            db_user = session.exec(select(LocalUser).join(UserInfo).where(UserInfo.id == p.userinfo_id)).first()
+            if db_user:
+                author_name = db_user.username
+
+        # 3. Imágenes (Defensivo)
+        main_img = p.main_image_url_variant
+        all_images_set = set()
+        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+
+        if not main_img and safe_variants:
+            first_v_urls = safe_variants[0].get("image_urls")
+            if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0:
+                main_img = first_v_urls[0]
+
+        if main_img: all_images_set.add(main_img)
+
+        for v in safe_variants:
+            if isinstance(v, dict):
+                urls = v.get("image_urls", [])
+                if urls and isinstance(urls, list):
+                    for img in urls: 
+                        if img: all_images_set.add(img)
+        
+        final_images = [get_full_image_url(img) for img in all_images_set if img]
+        main_image_final = get_full_image_url(main_img or "")
+        if not main_image_final and final_images:
+            main_image_final = final_images[0]
+
+        # 4. Variantes
+        variants_dto = []
+        for v in safe_variants:
+            if not isinstance(v, dict): continue
+            
+            v_urls = v.get("image_urls", [])
+            v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_image_final
+            v_images_list = [get_full_image_url(img) for img in v_urls if img] if v_urls else [main_image_final]
+
+            attrs = v.get("attributes", {})
+            if not isinstance(attrs, dict): attrs = {}
             
             title_parts = []
-            attrs = v.get("attributes", {})
             if attrs.get("Color"): title_parts.append(str(attrs.get("Color")))
             if attrs.get("Talla"): title_parts.append(str(attrs.get("Talla")))
             if attrs.get("Número"): title_parts.append(str(attrs.get("Número")))
             v_title = " ".join(title_parts) if title_parts else "Estándar"
 
             variants_dto.append(VariantDTO(
-                id=v.get("variant_uuid", v.get("id", "")),
+                id=str(v.get("variant_uuid") or v.get("id") or ""),
                 title=v_title,
-                image_url=get_full_image_url(v_img),
-                price=v.get("price", p.price),
-                available_quantity=v.get("stock", 0),
+                image_url=get_full_image_url(v_img_raw or ""),
+                price=float(v.get("price") or p.price or 0.0),
+                available_quantity=int(v.get("stock") or 0),
                 images=v_images_list
             ))
 
-    is_saved = False
-    if user_id:
-        user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
-        if user_info:
-            saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == p.id)).first()
-            is_saved = saved is not None
-
-    return ProductDetailDTO(
-        id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-        description=p.content, category=p.category,
-        main_image_url=main_image_final, images=final_images, variants=variants_dto,
-        is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-        is_saved=is_saved, is_imported=p.is_imported, 
+        # 5. OPINIONES Y RATING (MANUAL Y SEGURO)
+        reviews_list = []
+        # Hacemos una consulta explícita a la tabla de comentarios
+        db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
         
-        # VALORES SEGUROS PARA EVITAR ERROR 500
-        average_rating=0.0, 
-        rating_count=0,
-        reviews=[],
-        can_review=False
-    )
+        rating_sum = 0
+        rating_count = 0
+        
+        for r in db_reviews:
+            try:
+                # Validación de nulos
+                r_rating = r.rating if r.rating is not None else 5
+                rating_sum += r_rating
+                rating_count += 1
+                
+                # Formateo seguro de fecha
+                date_str = ""
+                try:
+                    if r.created_at: date_str = r.created_at.strftime("%d/%m/%Y")
+                except: pass
 
+                reviews_list.append(ReviewDTO(
+                    id=r.id,
+                    username=r.author_username or "Usuario",
+                    rating=int(r_rating),
+                    comment=r.content or "",
+                    date=date_str
+                ))
+            except Exception:
+                continue
+
+        avg_rating = (rating_sum / rating_count) if rating_count > 0 else 0.0
+
+        # 6. Estado de Usuario
+        is_saved = False
+        can_review = False
+        
+        if user_id and user_id > 0:
+            saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_id, SavedPostLink.blogpostmodel_id == p.id)).first()
+            is_saved = saved is not None
+            
+            has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_id, PurchaseItemModel.blogpostmodel_id == p.id)).first()
+            
+            already_reviewed = any(r.userinfo_id == user_id for r in db_reviews)
+            
+            can_review = (has_bought is not None) and (not already_reviewed)
+
+        date_created_str = ""
+        try:
+            if p.created_at: date_created_str = p.created_at.strftime("%d de %B del %Y")
+        except: pass
+
+        return ProductDetailDTO(
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+            description=p.content, category=p.category,
+            main_image_url=main_image_final, images=final_images, variants=variants_dto,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            is_saved=is_saved, is_imported=p.is_imported, 
+            
+            # Valores manuales seguros
+            average_rating=avg_rating, 
+            rating_count=rating_count,
+            reviews=reviews_list,
+            
+            author=author_name, author_id=seller_info_id, 
+            created_at=date_created_str, 
+            can_review=can_review
+        )
+    except Exception as e:
+        print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.post("/products/{product_id}/reviews")
+async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
+    try:
+        user_info = get_user_info(session, body.user_id)
+        
+        has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blogpostmodel_id == product_id)).first()
+        if not has_bought: raise HTTPException(400, "Debes comprar el producto para opinar.")
+        
+        existing = session.exec(select(CommentModel.id).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
+        if existing: raise HTTPException(400, "Ya has opinado sobre este producto.")
+        
+        username = "Usuario"
+        initial = "U"
+        if user_info.user:
+            username = user_info.user.username
+            initial = username[0].upper() if username else "U"
+
+        new_review = CommentModel(
+            userinfo_id=user_info.id,
+            blog_post_id=product_id,
+            rating=body.rating,
+            content=body.comment, 
+            author_username=username,
+            author_initial=initial,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        session.add(new_review)
+        session.commit()
+        return {"message": "Opinión guardada"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(500, f"Error: {str(e)}")
+
+# ... (Resto de endpoints como antes) ...
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
-    product = session.get(BlogPostModel, product_id)
-    if not product: raise HTTPException(404, "Producto no encontrado")
-    
     existing = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == product_id)).first()
     if existing:
         session.delete(existing); session.commit()
