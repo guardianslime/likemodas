@@ -23,7 +23,7 @@ from likemodas.models import (
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
-from likemodas.services import wompi_service 
+from likemodas.services import wompi_service, sistecredito_service # Asegúrate de importar ambos servicios
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
 BASE_URL = "https://api.likemodas.com"
 
-# --- DTOs ---
+# --- DTOs (Se mantienen igual que en tu versión anterior) ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -122,7 +122,6 @@ class PurchaseHistoryDTO(BaseModel):
     status: str
     total: str
     items: List[PurchaseItemDTO]
-    # --- CAMPOS NUEVOS ---
     estimated_delivery: Optional[str] = None
     can_confirm_delivery: bool = False
     tracking_message: Optional[str] = None
@@ -318,12 +317,10 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Obtener producto
         p = session.get(BlogPostModel, product_id)
         if not p or not p.publish_active:
             raise HTTPException(404, "Producto no encontrado")
 
-        # 2. Obtener Autor (Consulta separada)
         author_name = "Likemodas"
         seller_info_id = p.userinfo_id if p.userinfo_id else 0
         if p.userinfo_id:
@@ -335,7 +332,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     seller_info_id = user_info.id
             except: pass
 
-        # 3. Imágenes
         main_img = p.main_image_url_variant
         all_images_set = set()
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
@@ -359,7 +355,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not main_image_final and final_images:
             main_image_final = final_images[0]
 
-        # 4. Variantes
         variants_dto = []
         for v in safe_variants:
             if not isinstance(v, dict): continue
@@ -385,7 +380,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # 5. OPINIONES
         reviews_list = []
         average_rating = 0.0
         rating_count = 0
@@ -413,7 +407,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         except:
             pass
 
-        # 6. Estado de Usuario
         is_saved = False
         can_review = False
         if user_id and user_id > 0:
@@ -706,13 +699,60 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- NUEVO ENDPOINT ACTUALIZADO PARA COMPRAS ---
+# --- NUEVO: ENDPOINT DE AUTOVERIFICACIÓN DE PAGO ---
+@router.post("/purchases/{purchase_id}/verify_payment")
+async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
+    """
+    Verifica activamente el estado de un pago en Wompi y actualiza la base de datos.
+    Esto es la 'Red de Seguridad' cuando el Webhook falla.
+    """
+    try:
+        purchase = session.get(PurchaseModel, purchase_id)
+        if not purchase:
+            raise HTTPException(404, "Orden no encontrada")
+            
+        if purchase.status != PurchaseStatus.PENDING_PAYMENT:
+            return {"message": "La orden ya no está pendiente", "status": purchase.status}
+            
+        # 1. Preguntar a Wompi usando la Referencia (Purchase ID)
+        transaction = await wompi_service.get_transaction_by_reference(str(purchase.id))
+        
+        if transaction:
+            status = transaction.get("status")
+            wompi_id = transaction.get("id")
+            
+            if status == "APPROVED":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = wompi_id
+                session.add(purchase)
+                
+                # Notificar al usuario
+                note = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Pago verificado! Tu orden #{purchase.id} ha sido confirmada.",
+                    url="/my-purchases"
+                )
+                session.add(note)
+                session.commit()
+                return {"message": "Pago confirmado exitosamente", "status": "confirmed"}
+            
+            elif status == "DECLINED" or status == "ERROR":
+                 purchase.status = PurchaseStatus.FAILED
+                 session.add(purchase)
+                 session.commit()
+                 return {"message": "El pago fue rechazado", "status": "failed"}
+
+        return {"message": "Pago aún pendiente o no encontrado", "status": "pending"}
+        
+    except Exception as e:
+        print(f"Error verificando pago móvil: {e}")
+        raise HTTPException(500, str(e))
+
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
-        
-        # Carga segura con options para evitar errores de Lazy Loading
         purchases = session.exec(
             select(PurchaseModel)
             .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
@@ -725,29 +765,21 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
             items_dto = []
             for item in p.items:
                 img = ""
-                # Lógica segura para obtener imagen
                 try:
                     if item.blog_post:
                         variant_img = ""
                         if item.blog_post.variants and item.selected_variant:
                              target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
-                             if target_variant and target_variant.get("image_urls"): 
-                                 variant_img = target_variant["image_urls"][0]
+                             if target_variant and target_variant.get("image_urls"): variant_img = target_variant["image_urls"][0]
                         img_path = variant_img or item.blog_post.main_image_url_variant or ""
                         if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
                              first_v = item.blog_post.variants[0]
                              if isinstance(first_v, dict) and first_v.get("image_urls"):
                                  img_path = first_v["image_urls"][0]
                         img = get_full_image_url(img_path)
-                except Exception:
-                    img = ""
+                except: img = ""
 
-                items_dto.append(PurchaseItemDTO(
-                    title=item.blog_post.title if item.blog_post else "Producto", 
-                    quantity=item.quantity, 
-                    price=item.price_at_purchase, 
-                    image_url=img
-                ))
+                items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
             
             estimated_str = None
             can_confirm = False
@@ -764,18 +796,11 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         tracking_msg = "En camino"
                 elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
                      tracking_msg = "Esperando confirmación del vendedor"
-            except Exception:
-                tracking_msg = ""
+            except: tracking_msg = ""
 
             history.append(PurchaseHistoryDTO(
-                id=p.id, 
-                date=p.purchase_date.strftime('%d-%m-%Y'), 
-                status=p.status.value, 
-                total=fmt_price(p.total_price), 
-                items=items_dto,
-                estimated_delivery=estimated_str,
-                can_confirm_delivery=can_confirm,
-                tracking_message=tracking_msg
+                id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), 
+                items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg
             ))
         return history
     except Exception as e:
@@ -787,27 +812,14 @@ async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Sessi
     try:
         user_info = get_user_info(session, user_id)
         purchase = session.get(PurchaseModel, purchase_id)
-        
-        if not purchase or purchase.userinfo_id != user_info.id:
-            raise HTTPException(404, "Compra no encontrada")
-            
-        if purchase.status != PurchaseStatus.SHIPPED:
-             raise HTTPException(400, "La compra no está en estado 'Enviado'")
-             
+        if not purchase or purchase.userinfo_id != user_info.id: raise HTTPException(404, "Compra no encontrada")
+        if purchase.status != PurchaseStatus.SHIPPED: raise HTTPException(400, "La compra no está en estado 'Enviado'")
         purchase.status = PurchaseStatus.DELIVERED
         purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
         session.add(purchase)
-        
-        note = NotificationModel(
-            userinfo_id=user_info.id,
-            message=f"Has confirmado la entrega del pedido #{purchase.id}. ¡Gracias!",
-            url="/my-purchases"
-        )
+        note = NotificationModel(userinfo_id=user_info.id, message=f"Has confirmado la entrega del pedido #{purchase.id}. ¡Gracias!", url="/my-purchases")
         session.add(note)
         session.commit()
-        
         return {"message": "Entrega confirmada exitosamente"}
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except HTTPException as he: raise he
+    except Exception as e: raise HTTPException(500, str(e))
