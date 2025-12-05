@@ -8,7 +8,7 @@ import math
 import pytz
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session
@@ -18,7 +18,8 @@ from likemodas.db.session import get_session
 from likemodas.models import (
     BlogPostModel, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
-    VerificationToken, PasswordResetToken, UserRole, NotificationModel
+    VerificationToken, PasswordResetToken, UserRole, NotificationModel,
+    SupportTicketModel, SupportMessageModel, TicketStatus
 )
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
@@ -29,8 +30,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
-# BASE_URL ahora se usa solo para imágenes, la factura se maneja relativa en la app
-BASE_URL = "https://api.likemodas.com" 
+BASE_URL = "https://api.likemodas.com"
 
 # --- DTOs ---
 class LoginRequest(BaseModel):
@@ -125,23 +125,56 @@ class PurchaseHistoryDTO(BaseModel):
     status: str
     total: str
     items: List[PurchaseItemDTO]
-    
-    # Campos de Rastreo y Acción
     estimated_delivery: Optional[str] = None
     can_confirm_delivery: bool = False
     tracking_message: Optional[str] = None
     retry_payment_url: Optional[str] = None
-    
-    # Campos de Envío (VISIBLES EN LA UI)
     shipping_name: Optional[str] = None
     shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     shipping_cost: Optional[str] = None
-
-    # Campos de Acción Final
-    invoice_path: Optional[str] = None  # Cambiado de _url a _path para ser relativo
-    return_path: Optional[str] = None   # Nuevo campo para la ruta de devolución
     can_return: bool = False
+
+# --- DTOs NUEVOS PARA FACTURA Y SOPORTE ---
+class InvoiceItemDTO(BaseModel):
+    name: str
+    quantity: int
+    price_unit: str
+    total: str
+    details: str
+
+class InvoiceDTO(BaseModel):
+    id: int
+    date: str
+    customer_name: str
+    customer_address: str
+    customer_email: str
+    subtotal: str
+    shipping: str
+    total: str
+    items: List[InvoiceItemDTO]
+
+class SupportMessageDTO(BaseModel):
+    id: int
+    content: str
+    is_me: bool # Si el mensaje es del usuario actual
+    date: str
+    author_name: str
+
+class SupportTicketDTO(BaseModel):
+    id: int
+    subject: str
+    status: str
+    messages: List[SupportMessageDTO]
+
+class CreateTicketRequest(BaseModel):
+    purchase_id: int
+    subject: str
+    initial_message: str
+
+class SendMessageRequest(BaseModel):
+    ticket_id: int
+    content: str
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -226,7 +259,6 @@ def get_full_image_url(path: str) -> str:
     return f"{BASE_URL}/_upload/{path}"
 
 def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel):
-    """Devuelve el stock al inventario si la compra falla."""
     for item in purchase.items:
         if item.blog_post and item.selected_variant:
             current_variants = list(item.blog_post.variants)
@@ -245,7 +277,6 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                     total_stock = sum(v.get("stock", 0) for v in item.blog_post.variants)
                     if total_stock > 0:
                         item.blog_post.publish_active = True
-                
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
@@ -264,14 +295,11 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
-        
         if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): 
             raise HTTPException(400, detail="Contraseña incorrecta")
-            
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
         if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
-        
         role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
         return UserResponse(id=user_info.id, username=user.username, email=user_info.email, role=role_str, token=str(user.id))
     except HTTPException as he: raise he
@@ -285,18 +313,14 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
         hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
         new_user = LocalUser(username=creds.username, password_hash=hashed_pw, enabled=True)
         session.add(new_user); session.commit(); session.refresh(new_user)
-       
         new_info = UserInfo(email=creds.email, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
         session.add(new_info); session.commit(); session.refresh(new_info)
-        
         token_str = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=24)
         vt = VerificationToken(token=token_str, userinfo_id=new_info.id, expires_at=expires)
         session.add(vt); session.commit()
-        
         try: send_verification_email(recipient_email=creds.email, token=token_str)
         except: pass 
-        
         return UserResponse(id=new_info.id, username=new_user.username, email=new_info.email, role="customer", token=str(new_user.id))
     except Exception as e: raise HTTPException(400, detail=str(e))
 
@@ -313,6 +337,144 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         except: pass
     return {"message": "OK"}
 
+# --- ENDPOINTS DE FACTURACIÓN Y SOPORTE (NUEVOS) ---
+
+@router.get("/purchases/{purchase_id}/invoice/{user_id}", response_model=InvoiceDTO)
+async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
+    """Obtiene los datos estructurados para renderizar la factura nativamente."""
+    try:
+        user_info = get_user_info(session, user_id)
+        purchase = session.get(PurchaseModel, purchase_id)
+        
+        if not purchase or purchase.userinfo_id != user_info.id:
+            raise HTTPException(404, "Factura no disponible")
+            
+        items_dto = []
+        for item in purchase.items:
+            if item.blog_post:
+                details = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
+                items_dto.append(InvoiceItemDTO(
+                    name=item.blog_post.title,
+                    quantity=item.quantity,
+                    price_unit=fmt_price(item.price_at_purchase),
+                    total=fmt_price(item.price_at_purchase * item.quantity),
+                    details=details
+                ))
+        
+        address = f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}"
+        
+        return InvoiceDTO(
+            id=purchase.id,
+            date=purchase.purchase_date.strftime('%d-%m-%Y'),
+            customer_name=purchase.shipping_name or "Cliente",
+            customer_address=address,
+            customer_email=user_info.email,
+            subtotal=fmt_price(purchase.total_price - (purchase.shipping_applied or 0)),
+            shipping=fmt_price(purchase.shipping_applied or 0),
+            total=fmt_price(purchase.total_price),
+            items=items_dto
+        )
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@router.get("/support/ticket/{purchase_id}/{user_id}", response_model=Optional[SupportTicketDTO])
+async def get_support_ticket(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
+    """Obtiene el ticket de soporte asociado a una compra."""
+    user_info = get_user_info(session, user_id)
+    
+    ticket = session.exec(
+        select(SupportTicketModel)
+        .where(SupportTicketModel.purchase_id == purchase_id, SupportTicketModel.buyer_id == user_info.id)
+    ).first()
+    
+    if not ticket:
+        return None # No hay ticket aún
+        
+    messages = session.exec(
+        select(SupportMessageModel)
+        .where(SupportMessageModel.ticket_id == ticket.id)
+        .order_by(SupportMessageModel.created_at)
+    ).all()
+    
+    msgs_dto = []
+    for m in messages:
+        # Determinar autor
+        author_name = "Tú"
+        if m.author_id != user_info.id:
+            author = session.get(UserInfo, m.author_id)
+            author_name = author.user.username if author and author.user else "Vendedor"
+            
+        msgs_dto.append(SupportMessageDTO(
+            id=m.id,
+            content=m.content,
+            is_me=(m.author_id == user_info.id),
+            date=m.created_at.strftime('%d/%m %I:%M %p'),
+            author_name=author_name
+        ))
+        
+    return SupportTicketDTO(
+        id=ticket.id,
+        subject=ticket.subject,
+        status=ticket.status.value,
+        messages=msgs_dto
+    )
+
+@router.post("/support/ticket")
+async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(..., alias="user_id"), session: Session = Depends(get_session)):
+    """Crea un nuevo ticket de soporte."""
+    user_info = get_user_info(session, user_id)
+    purchase = session.get(PurchaseModel, req.purchase_id)
+    
+    if not purchase or purchase.userinfo_id != user_info.id:
+        raise HTTPException(404, "Compra no válida")
+        
+    # Encontrar vendedor
+    seller_id = None
+    if purchase.items and purchase.items[0].blog_post:
+        seller_id = purchase.items[0].blog_post.userinfo_id
+    
+    if not seller_id: raise HTTPException(400, "Error al identificar vendedor")
+
+    ticket = SupportTicketModel(
+        purchase_id=purchase.id,
+        buyer_id=user_info.id,
+        seller_id=seller_id,
+        subject=req.subject
+    )
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    
+    # Mensaje inicial
+    msg = SupportMessageModel(
+        ticket_id=ticket.id,
+        author_id=user_info.id,
+        content=req.initial_message
+    )
+    session.add(msg)
+    session.commit()
+    return {"message": "Ticket creado"}
+
+@router.post("/support/message")
+async def send_support_message(req: SendMessageRequest, user_id: int = Query(..., alias="user_id"), session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    ticket = session.get(SupportTicketModel, req.ticket_id)
+    
+    if not ticket: raise HTTPException(404, "Ticket no encontrado")
+    if user_info.id not in [ticket.buyer_id, ticket.seller_id]:
+        raise HTTPException(403, "No autorizado")
+        
+    msg = SupportMessageModel(
+        ticket_id=ticket.id,
+        author_id=user_info.id,
+        content=req.content
+    )
+    session.add(msg)
+    session.commit()
+    return {"message": "Enviado"}
+
+# ... (Resto de endpoints de productos, compras, perfil, etc. se mantienen igual) ...
+# ... [Incluye aquí el resto del archivo mobile_api.py que ya tenías] ...
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
@@ -689,10 +851,8 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                                  img_path = first_v["image_urls"][0]
                         img = get_full_image_url(img_path)
                 except: img = ""
-
-                # Detalles de variante
+                
                 variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
-
                 items_dto.append(PurchaseItemDTO(
                     product_id=item.blog_post_id,
                     title=item.blog_post.title if item.blog_post else "Producto", 
@@ -707,8 +867,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
             can_return = False
             tracking_msg = None
             retry_url = None
-            invoice_path = None
-            return_path = None
 
             try:
                 if p.status == PurchaseStatus.SHIPPED:
@@ -717,12 +875,11 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
                         estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
                         tracking_msg = f"Llega aprox: {estimated_str}"
+                    else:
+                        tracking_msg = "En camino"
                 
                 elif p.status == PurchaseStatus.DELIVERED:
                      can_return = True
-                     # Usamos rutas relativas para el WebView
-                     invoice_path = f"/invoice?id={p.id}"
-                     return_path = f"/returns?purchase_id={p.id}"
 
                 elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
                      tracking_msg = "Esperando confirmación del vendedor"
@@ -751,8 +908,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                 can_confirm_delivery=can_confirm, 
                 tracking_message=tracking_msg, 
                 retry_payment_url=retry_url,
-                invoice_path=invoice_path,
-                return_path=return_path,
                 can_return=can_return,
                 shipping_name=p.shipping_name,
                 shipping_address=shipping_full_address,
@@ -780,3 +935,30 @@ async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Sessi
         return {"message": "Entrega confirmada exitosamente"}
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(500, str(e))
+
+@router.post("/products/{product_id}/reviews")
+async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
+    try:
+        user_info = get_user_info(session, body.user_id)
+        purchase_item = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blog_post_id == product_id)).first()
+        if not purchase_item: raise HTTPException(400, "Debes comprar para opinar.")
+        
+        existing = session.exec(select(CommentModel.id).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
+        if existing: raise HTTPException(400, "Ya opinaste.")
+        
+        username = "Usuario"
+        initial = "U"
+        if user_info.user:
+            username = user_info.user.username
+            initial = username[0].upper()
+
+        new_review = CommentModel(
+            userinfo_id=user_info.id, blog_post_id=product_id, rating=body.rating, content=body.comment,
+            author_username=username, author_initial=initial, created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+            purchase_item_id=purchase_item.id
+        )
+        session.add(new_review)
+        session.commit()
+        return {"message": "Opinión guardada"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
