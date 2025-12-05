@@ -111,10 +111,12 @@ class ProfileDTO(BaseModel):
     avatar_url: str
 
 class PurchaseItemDTO(BaseModel):
+    product_id: int # Necesario para navegar al detalle
     title: str
     quantity: int
     price: float
     image_url: str
+    variant_details: str # Para mostrar "Color: Azul, Talla: M"
 
 class PurchaseHistoryDTO(BaseModel):
     id: int
@@ -126,6 +128,11 @@ class PurchaseHistoryDTO(BaseModel):
     can_confirm_delivery: bool = False
     tracking_message: Optional[str] = None
     retry_payment_url: Optional[str] = None
+    # --- NUEVOS CAMPOS DE DIRECCIÓN ---
+    shipping_name: Optional[str] = None
+    shipping_address: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    shipping_cost: str = "$ 0"
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -213,7 +220,6 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
     """Devuelve el stock al inventario si la compra falla."""
     for item in purchase.items:
         if item.blog_post and item.selected_variant:
-            # Buscar la variante exacta
             current_variants = list(item.blog_post.variants)
             updated = False
             for i, v in enumerate(current_variants):
@@ -226,7 +232,6 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
             
             if updated:
                 item.blog_post.variants = current_variants
-                # Reactivar publicación si estaba oculta por falta de stock
                 if not item.blog_post.publish_active:
                     total_stock = sum(v.get("stock", 0) for v in item.blog_post.variants)
                     if total_stock > 0:
@@ -476,7 +481,6 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         if not address or address.userinfo_id != user_info.id: raise HTTPException(400, "Dirección no válida")
 
         product_ids = [item.product_id for item in req.items]
-        # BLOQUEO DE FILAS para asegurar consistencia de stock
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()).all()
         post_map = {p.id: p for p in db_posts}
         
@@ -495,17 +499,14 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
             
             seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
             
-            # VALIDACIÓN Y DESCUENTO DE STOCK
             selected_variant = {}
             if item.variant_id and post.variants:
                 target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
                 if target:
-                    # Aquí es donde ocurre la magia del stock
                     current_stock = target.get("stock", 0)
                     if current_stock < item.quantity:
                         raise HTTPException(400, f"Stock insuficiente para {post.title}")
                     
-                    # Actualizamos el stock en la estructura JSONB
                     new_variants = list(post.variants)
                     for i, v in enumerate(new_variants):
                          if v.get("variant_uuid") == item.variant_id:
@@ -516,7 +517,6 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
                     post.variants = new_variants
                     sqlalchemy.orm.attributes.flag_modified(post, "variants")
                     
-                    # Si el stock total baja a 0, pausamos la publicación
                     total_stock = sum(v.get("stock", 0) for v in post.variants)
                     if total_stock <= 0:
                         post.publish_active = False
@@ -581,7 +581,6 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
                 session.add(new_purchase); session.commit()
             else:
                 new_purchase.status = PurchaseStatus.FAILED; session.add(new_purchase); session.commit()
-                # RESTAURAR STOCK POR FALLO
                 restore_stock_for_failed_purchase(session, new_purchase)
                 session.commit()
                 raise HTTPException(500, "Error Wompi")
@@ -592,171 +591,84 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         print(f"Checkout error: {e}")
         raise HTTPException(500, f"Error procesando compra: {str(e)}")
 
-@router.post("/products/{product_id}/reviews")
-async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
+@router.post("/purchases/confirm_wompi_transaction")
+async def confirm_wompi_transaction(transaction_id: str = Body(..., embed=True), session: Session = Depends(get_session)):
     try:
-        user_info = get_user_info(session, body.user_id)
-        purchase_item = session.exec(select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blog_post_id == product_id)).first()
-        if not purchase_item: raise HTTPException(400, "Debes comprar para opinar.")
+        tx_data = await wompi_service.get_wompi_transaction_details(transaction_id)
         
-        existing = session.exec(select(CommentModel.id).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == product_id)).first()
-        if existing: raise HTTPException(400, "Ya opinaste.")
+        if not tx_data:
+            raise HTTPException(404, "Transacción no encontrada en Wompi")
+            
+        status = tx_data.get("status")
+        payment_link_id = tx_data.get("payment_link_id")
         
-        username = "Usuario"
-        initial = "U"
-        if user_info.user:
-            username = user_info.user.username
-            initial = username[0].upper()
+        if not payment_link_id:
+             raise HTTPException(400, "La transacción no tiene un link de pago asociado")
 
-        new_review = CommentModel(
-            userinfo_id=user_info.id, blog_post_id=product_id, rating=body.rating, content=body.comment,
-            author_username=username, author_initial=initial, created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
-            purchase_item_id=purchase_item.id
-        )
-        session.add(new_review)
-        session.commit()
-        return {"message": "Opinión guardada"}
+        purchase = session.exec(select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)).one_or_none()
+        
+        if not purchase:
+            raise HTTPException(404, "No se encontró una compra para este pago")
+            
+        if status == "APPROVED":
+            if purchase.status != PurchaseStatus.CONFIRMED:
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = transaction_id
+                session.add(purchase)
+                
+                note = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Pago confirmado! Tu orden #{purchase.id} ha sido procesada.",
+                    url="/my-purchases"
+                )
+                session.add(note)
+                session.commit()
+                return {"message": "Pago confirmado exitosamente", "status": "confirmed"}
+            else:
+                 return {"message": "El pago ya estaba confirmado", "status": "confirmed"}
+                 
+        elif status == "DECLINED" or status == "ERROR" or status == "VOIDED":
+             if purchase.status == PurchaseStatus.PENDING_PAYMENT:
+                 purchase.status = PurchaseStatus.FAILED
+                 restore_stock_for_failed_purchase(session, purchase)
+                 session.add(purchase)
+                 session.commit()
+             return {"message": "El pago fue rechazado", "status": "failed"}
+             
+        return {"message": f"Estado de transacción: {status}", "status": "pending"}
+
+    except HTTPException as he: raise he
     except Exception as e:
+        print(f"Error confirmando transacción Wompi: {e}")
         raise HTTPException(500, str(e))
 
-@router.post("/products/{product_id}/toggle-save/{user_id}")
-async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    existing = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_info.id, SavedPostLink.blogpostmodel_id == product_id)).first()
-    if existing:
-        session.delete(existing); session.commit()
-        return {"message": "Producto eliminado de guardados", "is_saved": False}
-    else:
-        new_saved = SavedPostLink(userinfo_id=user_info.id, blogpostmodel_id=product_id)
-        session.add(new_saved); session.commit()
-        return {"message": "Producto guardado", "is_saved": True}
-
-@router.get("/profile/{user_id}", response_model=ProfileDTO)
-async def get_mobile_profile(user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    local_user = session.get(LocalUser, user_id)
-    avatar = get_full_image_url(user_info.avatar_url)
-    return ProfileDTO(username=local_user.username if local_user else "Usuario", email=user_info.email, phone=user_info.phone or "", avatar_url=avatar)
-
-@router.put("/profile/{user_id}")
-async def update_mobile_profile(user_id: int, phone: str, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    user_info.phone = phone
-    session.add(user_info); session.commit()
-    return {"message": "Perfil actualizado"}
-
-@router.get("/addresses/{user_id}", response_model=List[AddressDTO])
-async def get_addresses(user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
-    return [AddressDTO(id=a.id, name=a.name, phone=a.phone, city=a.city, neighborhood=a.neighborhood, address=a.address, is_default=a.is_default) for a in addresses]
-
-@router.post("/addresses/{user_id}")
-async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    if req.is_default:
-        existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
-        for addr in existing: addr.is_default = False; session.add(addr)
-    count = session.exec(select(sqlalchemy.func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).one()
-    is_def = req.is_default or (count == 0)
-    new_addr = ShippingAddressModel(userinfo_id=user_info.id, name=req.name, phone=req.phone, city=req.city, neighborhood=req.neighborhood, address=req.address, is_default=is_def)
-    session.add(new_addr); session.commit()
-    return {"message": "Dirección guardada"}
-
-@router.put("/addresses/{user_id}/set_default/{address_id}")
-async def set_default_address(user_id: int, address_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id)).all()
-    for addr in existing: addr.is_default = False; session.add(addr)
-    target = session.get(ShippingAddressModel, address_id)
-    if target and target.userinfo_id == user_info.id:
-        target.is_default = True; session.add(target); session.commit()
-        return {"message": "Dirección actualizada"}
-    raise HTTPException(404, "Dirección no encontrada")
-
-@router.post("/profile/{user_id}/change-password")
-async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
-    user = session.get(LocalUser, user_id)
-    if not user: raise HTTPException(404, "Usuario no encontrado")
-    if not bcrypt.checkpw(req.current_password.encode('utf-8'), user.password_hash): raise HTTPException(400, "Contraseña actual incorrecta")
-    user.password_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), bcrypt.gensalt())
-    session.add(user); session.commit()
-    return {"message": "Contraseña actualizada"}
-
-@router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
-async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    user_with_posts = session.exec(select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts)).where(UserInfo.id == user_info.id)).one()
-    saved_posts = user_with_posts.saved_posts
-    result = []
-    for p in saved_posts:
-        if not p.publish_active: continue
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
-        result.append(ProductListDTO(id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), image_url=get_full_image_url(img_path), category=p.category, description=p.content, is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping))
-    return result
-
-@router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
-async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
+@router.post("/purchases/{purchase_id}/verify_payment")
+async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
     try:
-        user_info = get_user_info(session, user_id)
-        default_addr = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_info.id, ShippingAddressModel.is_default == True)).first()
-        buyer_city = default_addr.city if default_addr else None
-        buyer_barrio = default_addr.neighborhood if default_addr else None
-        product_ids = [item.product_id for item in req.items]
-        if not product_ids: return CartSummaryResponse(subtotal=0, subtotal_formatted="$ 0", shipping=0, shipping_formatted="$ 0", total=0, total_formatted="$ 0", address_id=default_addr.id if default_addr else None)
-        db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
-        post_map = {p.id: p for p in db_posts}
-        subtotal_base = 0.0
-        items_for_shipping = []
-        cart_items_response = []
-        for item in req.items:
-            post = post_map.get(item.product_id)
-            if post:
-                price = post.price
-                if not post.price_includes_iva: price = price * 1.19
-                subtotal_base += price * item.quantity
-                items_for_shipping.append({"post": post, "quantity": item.quantity})
-                variant_image_url = post.main_image_url_variant
-                if item.variant_id:
-                     target_variant = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
-                     if target_variant and target_variant.get("image_urls"): variant_image_url = target_variant["image_urls"][0]
-                if not variant_image_url and post.variants and post.variants[0].get("image_urls"): variant_image_url = post.variants[0]["image_urls"][0]
-                cart_items_response.append(CartItemResponse(product_id=post.id, variant_id=item.variant_id, title=post.title, price_formatted=fmt_price(price), quantity=item.quantity, image_url=get_full_image_url(variant_image_url)))
-        subtotal_con_iva = subtotal_base
-        free_shipping_achieved = False
-        moda_completa_items = [x["post"] for x in items_for_shipping if x["post"].is_moda_completa_eligible]
-        if moda_completa_items:
-            valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
-            if valid_thresholds and subtotal_con_iva >= max(valid_thresholds): free_shipping_achieved = True
-        final_shipping_cost = 0.0
-        if not free_shipping_achieved and default_addr:
-            seller_groups = defaultdict(list)
-            for x in items_for_shipping:
-                post = x["post"]; qty = x["quantity"]
-                for _ in range(qty): seller_groups[post.userinfo_id].append(post)
-            seller_ids = list(seller_groups.keys())
-            sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
-            seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-            for seller_id, items_from_seller in seller_groups.items():
-                combinable_items = [p for p in items_from_seller if p.combines_shipping]
-                individual_items = [p for p in items_from_seller if not p.combines_shipping]
-                seller_data = seller_data_map.get(seller_id)
-                seller_city = seller_data.get("city") if seller_data else None
-                seller_barrio = seller_data.get("barrio") if seller_data else None
-                for individual_item in individual_items:
-                    cost = calculate_dynamic_shipping(base_cost=individual_item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
-                    final_shipping_cost += cost
-                if combinable_items:
-                    highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
-                    limit = min([p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1])
-                    num_fees = math.ceil(len(combinable_items) / limit)
-                    group_shipping_fee = calculate_dynamic_shipping(base_cost=highest_base_cost, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio, seller_city=seller_city, buyer_city=buyer_city)
-                    final_shipping_cost += (group_shipping_fee * num_fees)
-        grand_total = subtotal_con_iva + final_shipping_cost
-        return CartSummaryResponse(subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva), shipping=final_shipping_cost, shipping_formatted=fmt_price(final_shipping_cost), total=grand_total, total_formatted=fmt_price(grand_total), address_id=default_addr.id if default_addr else None, items=cart_items_response)
-    except Exception as e:
-        print(f"Error calculando carrito: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        purchase = session.get(PurchaseModel, purchase_id)
+        if not purchase: raise HTTPException(404, "Orden no encontrada")
+        if purchase.status != PurchaseStatus.PENDING_PAYMENT: return {"message": "Orden procesada", "status": purchase.status}
+        
+        transaction = await wompi_service.get_transaction_by_reference(str(purchase.id))
+        if transaction:
+            status = transaction.get("status")
+            if status == "APPROVED":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = transaction.get("id")
+                session.add(purchase)
+                session.commit()
+                return {"message": "Confirmado", "status": "confirmed"}
+            elif status in ["DECLINED", "ERROR", "VOIDED"]:
+                 purchase.status = PurchaseStatus.FAILED
+                 restore_stock_for_failed_purchase(session, purchase)
+                 session.add(purchase)
+                 session.commit()
+                 return {"message": "Fallido", "status": "failed"}
+        
+        return {"message": "Pendiente", "status": "pending"}
+    except Exception as e: raise HTTPException(500, str(e))
 
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
@@ -788,7 +700,17 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         img = get_full_image_url(img_path)
                 except: img = ""
 
-                items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
+                # Formatear detalles de variante
+                variant_details = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
+                
+                items_dto.append(PurchaseItemDTO(
+                    product_id=item.blog_post_id,
+                    title=item.blog_post.title if item.blog_post else "Producto", 
+                    quantity=item.quantity, 
+                    price=item.price_at_purchase, 
+                    image_url=img,
+                    variant_details=variant_details
+                ))
             
             estimated_str = None
             can_confirm = False
@@ -806,24 +728,29 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                 elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
                      tracking_msg = "Esperando confirmación del vendedor"
                 
-                # --- LÓGICA DE AUTO-LIMPIEZA Y REINTENTO ---
                 elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
                     time_diff = datetime.now(timezone.utc) - p.purchase_date
-                    # Si han pasado más de 15 minutos, se cancela y se devuelve stock
                     if time_diff > timedelta(minutes=15):
                         p.status = PurchaseStatus.FAILED
                         restore_stock_for_failed_purchase(session, p)
                         session.add(p)
                         session.commit()
-                    # Si es reciente y tiene link, se envía para reintentar
                     elif p.wompi_payment_link_id:
                         retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
 
             except: tracking_msg = ""
 
+            # Preparar datos de envío para el DTO
+            shipping_full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}" if p.shipping_address else "Dirección no disponible"
+
             history.append(PurchaseHistoryDTO(
                 id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), 
-                items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg, retry_payment_url=retry_url
+                items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg, 
+                retry_payment_url=retry_url,
+                shipping_name=p.shipping_name,
+                shipping_address=shipping_full_address,
+                shipping_phone=p.shipping_phone,
+                shipping_cost=fmt_price(p.shipping_applied or 0.0)
             ))
         return history
     except Exception as e:
@@ -845,92 +772,4 @@ async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Sessi
         session.commit()
         return {"message": "Entrega confirmada exitosamente"}
     except HTTPException as he: raise he
-    except Exception as e: raise HTTPException(500, str(e))
-
-# --- ENDPOINT ACTUALIZADO: Confirma pago por Transacción ID ---
-@router.post("/purchases/confirm_wompi_transaction")
-async def confirm_wompi_transaction(transaction_id: str = Body(..., embed=True), session: Session = Depends(get_session)):
-    """
-    Recibe un ID de transacción de Wompi, lo valida y actualiza la compra correspondiente.
-    """
-    try:
-        # 1. Consultar transacción en Wompi
-        tx_data = await wompi_service.get_wompi_transaction_details(transaction_id)
-        
-        if not tx_data:
-            raise HTTPException(404, "Transacción no encontrada en Wompi")
-            
-        status = tx_data.get("status")
-        payment_link_id = tx_data.get("payment_link_id")
-        
-        if not payment_link_id:
-             raise HTTPException(400, "La transacción no tiene un link de pago asociado")
-
-        # 2. Buscar compra por payment_link_id
-        purchase = session.exec(select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)).one_or_none()
-        
-        if not purchase:
-            raise HTTPException(404, "No se encontró una compra para este pago")
-            
-        # 3. Actualizar estado
-        if status == "APPROVED":
-            if purchase.status != PurchaseStatus.CONFIRMED:
-                purchase.status = PurchaseStatus.CONFIRMED
-                purchase.confirmed_at = datetime.now(timezone.utc)
-                purchase.wompi_transaction_id = transaction_id
-                session.add(purchase)
-                
-                note = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=f"¡Pago confirmado! Tu orden #{purchase.id} ha sido procesada.",
-                    url="/my-purchases"
-                )
-                session.add(note)
-                session.commit()
-                return {"message": "Pago confirmado exitosamente", "status": "confirmed"}
-            else:
-                 return {"message": "El pago ya estaba confirmado", "status": "confirmed"}
-                 
-        elif status == "DECLINED" or status == "ERROR" or status == "VOIDED":
-             # Si falló y estaba pendiente, la marcamos fallida y DEVOLVEMOS STOCK
-             if purchase.status == PurchaseStatus.PENDING_PAYMENT:
-                 purchase.status = PurchaseStatus.FAILED
-                 restore_stock_for_failed_purchase(session, purchase)
-                 session.add(purchase)
-                 session.commit()
-             return {"message": "El pago fue rechazado", "status": "failed"}
-             
-        return {"message": f"Estado de transacción: {status}", "status": "pending"}
-
-    except HTTPException as he: raise he
-    except Exception as e:
-        print(f"Error confirmando transacción Wompi: {e}")
-        raise HTTPException(500, str(e))
-
-# Mantenemos el endpoint de verificación por ID de compra como respaldo
-@router.post("/purchases/{purchase_id}/verify_payment")
-async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
-    try:
-        purchase = session.get(PurchaseModel, purchase_id)
-        if not purchase: raise HTTPException(404, "Orden no encontrada")
-        if purchase.status != PurchaseStatus.PENDING_PAYMENT: return {"message": "Orden procesada", "status": purchase.status}
-        
-        transaction = await wompi_service.get_transaction_by_reference(str(purchase.id))
-        if transaction:
-            status = transaction.get("status")
-            if status == "APPROVED":
-                purchase.status = PurchaseStatus.CONFIRMED
-                purchase.confirmed_at = datetime.now(timezone.utc)
-                purchase.wompi_transaction_id = transaction.get("id")
-                session.add(purchase)
-                session.commit()
-                return {"message": "Confirmado", "status": "confirmed"}
-            elif status in ["DECLINED", "ERROR", "VOIDED"]:
-                 purchase.status = PurchaseStatus.FAILED
-                 restore_stock_for_failed_purchase(session, purchase)
-                 session.add(purchase)
-                 session.commit()
-                 return {"message": "Fallido", "status": "failed"}
-        
-        return {"message": "Pendiente", "status": "pending"}
     except Exception as e: raise HTTPException(500, str(e))
