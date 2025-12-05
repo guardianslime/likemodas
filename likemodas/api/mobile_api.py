@@ -122,11 +122,10 @@ class PurchaseHistoryDTO(BaseModel):
     status: str
     total: str
     items: List[PurchaseItemDTO]
-    # Nuevos campos para gestión de estado
     estimated_delivery: Optional[str] = None
     can_confirm_delivery: bool = False
     tracking_message: Optional[str] = None
-    retry_payment_url: Optional[str] = None  # <--- NUEVO CAMPO
+    retry_payment_url: Optional[str] = None # <--- CAMPO PARA REANUDAR PAGO
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -186,6 +185,10 @@ class CheckoutResponse(BaseModel):
     message: str
     payment_url: Optional[str] = None
     purchase_id: Optional[int] = None
+
+class GenericStatusResponse(BaseModel):
+    message: str
+    status: Optional[str] = None
 
 # --- HELPERS ---
 def get_user_info(session: Session, user_id: int) -> UserInfo:
@@ -701,13 +704,52 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- ENDPOINT ACTUALIZADO: Obtener Compras + Auto-limpieza ---
+# --- ENDPOINT DE VERIFICACIÓN Y REINTENTO ---
+@router.post("/purchases/{purchase_id}/verify_payment")
+async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
+    """
+    Verifica activamente el estado de un pago. Si falló, lo marca como tal para permitir reintento.
+    """
+    try:
+        purchase = session.get(PurchaseModel, purchase_id)
+        if not purchase:
+            raise HTTPException(404, "Orden no encontrada")
+            
+        if purchase.status != PurchaseStatus.PENDING_PAYMENT:
+            return {"message": "La orden ya no está pendiente", "status": purchase.status}
+            
+        # Llamada al servicio de Wompi
+        transaction = await wompi_service.get_transaction_by_reference(str(purchase.id))
+        
+        if transaction:
+            status = transaction.get("status")
+            wompi_id = transaction.get("id")
+            
+            if status == "APPROVED":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = wompi_id
+                session.add(purchase)
+                session.commit()
+                return {"message": "Pago confirmado", "status": "confirmed"}
+            
+            elif status == "DECLINED" or status == "ERROR" or status == "VOIDED":
+                 purchase.status = PurchaseStatus.FAILED
+                 session.add(purchase)
+                 session.commit()
+                 return {"message": "Pago fallido", "status": "failed"}
+        
+        # Si no hay transacción o sigue pendiente, pero el usuario está verificando manualmente:
+        return {"message": "Pago aún pendiente", "status": "pending"}
+        
+    except Exception as e:
+        print(f"Error verificando pago móvil: {e}")
+        raise HTTPException(500, str(e))
+
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
-        
-        # Consulta optimizada
         purchases = session.exec(
             select(PurchaseModel)
             .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
@@ -734,12 +776,7 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         img = get_full_image_url(img_path)
                 except: img = ""
 
-                items_dto.append(PurchaseItemDTO(
-                    title=item.blog_post.title if item.blog_post else "Producto", 
-                    quantity=item.quantity, 
-                    price=item.price_at_purchase, 
-                    image_url=img
-                ))
+                items_dto.append(PurchaseItemDTO(title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img))
             
             estimated_str = None
             can_confirm = False
@@ -753,38 +790,25 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
                         estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
                         tracking_msg = f"Llega aprox: {estimated_str}"
-                    else:
-                        tracking_msg = "En camino"
                 
                 elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
                      tracking_msg = "Esperando confirmación del vendedor"
                 
-                # --- LÓGICA DE AUTO-LIMPIEZA Y REINTENTO ---
+                # --- LÓGICA DE REINTENTO ---
                 elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
                     time_diff = datetime.now(timezone.utc) - p.purchase_date
-                    # Si pasaron 15 minutos, marca como fallida
                     if time_diff > timedelta(minutes=15):
                         p.status = PurchaseStatus.FAILED
                         session.add(p)
                         session.commit()
-                    else:
-                        # Si es reciente, permite reintentar
-                        if p.wompi_payment_link_id:
-                            retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
+                    elif p.wompi_payment_link_id:
+                        retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
 
-            except Exception as e:
-                tracking_msg = ""
+            except: tracking_msg = ""
 
             history.append(PurchaseHistoryDTO(
-                id=p.id, 
-                date=p.purchase_date.strftime('%d-%m-%Y'), 
-                status=p.status.value, 
-                total=fmt_price(p.total_price), 
-                items=items_dto, 
-                estimated_delivery=estimated_str, 
-                can_confirm_delivery=can_confirm, 
-                tracking_message=tracking_msg,
-                retry_payment_url=retry_url
+                id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), 
+                items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg, retry_payment_url=retry_url
             ))
         return history
     except Exception as e:
@@ -807,55 +831,3 @@ async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Sessi
         return {"message": "Entrega confirmada exitosamente"}
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(500, str(e))
-
-# --- ENDPOINT VERIFICAR PAGO (REFORZADO) ---
-@router.post("/purchases/{purchase_id}/verify_payment")
-async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
-    """
-    Fuerza la verificación con Wompi. Si falla o no encuentra, marca la orden como FALLIDA
-    para que el usuario pueda intentarlo de nuevo sin basura.
-    """
-    try:
-        purchase = session.get(PurchaseModel, purchase_id)
-        if not purchase:
-            raise HTTPException(404, "Orden no encontrada")
-            
-        if purchase.status != PurchaseStatus.PENDING_PAYMENT:
-            return {"message": "La orden ya no está pendiente", "status": purchase.status}
-            
-        # Llamada al servicio de Wompi (debe estar importado y configurado)
-        transaction = await wompi_service.get_transaction_by_reference(str(purchase.id))
-        
-        if transaction:
-            status = transaction.get("status")
-            wompi_id = transaction.get("id")
-            
-            if status == "APPROVED":
-                purchase.status = PurchaseStatus.CONFIRMED
-                purchase.confirmed_at = datetime.now(timezone.utc)
-                purchase.wompi_transaction_id = wompi_id
-                session.add(purchase)
-                
-                note = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=f"¡Pago verificado! Tu orden #{purchase.id} ha sido confirmada.",
-                    url="/my-purchases"
-                )
-                session.add(note)
-                session.commit()
-                return {"message": "Pago confirmado exitosamente", "status": "confirmed"}
-            
-            elif status == "DECLINED" or status == "ERROR" or status == "VOIDED":
-                 purchase.status = PurchaseStatus.FAILED
-                 session.add(purchase)
-                 session.commit()
-                 return {"message": "El pago fue rechazado o cancelado", "status": "failed"}
-        
-        # Si no hay transacción en Wompi o sigue pendiente pero queremos limpiar:
-        # En este caso, solo reportamos pendiente. La limpieza automática por tiempo
-        # se hace en `get_mobile_purchases`.
-        return {"message": "Pago aún pendiente o no encontrado", "status": "pending"}
-        
-    except Exception as e:
-        print(f"Error verificando pago móvil: {e}")
-        raise HTTPException(500, str(e))

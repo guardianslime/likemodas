@@ -10,7 +10,6 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000")
 async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Optional[Tuple[str, str]]:
     """
     Crea un enlace de pago en Wompi.
-    Devuelve una tupla con (checkout_url, payment_link_id) o None si falla.
     """
     if not WOMPI_PRIVATE_KEY:
         print("Error: La variable de entorno WOMPI_PRIVATE_KEY_ACTIVE no está configurada.")
@@ -21,12 +20,13 @@ async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Opt
     payload = {
         "name": f"Compra #{purchase_id} en Likemodas",
         "description": f"Pago por productos de la compra #{purchase_id}",
-        "single_use": True,
+        "single_use": False, # Cambiado a False para permitir reintentos si el usuario falla la primera vez
         "collect_shipping": False,
         "amount_in_cents": int(total_price * 100),
         "currency": "COP",
-        "redirect_url": f"{APP_BASE_URL}/my-purchases", # URL de retorno (importante para web)
-        "reference": str(purchase_id), # Referencia única = ID de compra
+        # URL a la que Wompi redirige al usuario al terminar
+        "redirect_url": f"{APP_BASE_URL}/my-purchases", 
+        "reference": str(purchase_id), 
     }
 
     async with httpx.AsyncClient() as client:
@@ -38,6 +38,7 @@ async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Opt
             payment_link_id = response_data.get("id")
             
             if payment_link_id:
+                # Construimos la URL web para el WebView
                 checkout_url = f"https://checkout.wompi.co/l/{payment_link_id}"
                 return checkout_url, payment_link_id
             else:
@@ -69,8 +70,10 @@ async def get_wompi_transaction_details(transaction_id: str) -> Optional[dict]:
         
 async def get_transaction_by_reference(reference: str) -> Optional[dict]:
     """
-    [CORREGIDO] Busca en TODAS las transacciones asociadas a una referencia (ID de compra)
-    y devuelve la primera que esté APROBADA. Si no hay aprobadas, devuelve la última.
+    [CORRECCIÓN CRÍTICA]
+    Busca en TODAS las transacciones asociadas a una referencia (ID de compra).
+    Devuelve la transacción APROBADA si existe.
+    Si no hay aprobadas, devuelve la más reciente.
     """
     if not WOMPI_PRIVATE_KEY:
         return None
@@ -88,13 +91,13 @@ async def get_transaction_by_reference(reference: str) -> Optional[dict]:
             if not transactions:
                 return None
             
-            # --- LÓGICA CORREGIDA ---
-            # Iterar para buscar una aprobada
+            # 1. Prioridad: Buscar si alguna fue APROBADA
             for tx in transactions:
                 if tx.get("status") == "APPROVED":
                     return tx
             
-            # Si ninguna está aprobada, devolvemos la primera (la más reciente usualmente) para ver el error
+            # 2. Si ninguna fue aprobada, devolvemos la primera de la lista (la más reciente)
+            # para que el sistema vea el error (DECLINED, ERROR, etc)
             return transactions[0]
 
         except Exception as e:
