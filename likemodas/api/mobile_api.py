@@ -33,6 +33,7 @@ router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
 BASE_URL = "https://api.likemodas.com"
 
 # --- DTOs ---
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -247,12 +248,14 @@ class GenericStatusResponse(BaseModel):
     status: Optional[str] = None
 
 # --- HELPERS ---
+
 def get_user_info(session: Session, user_id: int) -> UserInfo:
     user_info = session.exec(
         select(UserInfo)
         .options(joinedload(UserInfo.user))
         .where(UserInfo.user_id == user_id)
     ).one_or_none()
+    
     if not user_info: 
         raise HTTPException(404, "Usuario no encontrado")
     return user_info
