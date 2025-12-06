@@ -626,64 +626,64 @@ async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = 
     except Exception as e: 
         raise HTTPException(500, str(e))
 
+# --- ENDPOINT DETALLE COMPRA SEGURO (CORREGIDO PARA EL ERROR DEL CHAT) ---
 @router.get("/purchases/{purchase_id}/detail/{user_id}", response_model=PurchaseHistoryDTO)
 async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
         
-        # 1. Carga segura con session.get()
-        purchase = session.get(PurchaseModel, purchase_id)
+        # 1. Carga segura con select e INCLUYENDO RELACIONES DESDE EL PRINCIPIO
+        # Esto es lo que faltaba: cargar blog_post para evitar que se desconecte la sesión
+        purchase = session.exec(
+            select(PurchaseModel)
+            .options(
+                joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+            )
+            .where(PurchaseModel.id == purchase_id)
+        ).unique().first()
         
         if not purchase: 
             raise HTTPException(404, "Compra no encontrada")
 
-        # 2. Refrescar para asegurar que las relaciones se carguen
-        session.refresh(purchase)
-
-        # 3. Validaciones de propiedad
+        # 2. Validar permisos
         is_buyer = purchase.userinfo_id == user_info.id
         is_seller = False
         
-        # Verificación segura del vendedor (evitando errores si el producto se borró)
+        # Verificación segura del vendedor
         if not is_buyer and purchase.items:
              for item in purchase.items:
-                 try:
-                     blog_post = session.get(BlogPostModel, item.blog_post_id)
-                     if blog_post and blog_post.userinfo_id == user_info.id:
-                         is_seller = True
-                         break
-                 except: continue
+                 if item.blog_post and item.blog_post.userinfo_id == user_info.id:
+                     is_seller = True
+                     break
         
         if not is_buyer and not is_seller and user_info.role != UserRole.ADMIN:
              raise HTTPException(403, "No tienes permiso para ver esta compra")
 
-        # 4. Construcción del DTO protegida contra datos nulos
+        # 3. Construir DTO de forma robusta
         items_dto = []
         if purchase.items:
             for item in purchase.items:
                 img = ""
-                title = "Producto no disponible"
+                title = "Producto no disponible" 
                 
-                try:
-                    blog_post = session.get(BlogPostModel, item.blog_post_id)
-                    if blog_post:
-                        title = blog_post.title
-                        
+                # Carga segura de datos del producto
+                if item.blog_post:
+                    title = item.blog_post.title
+                    try:
                         variant_img = ""
-                        if blog_post.variants and item.selected_variant:
-                            target_variant = next((v for v in blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                        if item.blog_post.variants and item.selected_variant:
+                            target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
                             if target_variant and target_variant.get("image_urls"): 
                                 variant_img = target_variant["image_urls"][0]
                         
-                        img_path = variant_img or blog_post.main_image_url_variant or ""
-                        if not img_path and blog_post.variants and isinstance(blog_post.variants, list):
-                            first_v = blog_post.variants[0]
+                        img_path = variant_img or item.blog_post.main_image_url_variant or ""
+                        if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
+                            first_v = item.blog_post.variants[0]
                             if isinstance(first_v, dict) and first_v.get("image_urls"): 
                                 img_path = first_v["image_urls"][0]
-                        
                         img = get_full_image_url(img_path)
-                except: 
-                    img = ""
+                    except: 
+                        img = ""
                 
                 variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
                 
@@ -718,8 +718,8 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
     except HTTPException as he: 
         raise he
     except Exception as e:
+        print(f"Error en detalle compra {purchase_id}: {e}")
         # En lugar de 500, lanzamos 404 para que la app no muestre la pantalla roja
-        print(f"Error recuperando detalle de compra {purchase_id}: {e}")
         raise HTTPException(404, f"No se pudo cargar el detalle: {str(e)}")
 
 @router.get("/support/ticket/{purchase_id}/{user_id}", response_model=Optional[SupportTicketDTO])
@@ -777,7 +777,12 @@ async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(.
     try:
         user_info = get_user_info(session, user_id)
         
-        purchase = session.get(PurchaseModel, req.purchase_id)
+        # Carga segura con relaciones para encontrar al vendedor
+        purchase = session.exec(
+            select(PurchaseModel)
+            .options(joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post))
+            .where(PurchaseModel.id == req.purchase_id)
+        ).unique().first()
         
         if not purchase or purchase.userinfo_id != user_info.id: 
             raise HTTPException(404, "Compra no válida")
@@ -785,9 +790,8 @@ async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(.
         seller_id = None
         if purchase.items:
             for item in purchase.items:
-                blog_post = session.get(BlogPostModel, item.blog_post_id)
-                if blog_post: 
-                    seller_id = blog_post.userinfo_id
+                if item.blog_post: 
+                    seller_id = item.blog_post.userinfo_id
                     break
         
         if not seller_id: 
@@ -858,7 +862,8 @@ async def send_support_message(req: SendMessageRequest, user_id: int = Query(...
     except Exception as e:
         raise HTTPException(500, str(e))
 
-# ... (El resto de endpoints de checkout, carrito, etc. se mantienen exactamente igual que antes)
+# ... (El resto de endpoints de checkout, carrito, etc. se mantienen igual)
+
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
 async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
     try:
@@ -1089,6 +1094,8 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
     except Exception as e:
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- OTROS ENDPOINTS (Profile, Address, etc.) ---
 
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
