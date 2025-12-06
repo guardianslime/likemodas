@@ -32,8 +32,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
 BASE_URL = "https://api.likemodas.com"
 
-# --- DTOs (Modelos de Transferencia de Datos) ---
-
+# --- DTOs ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -139,9 +138,9 @@ class PurchaseHistoryDTO(BaseModel):
     shipping_phone: Optional[str] = None
     shipping_cost: Optional[str] = None
 
-    # Campos de Acción Final (Factura y Devolución)
+    # Campos de Acción Final
     invoice_path: Optional[str] = None
-    return_path: Optional[str] = None 
+    return_path: Optional[str] = None
     can_return: bool = False
 
 class InvoiceItemDTO(BaseModel):
@@ -248,7 +247,6 @@ class GenericStatusResponse(BaseModel):
     status: Optional[str] = None
 
 # --- HELPERS ---
-
 def get_user_info(session: Session, user_id: int) -> UserInfo:
     user_info = session.exec(
         select(UserInfo)
@@ -260,16 +258,22 @@ def get_user_info(session: Session, user_id: int) -> UserInfo:
     return user_info
 
 def fmt_price(val): 
-    if val is None: return "$ 0"
+    if val is None: 
+        return "$ 0"
     return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
-    if not path: return ""
-    if path.startswith("http"): return path
+    if not path: 
+        return ""
+    if path.startswith("http"): 
+        return path
     return f"{BASE_URL}/_upload/{path}"
 
 def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel):
     """Devuelve el stock al inventario si la compra falla."""
+    if not purchase.items:
+        return
+
     for item in purchase.items:
         if item.blog_post and item.selected_variant:
             current_variants = list(item.blog_post.variants)
@@ -284,7 +288,6 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
             
             if updated:
                 item.blog_post.variants = current_variants
-                # Si estaba desactivado por stock, lo reactivamos
                 if not item.blog_post.publish_active:
                     total_stock = sum(v.get("stock", 0) for v in item.blog_post.variants)
                     if total_stock > 0:
@@ -339,7 +342,7 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
        
         new_info = UserInfo(email=creds.email, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
         session.add(new_info)
-        session.commit() 
+        session.commit()
         session.refresh(new_info)
         
         token_str = secrets.token_urlsafe(32)
@@ -420,7 +423,6 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- ENDPOINT DETALLE PRODUCTO (CORREGIDO) ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
@@ -438,7 +440,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     if local_user: 
                         author_name = local_user.username
                     seller_info_id = user_info.id
-            except: pass
+            except: 
+                pass
 
         main_img = p.main_image_url_variant
         all_images_set = set()
@@ -534,13 +537,15 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_id, PurchaseItemModel.blogpostmodel_id == p.id)).first()
                 already_reviewed = any(r.userinfo_id == user_id for r in db_reviews)
                 can_review = (has_bought is not None) and (not already_reviewed)
-            except: pass
+            except: 
+                pass
 
         date_created_str = ""
         try:
             if p.created_at: 
                 date_created_str = p.created_at.strftime("%d de %B del %Y")
-        except: pass
+        except: 
+            pass
 
         return ProductDetailDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
@@ -585,7 +590,7 @@ async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = 
             
         items_dto = []
         subtotal_base = 0.0
-        
+
         if purchase.items:
             for item in purchase.items:
                 if item.blog_post:
@@ -601,20 +606,24 @@ async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = 
         addr = "N/A"
         if purchase.shipping_address:
             parts = []
-            if purchase.shipping_address: parts.append(purchase.shipping_address)
-            if purchase.shipping_neighborhood: parts.append(purchase.shipping_neighborhood)
-            if purchase.shipping_city: parts.append(purchase.shipping_city)
-            addr = ", ".join(parts)
+            if purchase.shipping_address: 
+                parts.append(purchase.shipping_address)
+            if purchase.shipping_neighborhood: 
+                parts.append(purchase.shipping_neighborhood)
+            if purchase.shipping_city: 
+                parts.append(purchase.shipping_city)
+            if parts:
+                addr = ", ".join(parts)
         
         return InvoiceDTO(
-            id=purchase.id, 
+            id=purchase.id,
             date=purchase.purchase_date.strftime('%d-%m-%Y'),
             customer_name=purchase.shipping_name or "Cliente",
-            customer_address=addr, 
+            customer_address=addr,
             customer_email=user_info.email,
-            subtotal=fmt_price(subtotal_base), 
+            subtotal=fmt_price(subtotal_base),
             shipping=fmt_price(purchase.shipping_applied or 0),
-            total=fmt_price(purchase.total_price), 
+            total=fmt_price(purchase.total_price),
             items=items_dto
         )
     except Exception as e: 
@@ -624,6 +633,7 @@ async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = 
 async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
+        
         purchase = session.exec(
             select(PurchaseModel)
             .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
@@ -652,25 +662,26 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
                     if item.blog_post:
                         variant_img = ""
                         if item.blog_post.variants and item.selected_variant:
-                                target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
-                                if target_variant and target_variant.get("image_urls"): 
-                                    variant_img = target_variant["image_urls"][0]
+                            target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                            if target_variant and target_variant.get("image_urls"): 
+                                variant_img = target_variant["image_urls"][0]
                         
                         img_path = variant_img or item.blog_post.main_image_url_variant or ""
                         if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
-                                first_v = item.blog_post.variants[0]
-                                if isinstance(first_v, dict) and first_v.get("image_urls"): 
-                                    img_path = first_v["image_urls"][0]
+                            first_v = item.blog_post.variants[0]
+                            if isinstance(first_v, dict) and first_v.get("image_urls"): 
+                                img_path = first_v["image_urls"][0]
                         img = get_full_image_url(img_path)
-                except: img = ""
+                except: 
+                    img = ""
                 
                 variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
                 items_dto.append(PurchaseItemDTO(
-                    product_id=item.blog_post_id, 
+                    product_id=item.blog_post_id,
                     title=item.blog_post.title if item.blog_post else "Producto", 
                     quantity=item.quantity, 
                     price=item.price_at_purchase, 
-                    image_url=img, 
+                    image_url=img,
                     variant_details=variant_str
                 ))
 
@@ -693,7 +704,7 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
             shipping_phone=purchase.shipping_phone, 
             shipping_cost=fmt_price(purchase.shipping_applied or 0.0)
         )
-    except Exception as he: 
+    except HTTPException as he: 
         raise he
     except Exception as e:
         print(f"Error en detalle compra: {e}")
@@ -703,6 +714,7 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
 async def get_support_ticket(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
+        
         ticket = session.exec(
             select(SupportTicketModel)
             .where(SupportTicketModel.purchase_id == purchase_id)
@@ -728,11 +740,13 @@ async def get_support_ticket(purchase_id: int, user_id: int, session: Session = 
             if m.author and m.author.user: 
                 author_name = m.author.user.username
             
+            date_str = m.created_at.strftime('%d/%m %I:%M %p')
+                
             msgs_dto.append(SupportMessageDTO(
                 id=m.id, 
                 content=m.content, 
                 is_me=(m.author_id == user_info.id), 
-                date=m.created_at.strftime('%d/%m %I:%M %p'), 
+                date=date_str, 
                 author_name=author_name
             ))
             
@@ -750,6 +764,7 @@ async def get_support_ticket(purchase_id: int, user_id: int, session: Session = 
 async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(..., alias="user_id"), session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
+        
         purchase = session.exec(
             select(PurchaseModel)
             .options(joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post))
