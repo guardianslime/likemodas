@@ -267,10 +267,8 @@ def get_full_image_url(path: str) -> str:
     return f"{BASE_URL}/_upload/{path}"
 
 def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel):
-    """Devuelve el stock al inventario si la compra falla."""
     if not purchase.items:
         return
-
     for item in purchase.items:
         if item.blog_post and item.selected_variant:
             current_variants = list(item.blog_post.variants)
@@ -282,14 +280,12 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                     current_variants[i] = new_v
                     updated = True
                     break
-            
             if updated:
                 item.blog_post.variants = current_variants
                 if not item.blog_post.publish_active:
                     total_stock = sum(v.get("stock", 0) for v in item.blog_post.variants)
                     if total_stock > 0:
                         item.blog_post.publish_active = True
-                
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
@@ -631,22 +627,27 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
     try:
         user_info = get_user_info(session, user_id)
         
-        purchase = session.exec(
-            select(PurchaseModel)
-            .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
-            .where(PurchaseModel.id == purchase_id)
-        ).unique().first()
+        # --- CORRECCIÓN CLAVE: Usamos get() en lugar de exec(select(...)) para búsquedas por ID simples y seguras ---
+        purchase = session.get(PurchaseModel, purchase_id)
         
         if not purchase: 
             raise HTTPException(404, "Compra no encontrada")
+            
+        # Forzamos la carga de las relaciones necesarias para evitar lazy loading errors
+        session.refresh(purchase)
 
         is_buyer = purchase.userinfo_id == user_info.id
         is_seller = False
+        
+        # Verificación segura del vendedor
         if not is_buyer and purchase.items:
              for item in purchase.items:
-                 if item.blog_post and item.blog_post.userinfo_id == user_info.id:
-                     is_seller = True
-                     break
+                 # Cargamos el blog_post explícitamente si no está cargado
+                 if item.blog_post_id:
+                     blog_post = session.get(BlogPostModel, item.blog_post_id)
+                     if blog_post and blog_post.userinfo_id == user_info.id:
+                         is_seller = True
+                         break
         
         if not is_buyer and not is_seller and user_info.role != UserRole.ADMIN:
              raise HTTPException(403, "No tienes permiso para ver esta compra")
@@ -655,27 +656,36 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
         if purchase.items:
             for item in purchase.items:
                 img = ""
-                try:
-                    if item.blog_post:
+                title = "Producto no disponible"
+                
+                # Cargar el blog_post
+                blog_post = session.get(BlogPostModel, item.blog_post_id)
+                
+                if blog_post:
+                    title = blog_post.title
+                    try:
                         variant_img = ""
-                        if item.blog_post.variants and item.selected_variant:
-                            target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                        if blog_post.variants and item.selected_variant:
+                            # Buscar la variante que coincida
+                            target_variant = next((v for v in blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
                             if target_variant and target_variant.get("image_urls"): 
                                 variant_img = target_variant["image_urls"][0]
                         
-                        img_path = variant_img or item.blog_post.main_image_url_variant or ""
-                        if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
-                            first_v = item.blog_post.variants[0]
+                        img_path = variant_img or blog_post.main_image_url_variant or ""
+                        # Fallback a la primera imagen si no hay principal
+                        if not img_path and blog_post.variants and isinstance(blog_post.variants, list):
+                            first_v = blog_post.variants[0]
                             if isinstance(first_v, dict) and first_v.get("image_urls"): 
                                 img_path = first_v["image_urls"][0]
                         img = get_full_image_url(img_path)
-                except: 
-                    img = ""
+                    except: 
+                        img = ""
                 
                 variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
+                
                 items_dto.append(PurchaseItemDTO(
                     product_id=item.blog_post_id,
-                    title=item.blog_post.title if item.blog_post else "Producto", 
+                    title=title, 
                     quantity=item.quantity, 
                     price=item.price_at_purchase, 
                     image_url=img,
@@ -704,8 +714,8 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
     except HTTPException as he: 
         raise he
     except Exception as e:
-        print(f"Error en detalle compra: {e}")
-        raise HTTPException(500, str(e))
+        print(f"Error en detalle compra {purchase_id}: {e}")
+        raise HTTPException(500, f"Error interno: {str(e)}")
 
 @router.get("/support/ticket/{purchase_id}/{user_id}", response_model=Optional[SupportTicketDTO])
 async def get_support_ticket(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
@@ -762,11 +772,8 @@ async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(.
     try:
         user_info = get_user_info(session, user_id)
         
-        purchase = session.exec(
-            select(PurchaseModel)
-            .options(joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post))
-            .where(PurchaseModel.id == req.purchase_id)
-        ).unique().first()
+        # Usamos session.get para mayor seguridad
+        purchase = session.get(PurchaseModel, req.purchase_id)
         
         if not purchase or purchase.userinfo_id != user_info.id: 
             raise HTTPException(404, "Compra no válida")
@@ -774,11 +781,14 @@ async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(.
         seller_id = None
         if purchase.items:
             for item in purchase.items:
-                if item.blog_post: 
-                    seller_id = item.blog_post.userinfo_id
+                # Cargar el post para obtener el vendedor
+                blog_post = session.get(BlogPostModel, item.blog_post_id)
+                if blog_post: 
+                    seller_id = blog_post.userinfo_id
                     break
         
         if not seller_id: 
+            # Fallback al admin si el producto fue borrado
             admin = session.exec(select(UserInfo).where(UserInfo.role == UserRole.ADMIN)).first()
             seller_id = admin.id if admin else user_info.id
 
@@ -1183,114 +1193,91 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
+        # Carga las compras. Usamos una query segura.
         purchases = session.exec(
             select(PurchaseModel)
-            .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
             .where(PurchaseModel.userinfo_id == user_info.id)
             .order_by(PurchaseModel.purchase_date.desc())
         ).all()
         
         history = []
         for p in purchases:
+            # --- BLOQUE DE SEGURIDAD POR CADA COMPRA ---
+            # Esto evita que una sola compra corrupta rompa toda la lista
             try:
+                # Recargar la compra con sus items para asegurar datos frescos
+                session.refresh(p)
                 items_dto = []
+                
+                # Si la compra tiene items, los procesamos
                 if p.items:
                     for item in p.items:
+                        # Carga defensiva del blog_post
+                        blog_post = session.get(BlogPostModel, item.blog_post_id)
+                        
                         img = ""
-                        try:
-                            if item.blog_post:
+                        title = "Producto no disponible"
+                        
+                        if blog_post:
+                            title = blog_post.title
+                            # Lógica de imagen
+                            try:
                                 variant_img = ""
-                                if item.blog_post.variants and item.selected_variant:
-                                     target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
-                                     if target_variant and target_variant.get("image_urls"): 
-                                         variant_img = target_variant["image_urls"][0]
-                                
-                                img_path = variant_img or item.blog_post.main_image_url_variant or ""
-                                if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
-                                     first_v = item.blog_post.variants[0]
-                                     if isinstance(first_v, dict) and first_v.get("image_urls"): 
-                                         img_path = first_v["image_urls"][0]
+                                if blog_post.variants and item.selected_variant:
+                                        target_variant = next((v for v in blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                                        if target_variant and target_variant.get("image_urls"): 
+                                            variant_img = target_variant["image_urls"][0]
+                                img_path = variant_img or blog_post.main_image_url_variant or ""
+                                if not img_path and blog_post.variants and isinstance(blog_post.variants, list):
+                                        first_v = blog_post.variants[0]
+                                        if isinstance(first_v, dict) and first_v.get("image_urls"): 
+                                            img_path = first_v["image_urls"][0]
                                 img = get_full_image_url(img_path)
-                        except: 
-                            img = ""
+                            except: 
+                                img = ""
                         
                         variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
                         items_dto.append(PurchaseItemDTO(
-                            product_id=item.blog_post_id,
-                            title=item.blog_post.title if item.blog_post else "Producto", 
-                            quantity=item.quantity, 
-                            price=item.price_at_purchase, 
-                            image_url=img,
-                            variant_details=variant_str
+                            product_id=item.blog_post_id, title=title, quantity=item.quantity, price=item.price_at_purchase, image_url=img, variant_details=variant_str
                         ))
                 
-                estimated_str = None
-                can_confirm = False
-                can_return = False
-                tracking_msg = None
-                retry_url = None
-                invoice_path = None
-                return_path = None
+                # Estados y mensajes
+                estimated_str, can_confirm, can_return, tracking_msg, retry_url, invoice_path, return_path = None, False, False, None, None, None, None
 
-                try:
-                    if p.status == PurchaseStatus.SHIPPED:
-                        can_confirm = True
-                        if p.estimated_delivery_date:
-                            local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
-                            estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
-                            tracking_msg = f"Llega aprox: {estimated_str}"
-                        else:
-                            tracking_msg = "En camino"
-                    
-                    elif p.status == PurchaseStatus.DELIVERED:
-                         can_return = True
-                         invoice_path = f"/invoice?id={p.id}"
-                         return_path = f"/returns?purchase_id={p.id}"
+                if p.status == PurchaseStatus.SHIPPED:
+                    can_confirm = True
+                    if p.estimated_delivery_date:
+                        local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
+                        estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
+                        tracking_msg = f"Llega aprox: {estimated_str}"
+                    else: tracking_msg = "En camino"
+                elif p.status == PurchaseStatus.DELIVERED:
+                        can_return = True; invoice_path = f"/invoice?id={p.id}"; return_path = f"/returns?purchase_id={p.id}"
+                elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
+                        tracking_msg = "Esperando confirmación del vendedor"
+                elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
+                    time_diff = datetime.now(timezone.utc) - p.purchase_date
+                    if time_diff > timedelta(minutes=15):
+                        p.status = PurchaseStatus.FAILED
+                        restore_stock_for_failed_purchase(session, p)
+                        session.add(p); session.commit()
+                    elif p.wompi_payment_link_id: retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
 
-                    elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
-                         tracking_msg = "Esperando confirmación del vendedor"
-                    
-                    elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
-                        time_diff = datetime.now(timezone.utc) - p.purchase_date
-                        if time_diff > timedelta(minutes=15):
-                            p.status = PurchaseStatus.FAILED
-                            restore_stock_for_failed_purchase(session, p)
-                            session.add(p)
-                            session.commit()
-                        elif p.wompi_payment_link_id:
-                            retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
-
-                except: 
-                    tracking_msg = ""
-
-                shipping_full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}" if p.shipping_address else "N/A"
+                sf = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}" if p.shipping_address else "N/A"
 
                 history.append(PurchaseHistoryDTO(
-                    id=p.id, 
-                    date=p.purchase_date.strftime('%d-%m-%Y'), 
-                    status=p.status.value, 
-                    total=fmt_price(p.total_price), 
-                    items=items_dto, 
-                    estimated_delivery=estimated_str, 
-                    can_confirm_delivery=can_confirm, 
-                    tracking_message=tracking_msg, 
-                    retry_payment_url=retry_url,
-                    invoice_path=invoice_path,
-                    return_path=return_path,
-                    can_return=can_return,
-                    shipping_name=p.shipping_name,
-                    shipping_address=shipping_full_address,
-                    shipping_phone=p.shipping_phone,
-                    shipping_cost=fmt_price(p.shipping_applied or 0.0)
+                    id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), 
+                    items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg, retry_payment_url=retry_url, invoice_path=invoice_path, return_path=return_path, can_return=can_return, shipping_name=p.shipping_name, shipping_address=sf, shipping_phone=p.shipping_phone, shipping_cost=fmt_price(p.shipping_applied or 0.0)
                 ))
             except Exception as e:
+                # Si una compra falla, la logueamos pero continuamos con las demás
                 print(f"Error procesando compra {p.id}: {e}")
                 continue
         
         return history
     except Exception as e:
-        print(f"ERROR CRÍTICO EN PURCHASES: {e}")
-        return []
+        print(f"ERROR CRÍTICO EN LISTA DE COMPRAS: {e}")
+        return [] # Devuelve lista vacía en lugar de 500
 
 @router.post("/purchases/{purchase_id}/confirm-delivery/{user_id}")
 async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
