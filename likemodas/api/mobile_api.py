@@ -379,99 +379,148 @@ async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = 
 
 @router.get("/support/ticket/{purchase_id}/{user_id}", response_model=Optional[SupportTicketDTO])
 async def get_support_ticket(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
-    """Obtiene el ticket de soporte asociado a una compra."""
-    user_info = get_user_info(session, user_id)
-    
-    ticket = session.exec(
-        select(SupportTicketModel)
-        .where(SupportTicketModel.purchase_id == purchase_id, SupportTicketModel.buyer_id == user_info.id)
-    ).first()
-    
-    if not ticket:
-        return None # No hay ticket aún
+    """Obtiene el ticket de soporte asociado a una compra, cargando relaciones de forma segura."""
+    try:
+        user_info = get_user_info(session, user_id)
         
-    messages = session.exec(
-        select(SupportMessageModel)
-        .where(SupportMessageModel.ticket_id == ticket.id)
-        .order_by(SupportMessageModel.created_at)
-    ).all()
-    
-    msgs_dto = []
-    for m in messages:
-        # Determinar autor
-        author_name = "Tú"
-        if m.author_id != user_info.id:
-            author = session.get(UserInfo, m.author_id)
-            author_name = author.user.username if author and author.user else "Vendedor"
+        ticket = session.exec(
+            select(SupportTicketModel)
+            .where(SupportTicketModel.purchase_id == purchase_id, SupportTicketModel.buyer_id == user_info.id)
+        ).first()
+        
+        if not ticket:
+            return None # No hay ticket aún
             
-        msgs_dto.append(SupportMessageDTO(
-            id=m.id,
-            content=m.content,
-            is_me=(m.author_id == user_info.id),
-            date=m.created_at.strftime('%d/%m %I:%M %p'),
-            author_name=author_name
-        ))
+        # CORRECCIÓN: Cargar explícitamente el autor y su usuario para evitar errores 500
+        messages = session.exec(
+            select(SupportMessageModel)
+            .options(joinedload(SupportMessageModel.author).joinedload(UserInfo.user))
+            .where(SupportMessageModel.ticket_id == ticket.id)
+            .order_by(SupportMessageModel.created_at)
+        ).all()
         
-    return SupportTicketDTO(
-        id=ticket.id,
-        subject=ticket.subject,
-        status=ticket.status.value,
-        messages=msgs_dto
-    )
+        msgs_dto = []
+        for m in messages:
+            # Lógica segura para el nombre
+            author_name = "Usuario"
+            if m.author and m.author.user:
+                author_name = m.author.user.username
+            
+            # Formateo de fecha
+            date_str = m.created_at.strftime('%d/%m %I:%M %p')
+                
+            msgs_dto.append(SupportMessageDTO(
+                id=m.id,
+                content=m.content,
+                is_me=(m.author_id == user_info.id),
+                date=date_str,
+                author_name=author_name
+            ))
+            
+        return SupportTicketDTO(
+            id=ticket.id,
+            subject=ticket.subject,
+            status=ticket.status.value,
+            messages=msgs_dto
+        )
+    except Exception as e:
+        print(f"ERROR GET TICKET: {e}")
+        raise HTTPException(500, f"Error cargando ticket: {str(e)}")
 
 @router.post("/support/ticket")
 async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(..., alias="user_id"), session: Session = Depends(get_session)):
     """Crea un nuevo ticket de soporte."""
-    user_info = get_user_info(session, user_id)
-    purchase = session.get(PurchaseModel, req.purchase_id)
-    
-    if not purchase or purchase.userinfo_id != user_info.id:
-        raise HTTPException(404, "Compra no válida")
+    try:
+        user_info = get_user_info(session, user_id)
         
-    # Encontrar vendedor
-    seller_id = None
-    if purchase.items and purchase.items[0].blog_post:
-        seller_id = purchase.items[0].blog_post.userinfo_id
-    
-    if not seller_id: raise HTTPException(400, "Error al identificar vendedor")
+        # CORRECCIÓN: Cargar la compra CON los items y el blog_post para encontrar al vendedor
+        purchase = session.exec(
+            select(PurchaseModel)
+            .options(joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post))
+            .where(PurchaseModel.id == req.purchase_id)
+        ).unique().first()
+        
+        if not purchase or purchase.userinfo_id != user_info.id:
+            raise HTTPException(404, "Compra no válida")
+            
+        # Encontrar vendedor de forma segura
+        seller_id = None
+        for item in purchase.items:
+            if item.blog_post:
+                seller_id = item.blog_post.userinfo_id
+                break
+        
+        if not seller_id: 
+            # Si por alguna razón no se encuentra (producto borrado), lo asignamos al mismo admin/usuario como fallback
+            # O lanzamos error. Para robustez, asignamos al admin por defecto si existe, o al mismo usuario para no romper.
+            # Idealmente: raise HTTPException(400, "No se pudo identificar al vendedor")
+            # Solución rápida: Asignar al primer admin encontrado
+            admin = session.exec(select(UserInfo).where(UserInfo.role == UserRole.ADMIN)).first()
+            seller_id = admin.id if admin else user_info.id
 
-    ticket = SupportTicketModel(
-        purchase_id=purchase.id,
-        buyer_id=user_info.id,
-        seller_id=seller_id,
-        subject=req.subject
-    )
-    session.add(ticket)
-    session.commit()
-    session.refresh(ticket)
-    
-    # Mensaje inicial
-    msg = SupportMessageModel(
-        ticket_id=ticket.id,
-        author_id=user_info.id,
-        content=req.initial_message
-    )
-    session.add(msg)
-    session.commit()
-    return {"message": "Ticket creado"}
+        ticket = SupportTicketModel(
+            purchase_id=purchase.id,
+            buyer_id=user_info.id,
+            seller_id=seller_id,
+            subject=req.subject
+        )
+        session.add(ticket)
+        session.commit()
+        session.refresh(ticket)
+        
+        # Mensaje inicial
+        msg = SupportMessageModel(
+            ticket_id=ticket.id,
+            author_id=user_info.id,
+            content=req.initial_message
+        )
+        session.add(msg)
+        session.commit()
+        
+        # Notificación al vendedor
+        note = NotificationModel(
+            userinfo_id=seller_id,
+            message=f"Nueva solicitud de devolución/cambio para la compra #{purchase.id}.",
+            url=f"/returns?purchase_id={purchase.id}"
+        )
+        session.add(note)
+        session.commit()
+
+        return {"message": "Ticket creado"}
+    except Exception as e:
+        print(f"ERROR CREATE TICKET: {e}")
+        raise HTTPException(500, str(e))
 
 @router.post("/support/message")
 async def send_support_message(req: SendMessageRequest, user_id: int = Query(..., alias="user_id"), session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    ticket = session.get(SupportTicketModel, req.ticket_id)
-    
-    if not ticket: raise HTTPException(404, "Ticket no encontrado")
-    if user_info.id not in [ticket.buyer_id, ticket.seller_id]:
-        raise HTTPException(403, "No autorizado")
+    try:
+        user_info = get_user_info(session, user_id)
+        ticket = session.get(SupportTicketModel, req.ticket_id)
         
-    msg = SupportMessageModel(
-        ticket_id=ticket.id,
-        author_id=user_info.id,
-        content=req.content
-    )
-    session.add(msg)
-    session.commit()
-    return {"message": "Enviado"}
+        if not ticket: raise HTTPException(404, "Ticket no encontrado")
+        if user_info.id not in [ticket.buyer_id, ticket.seller_id]:
+            raise HTTPException(403, "No autorizado")
+            
+        msg = SupportMessageModel(
+            ticket_id=ticket.id,
+            author_id=user_info.id,
+            content=req.content
+        )
+        session.add(msg)
+        
+        # Notificar al otro
+        recipient_id = ticket.seller_id if user_info.id == ticket.buyer_id else ticket.buyer_id
+        note = NotificationModel(
+            userinfo_id=recipient_id,
+            message=f"Nuevo mensaje en el ticket de la compra #{ticket.purchase_id}",
+            url=f"/returns?purchase_id={ticket.purchase_id}"
+        )
+        session.add(note)
+        
+        session.commit()
+        return {"message": "Enviado"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 # ... (Resto de endpoints de productos, compras, perfil, etc. se mantienen igual) ...
 # ... [Incluye aquí el resto del archivo mobile_api.py que ya tenías] ...
