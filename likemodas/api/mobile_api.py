@@ -2,7 +2,7 @@ import os
 import logging
 from datetime import datetime, timedelta, timezone
 import secrets
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
 import pytz
@@ -240,6 +240,13 @@ class CheckoutResponse(BaseModel):
 class GenericStatusResponse(BaseModel):
     message: str
     status: Optional[str] = None
+
+class NotificationResponse(BaseModel):
+    id: int
+    message: str
+    url: Optional[str]
+    is_read: bool
+    created_at: str
 
 # --- HELPERS ---
 
@@ -626,14 +633,11 @@ async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = 
     except Exception as e: 
         raise HTTPException(500, str(e))
 
-# --- ENDPOINT DETALLE COMPRA SEGURO (CORREGIDO PARA EL ERROR DEL CHAT) ---
 @router.get("/purchases/{purchase_id}/detail/{user_id}", response_model=PurchaseHistoryDTO)
 async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     try:
         user_info = get_user_info(session, user_id)
         
-        # 1. Carga segura con select e INCLUYENDO RELACIONES DESDE EL PRINCIPIO
-        # Esto es lo que faltaba: cargar blog_post para evitar que se desconecte la sesión
         purchase = session.exec(
             select(PurchaseModel)
             .options(
@@ -645,11 +649,9 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
         if not purchase: 
             raise HTTPException(404, "Compra no encontrada")
 
-        # 2. Validar permisos
         is_buyer = purchase.userinfo_id == user_info.id
         is_seller = False
         
-        # Verificación segura del vendedor
         if not is_buyer and purchase.items:
              for item in purchase.items:
                  if item.blog_post and item.blog_post.userinfo_id == user_info.id:
@@ -659,14 +661,12 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
         if not is_buyer and not is_seller and user_info.role != UserRole.ADMIN:
              raise HTTPException(403, "No tienes permiso para ver esta compra")
 
-        # 3. Construir DTO de forma robusta
         items_dto = []
         if purchase.items:
             for item in purchase.items:
                 img = ""
                 title = "Producto no disponible" 
                 
-                # Carga segura de datos del producto
                 if item.blog_post:
                     title = item.blog_post.title
                     try:
@@ -718,8 +718,6 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
     except HTTPException as he: 
         raise he
     except Exception as e:
-        print(f"Error en detalle compra {purchase_id}: {e}")
-        # En lugar de 500, lanzamos 404 para que la app no muestre la pantalla roja
         raise HTTPException(404, f"No se pudo cargar el detalle: {str(e)}")
 
 @router.get("/support/ticket/{purchase_id}/{user_id}", response_model=Optional[SupportTicketDTO])
@@ -777,7 +775,6 @@ async def create_support_ticket(req: CreateTicketRequest, user_id: int = Query(.
     try:
         user_info = get_user_info(session, user_id)
         
-        # Carga segura con relaciones para encontrar al vendedor
         purchase = session.exec(
             select(PurchaseModel)
             .options(joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post))
@@ -861,8 +858,6 @@ async def send_support_message(req: SendMessageRequest, user_id: int = Query(...
         return {"message": "Enviado"}
     except Exception as e:
         raise HTTPException(500, str(e))
-
-# ... (El resto de endpoints de checkout, carrito, etc. se mantienen igual)
 
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
 async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
@@ -1095,8 +1090,6 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
         print(f"Error calculando carrito: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- OTROS ENDPOINTS (Profile, Address, etc.) ---
-
 @router.post("/products/{product_id}/toggle-save/{user_id}")
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
@@ -1256,7 +1249,7 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                             estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
                             tracking_msg = f"Llega aprox: {estimated_str}"
                         else:
-                            tracking_msg = "En camino"
+                            tracking_msg = "Tu pedido llegará pronto."
                     
                     elif p.status == PurchaseStatus.DELIVERED:
                          can_return = True
@@ -1315,8 +1308,6 @@ async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Sessi
         purchase = session.get(PurchaseModel, purchase_id)
         if not purchase or purchase.userinfo_id != user_info.id: 
             raise HTTPException(404, "Compra no encontrada")
-        if purchase.status != PurchaseStatus.SHIPPED: 
-            raise HTTPException(400, "La compra no está en estado 'Enviado'")
         
         purchase.status = PurchaseStatus.DELIVERED
         purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
@@ -1430,3 +1421,44 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
         return {"message": "Opinión guardada"}
     except Exception as e:
         raise HTTPException(500, str(e))
+
+@router.get("/notifications/{user_id}", response_model=List[NotificationResponse])
+async def get_notifications(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    notifs = session.exec(
+        select(NotificationModel)
+        .where(NotificationModel.userinfo_id == user_info.id)
+        .order_by(NotificationModel.created_at.desc())
+        .limit(20)
+    ).all()
+    
+    result = []
+    for n in notifs:
+        date_str = n.created_at.strftime("%d-%m-%Y %I:%M %p") if n.created_at else ""
+        result.append(NotificationResponse(
+            id=n.id,
+            message=n.message,
+            url=n.url,
+            is_read=n.is_read,
+            created_at=date_str
+        ))
+    return result
+
+@router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: int, session: Session = Depends(get_session)):
+    notif = session.get(NotificationModel, notification_id)
+    if notif:
+        notif.is_read = True
+        session.add(notif)
+        session.commit()
+    return {"message": "Leída"}
+
+@router.delete("/notifications/{user_id}/clear")
+async def clear_all_notifications(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    statement = select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id)
+    results = session.exec(statement).all()
+    for n in results:
+        session.delete(n)
+    session.commit()
+    return {"message": "Notificaciones eliminadas"}
