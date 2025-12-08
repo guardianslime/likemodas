@@ -381,9 +381,18 @@ class AttributeData(rx.Base):
     key: str; value: str
 
 class CommentData(rx.Base):
-    id: int; content: str; rating: int; author_username: str; author_initial: str
-    created_at_formatted: str; updates: List["CommentData"] = []
-    likes: int = 0; dislikes: int = 0; user_vote: str = ""
+    id: int
+    content: str
+    rating: int
+    author_username: str
+    author_initial: str
+    created_at_formatted: str
+    # CAMPO AÑADIDO: Timestamp numérico para ordenamiento seguro en Python
+    created_at_timestamp: float = 0.0 
+    updates: List["CommentData"] = []
+    likes: int = 0
+    dislikes: int = 0
+    user_vote: str = ""
     author_reputation: str = UserReputation.NONE.value
     author_avatar_url: str = ""
 
