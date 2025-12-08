@@ -74,14 +74,14 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
-# DTO Recursivo para el historial de actualizaciones
+# --- DTO RECURSIVO CORREGIDO ---
 class ReviewDTO(BaseModel):
     id: int
     username: str
     rating: int
     comment: str
     date: str
-    updates: List['ReviewDTO'] = []
+    updates: List['ReviewDTO'] = [] 
 
 class ProductDetailDTO(BaseModel):
     id: int
@@ -303,7 +303,8 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
 # --- ✅ CÁLCULO DE CALIFICACIÓN CORREGIDO ✅ ---
 def calculate_rating(session: Session, product_id: int):
     """
-    Calcula el rating tomando solo la ÚLTIMA actualización de cada usuario.
+    Calcula el promedio de estrellas.
+    Regla: Si un usuario editó su opinión, solo cuenta la nota de la ÚLTIMA actualización.
     """
     # 1. Obtener solo los comentarios PADRE (raíz)
     parent_comments = session.exec(
@@ -316,15 +317,17 @@ def calculate_rating(session: Session, product_id: int):
         return 0.0, 0
     
     total_rating = 0
-    count = len(parent_comments) # Cada padre cuenta como 1 usuario único
+    # El conteo es igual a la cantidad de padres (usuarios únicos que opinaron)
+    count = len(parent_comments) 
     
     for parent in parent_comments:
-        # 2. Si tiene actualizaciones, usar la calificación de la MÁS RECIENTE
+        # 2. Si tiene actualizaciones, la nota válida es la del hijo más reciente
         if parent.updates:
-            latest = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
-            total_rating += latest.rating
+            # Ordenamos por fecha descendente (el más nuevo primero) y tomamos el [0]
+            latest_update = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
+            total_rating += latest_update.rating
         else:
-            # 3. Si no, usar la del padre
+            # 3. Si no hay actualizaciones, vale la nota del padre original
             total_rating += parent.rating
             
     avg = total_rating / count if count > 0 else 0.0
@@ -539,10 +542,11 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # --- REVIEWS ESTRUCTURADAS (Padre -> Hijos) ---
+        # --- ESTRUCTURA JERÁRQUICA DE COMENTARIOS ---
+        # 1. Obtenemos comentarios padres (sin parent_id)
+        # 2. Obtenemos sus hijos (updates)
         reviews_list = []
         
-        # 1. Obtener padres (comentarios raíz)
         db_parent_reviews = session.exec(
             select(CommentModel)
             .where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None)
@@ -553,7 +557,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         for parent in db_parent_reviews:
             updates_dtos = []
             if parent.updates:
-                # 2. Ordenar actualizaciones (hijos)
+                # Ordenar actualizaciones, la más reciente primero
                 sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
                 for up in sorted_updates:
                     updates_dtos.append(ReviewDTO(
@@ -562,23 +566,23 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         rating=up.rating,
                         comment=up.content,
                         date=up.created_at.strftime("%d/%m/%Y"),
-                        updates=[] 
+                        updates=[] # Los hijos no tienen más hijos
                     ))
 
-            # 3. Empaquetar padre con sus hijos
+            # Añadir el padre a la lista
             reviews_list.append(ReviewDTO(
                 id=parent.id,
                 username=parent.author_username or "Usuario",
                 rating=parent.rating,
                 comment=parent.content,
                 date=parent.created_at.strftime("%d/%m/%Y"),
-                updates=updates_dtos # <--- Aquí van los hijos
+                updates=updates_dtos # <--- Lista de hijos adjunta
             ))
             
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # ✅ CORRECCIÓN DE LA VARIABLE is_saved:
-        is_saved = False # Se define al inicio, siempre tendrá valor.
+        # ✅ Corrección: Inicializar is_saved antes de usarla
+        is_saved = False 
         can_review = False
         
         if user_id and user_id > 0:
@@ -590,7 +594,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == real_userinfo_id, SavedPostLink.blogpostmodel_id == p.id)).first()
                     is_saved = saved is not None
                     
-                    # Verificar compra entregada
+                    # Verificar si compró y recibió
                     has_bought = session.exec(
                         select(PurchaseItemModel.id)
                         .join(PurchaseModel)
@@ -630,6 +634,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     if not user_info:
         raise HTTPException(404, "Usuario no encontrado")
 
+    # 1. Buscar compra ENTREGADA
     purchase_item = session.exec(
         select(PurchaseItemModel)
         .join(PurchaseModel)
@@ -644,7 +649,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     if not purchase_item:
         raise HTTPException(400, "Debes haber comprado y recibido este producto para opinar.")
 
-    # Verificar si ya existe el PADRE
+    # 2. Verificar si ya existe el PADRE (comentario raíz)
     existing_comment = session.exec(
         select(CommentModel)
         .where(
@@ -654,6 +659,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     ).one_or_none()
 
     if existing_comment:
+        # Lógica de Actualización (Crear Hijo)
         update_count = session.exec(
             select(func.count(CommentModel.id))
             .where(CommentModel.parent_comment_id == existing_comment.id)
@@ -670,12 +676,13 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             userinfo_id=user_info.id,
             blog_post_id=product_id,
             purchase_item_id=purchase_item.id,
-            parent_comment_id=existing_comment.id
+            parent_comment_id=existing_comment.id # Vinculación al padre
         )
         session.add(new_update)
         session.commit()
         return {"message": "Opinión actualizada exitosamente"}
     else:
+        # Lógica de Creación (Nuevo Padre)
         new_comment = CommentModel(
             content=body.comment,
             rating=body.rating,
@@ -684,13 +691,13 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             userinfo_id=user_info.id,
             blog_post_id=product_id,
             purchase_item_id=purchase_item.id,
-            parent_comment_id=None
+            parent_comment_id=None # Es Raíz
         )
         session.add(new_comment)
         session.commit()
         return {"message": "Opinión creada exitosamente"}
 
-# ... (El resto de endpoints Invoice, Support, etc. se mantienen igual que tu versión funcional) ...
+# ... (El resto de endpoints Invoice, Support, etc. se mantienen igual) ...
 @router.get("/purchases/{purchase_id}/invoice/{user_id}", response_model=InvoiceDTO)
 async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     try:
