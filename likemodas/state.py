@@ -10137,8 +10137,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _convert_comment_to_dto(self, comment_model: CommentModel) -> CommentData:
         """
-        Convierte un CommentModel de la BD a un CommentData DTO,
-        incluyendo los datos de votación, reputación y avatar.
+        Convierte un CommentModel de la BD a un CommentData DTO.
+        CORREGIDO: Ahora incluye el timestamp para evitar el crash al ordenar.
         """
         user_vote = ""
         if self.authenticated_user_info:
@@ -10149,7 +10149,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if vote:
                 user_vote = vote.vote_type
 
-        # --- ✨ CORRECCIÓN AQUÍ: Guardamos solo el nombre del archivo (string) ✨ ---
         avatar_filename = ""
         if comment_model.userinfo and comment_model.userinfo.avatar_url:
             avatar_filename = comment_model.userinfo.avatar_url
@@ -10161,17 +10160,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             author_username=comment_model.author_username,
             author_initial=comment_model.author_initial,
             created_at_formatted=comment_model.created_at_formatted,
+            
+            # --- ✅ AQUÍ SE ASIGNA EL VALOR PARA EVITAR EL ERROR ---
             created_at_timestamp=comment_model.created_at.timestamp(),
-            # RECURSIVIDAD: Llama a sí misma para convertir los hijos
+            # -------------------------------------------------------
+
+            # Recursividad para las actualizaciones (hijos)
             updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at, reverse=True)],
+            
             likes=comment_model.likes,
             dislikes=comment_model.dislikes,
             user_vote=user_vote,
             author_reputation=comment_model.userinfo.reputation.value if comment_model.userinfo else UserReputation.NONE.value,
             author_avatar_url=avatar_filename,
         )
-
-
 
     # --- Estado para el Lightbox ---
     is_lightbox_open: bool = False
@@ -10356,6 +10358,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.created_at, reverse=True) # Ordena por fecha
+            # --- ✅ CORRECCIÓN DEL ORDENAMIENTO QUE CAUSABA EL CRASH ---
+            # 1. Filtramos solo los comentarios PADRE
+            raw_comments = [c for c in db_post.comments if c.parent_comment_id is None]
+            
+            # 2. Convertimos a DTOs (ahora tienen el timestamp)
+            comment_dtos = [self._convert_comment_to_dto(c) for c in raw_comments]
+            
+            # 3. Ordenamos usando el CAMPO NUEVO (timestamp) en lugar del objeto datetime que no existía
+            self.product_comments = sorted(comment_dtos, key=lambda c: c.created_at_timestamp, reverse=True)
             # ... (Lógica de formulario de review se mantiene) ...
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
