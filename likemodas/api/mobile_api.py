@@ -300,13 +300,9 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
-# --- CALCULO DE CALIFICACIÓN CORREGIDO ---
+# --- CALCULO DE CALIFICACIÓN ---
 def calculate_rating(session: Session, product_id: int):
-    """
-    Calcula el rating basándose en la ÚLTIMA actualización de cada hilo de comentarios.
-    Ignora los votos de versiones anteriores y solo cuenta 1 voto por compra.
-    """
-    # 1. Obtener solo los comentarios PADRE (raíz)
+    """Calcula el rating usando SOLO la última actualización de cada usuario."""
     parent_comments = session.exec(
         select(CommentModel)
         .where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None)
@@ -317,16 +313,14 @@ def calculate_rating(session: Session, product_id: int):
         return 0.0, 0
     
     total_rating = 0
-    count = len(parent_comments) # El conteo se basa en los padres (compras únicas)
+    count = len(parent_comments)
     
     for parent in parent_comments:
-        # 2. Si tiene actualizaciones, usar la calificación de la MÁS RECIENTE
         if parent.updates:
-            # Ordenamos por fecha descendente
+            # Tomamos la actualización más reciente por fecha
             latest = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
             total_rating += latest.rating
         else:
-            # 3. Si no, usar la del padre
             total_rating += parent.rating
             
     avg = total_rating / count if count > 0 else 0.0
@@ -541,7 +535,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # --- ARBOL DE COMENTARIOS ---
+        # --- ESTRUCTURA DE COMENTARIOS PADRE/HIJO ---
         reviews_list = []
         
         # 1. Obtener padres (comentarios raíz)
@@ -555,7 +549,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         for parent in db_parent_reviews:
             updates_dtos = []
             if parent.updates:
-                # 2. Ordenar hijos (actualizaciones)
+                # Ordenar actualizaciones (la más reciente primero)
                 sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
                 for up in sorted_updates:
                     updates_dtos.append(ReviewDTO(
@@ -564,23 +558,23 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         rating=up.rating,
                         comment=up.content,
                         date=up.created_at.strftime("%d/%m/%Y"),
-                        updates=[] # Los hijos no tienen hijos
+                        updates=[] 
                     ))
 
+            # Añadir el padre a la lista
             reviews_list.append(ReviewDTO(
                 id=parent.id,
                 username=parent.author_username or "Usuario",
                 rating=parent.rating,
                 comment=parent.content,
                 date=parent.created_at.strftime("%d/%m/%Y"),
-                updates=updates_dtos # Anidar hijos en el padre
+                updates=updates_dtos # Lista de hijos
             ))
             
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # Lógica de permiso
         can_review = False
-        is_saved = False # --- CORRECCIÓN: Inicializar is_saved aquí para evitar el error de VSC
+        is_saved = False # Se define al inicio para evitar error
         
         if user_id and user_id > 0:
             try:
@@ -625,13 +619,14 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
+# --- ENDPOINT DE CREACIÓN/ACTUALIZACIÓN ---
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
     user_info = session.exec(select(UserInfo).where(UserInfo.user_id == body.user_id)).one_or_none()
     if not user_info:
         raise HTTPException(404, "Usuario no encontrado")
 
-    # 1. Buscar compra ENTREGADA más reciente para este producto
+    # 1. Buscar compra ENTREGADA
     purchase_item = session.exec(
         select(PurchaseItemModel)
         .join(PurchaseModel)
@@ -646,7 +641,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     if not purchase_item:
         raise HTTPException(400, "Debes haber comprado y recibido este producto para opinar.")
 
-    # 2. Verificar si ya existe el PADRE (comentario raíz para este item de compra)
+    # 2. Verificar si ya existe una opinión PADRE
     existing_comment = session.exec(
         select(CommentModel)
         .where(
@@ -656,7 +651,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     ).one_or_none()
 
     if existing_comment:
-        # --- Lógica de Actualización ---
+        # Lógica de Actualización (Crear Hijo)
         update_count = session.exec(
             select(func.count(CommentModel.id))
             .where(CommentModel.parent_comment_id == existing_comment.id)
@@ -679,7 +674,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
         session.commit()
         return {"message": "Opinión actualizada exitosamente"}
     else:
-        # --- Lógica de Creación (Nuevo Padre) ---
+        # Lógica de Creación (Nuevo Padre)
         new_comment = CommentModel(
             content=body.comment,
             rating=body.rating,
