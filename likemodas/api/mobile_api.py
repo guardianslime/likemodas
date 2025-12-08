@@ -63,6 +63,8 @@ class ProductListDTO(BaseModel):
     description: str
     is_moda_completa: bool
     combines_shipping: bool
+    average_rating: float = 0.0 # Nuevo
+    rating_count: int = 0       # Nuevo
 
 class VariantDTO(BaseModel):
     id: str
@@ -300,6 +302,15 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
+# --- HELPER CALIFICACIÓN ---
+def calculate_rating(session: Session, product_id: int):
+    reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id)).all()
+    count = len(reviews)
+    if count == 0:
+        return 0.0, 0
+    total = sum(r.rating for r in reviews if r.rating)
+    return total / count, count
+
 # --- ENDPOINTS ---
 
 @router.get("/geography/cities", response_model=List[str])
@@ -396,11 +407,14 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
                 if urls and isinstance(urls, list) and len(urls) > 0:
                     img_path = urls[0]
         
+        avg_rating, rating_count = calculate_rating(session, p.id)
+
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
             image_url=get_full_image_url(img_path or ""), 
             category=p.category, description=p.content,
-            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            average_rating=avg_rating, rating_count=rating_count
         ))
     return result
 
@@ -419,11 +433,14 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
                 if urls and isinstance(urls, list) and len(urls) > 0:
                     img_path = urls[0]
 
+        avg_rating, rating_count = calculate_rating(session, p.id)
+
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
             image_url=get_full_image_url(img_path or ""), 
             category=p.category, description=p.content,
-            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            average_rating=avg_rating, rating_count=rating_count
         ))
     return result
 
@@ -563,8 +580,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
     except Exception as e:
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
-# --- ENDPOINTS DE FACTURACIÓN Y SOPORTE ---
 
 @router.get("/purchases/{purchase_id}/invoice/{user_id}", response_model=InvoiceDTO)
 async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
@@ -1181,10 +1196,12 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
             continue
         
         img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        avg_rating, rating_count = calculate_rating(session, p.id)
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), 
             image_url=get_full_image_url(img_path), category=p.category, description=p.content, 
-            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            average_rating=avg_rating, rating_count=rating_count
         ))
     return result
 
