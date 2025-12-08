@@ -74,13 +74,14 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
+# --- DTO RECURSIVO PARA COMENTARIOS ---
 class ReviewDTO(BaseModel):
     id: int
     username: str
     rating: int
     comment: str
     date: str
-    # CAMBIO: Lista recursiva para el historial de actualizaciones
+    # Lista de actualizaciones (hijos)
     updates: List['ReviewDTO'] = []
 
 class ProductDetailDTO(BaseModel):
@@ -300,9 +301,9 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
-# --- CALCULO DE CALIFICACIÓN BASADO EN LA ÚLTIMA ACTUALIZACIÓN ---
+# --- CORRECCIÓN: CALCULAR RATING USANDO SOLO LA ÚLTIMA ACTUALIZACIÓN ---
 def calculate_rating(session: Session, product_id: int):
-    # Obtiene solo los comentarios "padre"
+    # 1. Obtener solo los comentarios PADRE (raíz)
     parent_comments = session.exec(
         select(CommentModel)
         .where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None)
@@ -313,17 +314,20 @@ def calculate_rating(session: Session, product_id: int):
         return 0.0, 0
     
     total_rating = 0
-    count = len(parent_comments)
+    count = 0
     
     for parent in parent_comments:
-        # Si tiene historial, usa la calificación de la actualización más reciente
+        # 2. Si tiene actualizaciones, usar la calificación de la MÁS RECIENTE
         if parent.updates:
             latest = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
             total_rating += latest.rating
         else:
+            # 3. Si no, usar la del padre
             total_rating += parent.rating
+        count += 1
             
-    return (total_rating / count if count > 0 else 0.0), count
+    avg = total_rating / count if count > 0 else 0.0
+    return avg, count
 
 # --- ENDPOINTS ---
 
@@ -534,9 +538,10 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # --- REVIEWS (Padres + Historial) ---
+        # --- ESTRUCTURA DE COMENTARIOS ANIDADA PARA LA APP ---
         reviews_list = []
         
+        # 1. Traer solo comentarios PADRE
         db_parent_reviews = session.exec(
             select(CommentModel)
             .where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None)
@@ -547,7 +552,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         for parent in db_parent_reviews:
             updates_dtos = []
             if parent.updates:
-                # Ordenar actualizaciones: la más reciente primero
+                # 2. Ordenar actualizaciones
                 sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
                 for up in sorted_updates:
                     updates_dtos.append(ReviewDTO(
@@ -556,7 +561,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         rating=up.rating,
                         comment=up.content,
                         date=up.created_at.strftime("%d/%m/%Y"),
-                        updates=[]
+                        updates=[] # Las actualizaciones no tienen más hijos
                     ))
 
             reviews_list.append(ReviewDTO(
@@ -565,36 +570,27 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 rating=parent.rating,
                 comment=parent.content,
                 date=parent.created_at.strftime("%d/%m/%Y"),
-                updates=updates_dtos
+                updates=updates_dtos # Aquí se anidan los hijos
             ))
             
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        is_saved = False
+        # Lógica de permiso para opinar (Igual que en la web)
         can_review = False
         if user_id and user_id > 0:
-            try:
-                current_user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
-                if current_user_info:
-                    real_userinfo_id = current_user_info.id
-                    
-                    saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == real_userinfo_id, SavedPostLink.blogpostmodel_id == p.id)).first()
-                    is_saved = saved is not None
-                    
-                    # Verificar si compró y recibió el producto
-                    has_bought = session.exec(
-                        select(PurchaseItemModel.id)
-                        .join(PurchaseModel)
-                        .where(
-                            PurchaseModel.userinfo_id == real_userinfo_id, 
-                            PurchaseItemModel.blog_post_id == p.id,
-                            PurchaseModel.status == PurchaseStatus.DELIVERED
-                        )
-                    ).first()
-                    
-                    can_review = has_bought is not None
-            except Exception as e:
-                pass
+            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
+            if user_info:
+                # Buscar si compró y recibió este producto
+                has_bought = session.exec(
+                    select(PurchaseItemModel.id)
+                    .join(PurchaseModel)
+                    .where(
+                        PurchaseModel.userinfo_id == user_info.id,
+                        PurchaseItemModel.blog_post_id == p.id,
+                        PurchaseModel.status == PurchaseStatus.DELIVERED
+                    )
+                ).first()
+                can_review = has_bought is not None
 
         date_created_str = ""
         try:
@@ -616,14 +612,14 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# --- ENDPOINT PARA CREAR O ACTUALIZAR OPINIÓN ---
+# --- ENDPOINT CORREGIDO DE CREACIÓN/ACTUALIZACIÓN ---
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
     user_info = session.exec(select(UserInfo).where(UserInfo.user_id == body.user_id)).one_or_none()
     if not user_info:
         raise HTTPException(404, "Usuario no encontrado")
 
-    # 1. Buscar compra válida
+    # 1. Buscar una compra ENTREGADA de este producto
     purchase_item = session.exec(
         select(PurchaseItemModel)
         .join(PurchaseModel)
@@ -638,7 +634,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     if not purchase_item:
         raise HTTPException(400, "Debes haber comprado y recibido este producto para opinar.")
 
-    # 2. Verificar si ya existe opinión padre
+    # 2. Verificar si ya existe una opinión PADRE vinculada a esa compra
     existing_comment = session.exec(
         select(CommentModel)
         .where(
@@ -648,7 +644,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     ).one_or_none()
 
     if existing_comment:
-        # Lógica de Actualización
+        # Lógica de Actualización (Crear Hijo)
         update_count = session.exec(
             select(func.count(CommentModel.id))
             .where(CommentModel.parent_comment_id == existing_comment.id)
@@ -665,13 +661,13 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             userinfo_id=user_info.id,
             blog_post_id=product_id,
             purchase_item_id=purchase_item.id,
-            parent_comment_id=existing_comment.id
+            parent_comment_id=existing_comment.id # Vinculación
         )
         session.add(new_update)
         session.commit()
         return {"message": "Opinión actualizada exitosamente"}
     else:
-        # Lógica de Nueva Opinión
+        # Lógica de Nueva Opinión (Crear Padre)
         new_comment = CommentModel(
             content=body.comment,
             rating=body.rating,
@@ -680,7 +676,7 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             userinfo_id=user_info.id,
             blog_post_id=product_id,
             purchase_item_id=purchase_item.id,
-            parent_comment_id=None
+            parent_comment_id=None # Es Padre
         )
         session.add(new_comment)
         session.commit()
@@ -754,7 +750,7 @@ async def get_mobile_purchase_detail(purchase_id: int, user_id: int, session: Se
                 variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
                 items_dto.append(PurchaseItemDTO(product_id=item.blog_post_id, title=title, quantity=item.quantity, price=item.price_at_purchase, image_url=img, variant_details=variant_str))
         sf = f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}" if purchase.shipping_address else "N/A"
-        return PurchaseHistoryDTO(id=purchase.id, date=purchase.purchase_date.strftime('%d-%m-%Y'), status=purchase.status.value, total=fmt_price(purchase.total_price), items=items_dto, estimated_delivery=None, can_confirm_delivery=False, tracking_message=None, retry_payment_url=None, invoice_path=None, can_return=False, shipping_name=purchase.shipping_name, shipping_address=sf, shipping_phone=purchase.shipping_phone, shipping_cost=fmt_price(purchase.shipping_applied or 0.0))
+        return PurchaseHistoryDTO(id=purchase.id, date=purchase.purchase_date.strftime('%d-%m-%Y'), status=purchase.status.value, total=fmt_price(purchase.total_price), items=items_dto, estimated_delivery=None, can_confirm_delivery=False, tracking_message=None, retry_payment_url=None, invoice_path=None, return_path=None, can_return=False, shipping_name=purchase.shipping_name, shipping_address=sf, shipping_phone=purchase.shipping_phone, shipping_cost=fmt_price(purchase.shipping_applied or 0.0))
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(404, f"No se pudo cargar el detalle: {str(e)}")
 
