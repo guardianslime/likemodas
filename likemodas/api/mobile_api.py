@@ -11,7 +11,7 @@ import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
-from sqlmodel import select, Session
+from sqlmodel import select, Session, func
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
@@ -80,6 +80,8 @@ class ReviewDTO(BaseModel):
     rating: int
     comment: str
     date: str
+    # CAMBIO: Lista recursiva para el historial de actualizaciones
+    updates: List['ReviewDTO'] = []
 
 class ProductDetailDTO(BaseModel):
     id: int
@@ -298,13 +300,30 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
+# --- CALCULO DE CALIFICACIÓN BASADO EN LA ÚLTIMA ACTUALIZACIÓN ---
 def calculate_rating(session: Session, product_id: int):
-    reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id)).all()
-    count = len(reviews)
-    if count == 0:
+    # Obtiene solo los comentarios "padre"
+    parent_comments = session.exec(
+        select(CommentModel)
+        .where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None)
+        .options(joinedload(CommentModel.updates))
+    ).unique().all()
+    
+    if not parent_comments:
         return 0.0, 0
-    total = sum(r.rating for r in reviews if r.rating)
-    return total / count, count
+    
+    total_rating = 0
+    count = len(parent_comments)
+    
+    for parent in parent_comments:
+        # Si tiene historial, usa la calificación de la actualización más reciente
+        if parent.updates:
+            latest = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
+            total_rating += latest.rating
+        else:
+            total_rating += parent.rating
+            
+    return (total_rating / count if count > 0 else 0.0), count
 
 # --- ENDPOINTS ---
 
@@ -515,34 +534,45 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
+        # --- REVIEWS (Padres + Historial) ---
         reviews_list = []
-        average_rating = 0.0
-        rating_count = 0
         
-        try:
-            db_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id)).all()
-            ratings_sum = 0
-            for r in db_reviews:
-                try:
-                    r_val = r.rating if r.rating is not None else 5
-                    ratings_sum += r_val
-                    rating_count += 1
-                    u_name = r.author_username or "Usuario"
-                    content = r.content or ""
-                    date_str = r.created_at.strftime("%d/%m/%Y") if r.created_at else ""
-                    reviews_list.append(ReviewDTO(id=r.id, username=u_name, rating=int(r_val), comment=content, date=date_str))
-                except: 
-                    continue
+        db_parent_reviews = session.exec(
+            select(CommentModel)
+            .where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None)
+            .order_by(CommentModel.created_at.desc())
+            .options(joinedload(CommentModel.updates))
+        ).unique().all()
+        
+        for parent in db_parent_reviews:
+            updates_dtos = []
+            if parent.updates:
+                # Ordenar actualizaciones: la más reciente primero
+                sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
+                for up in sorted_updates:
+                    updates_dtos.append(ReviewDTO(
+                        id=up.id,
+                        username=up.author_username,
+                        rating=up.rating,
+                        comment=up.content,
+                        date=up.created_at.strftime("%d/%m/%Y"),
+                        updates=[]
+                    ))
+
+            reviews_list.append(ReviewDTO(
+                id=parent.id,
+                username=parent.author_username or "Usuario",
+                rating=parent.rating,
+                comment=parent.content,
+                date=parent.created_at.strftime("%d/%m/%Y"),
+                updates=updates_dtos
+            ))
             
-            if rating_count > 0:
-                average_rating = ratings_sum / rating_count
-        except:
-            pass
+        avg_rating, rating_count = calculate_rating(session, p.id)
 
         is_saved = False
         can_review = False
         if user_id and user_id > 0:
-            # CORRECCIÓN: Obtener el UserInfo correcto del usuario logueado
             try:
                 current_user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user_id)).one_or_none()
                 if current_user_info:
@@ -551,17 +581,19 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == real_userinfo_id, SavedPostLink.blogpostmodel_id == p.id)).first()
                     is_saved = saved is not None
                     
-                    # Verificar si compró usando el ID de UserInfo correcto
+                    # Verificar si compró y recibió el producto
                     has_bought = session.exec(
                         select(PurchaseItemModel.id)
                         .join(PurchaseModel)
-                        .where(PurchaseModel.userinfo_id == real_userinfo_id, PurchaseItemModel.blog_post_id == p.id)
+                        .where(
+                            PurchaseModel.userinfo_id == real_userinfo_id, 
+                            PurchaseItemModel.blog_post_id == p.id,
+                            PurchaseModel.status == PurchaseStatus.DELIVERED
+                        )
                     ).first()
                     
-                    already_reviewed = any(r.userinfo_id == real_userinfo_id for r in db_reviews)
-                    can_review = (has_bought is not None) and (not already_reviewed)
+                    can_review = has_bought is not None
             except Exception as e:
-                print(f"Error checking can_review: {e}")
                 pass
 
         date_created_str = ""
@@ -577,14 +609,82 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             main_image_url=main_image_final, images=final_images, variants=variants_dto,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, 
-            average_rating=average_rating, rating_count=rating_count, reviews=reviews_list,
+            average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
             author=author_name, author_id=seller_info_id, created_at=date_created_str, can_review=can_review
         )
     except Exception as e:
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# ... (Endpoints de Factura, Soporte, Carrito y Checkout se mantienen igual que la versión anterior) ...
+# --- ENDPOINT PARA CREAR O ACTUALIZAR OPINIÓN ---
+@router.post("/products/{product_id}/reviews")
+async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == body.user_id)).one_or_none()
+    if not user_info:
+        raise HTTPException(404, "Usuario no encontrado")
+
+    # 1. Buscar compra válida
+    purchase_item = session.exec(
+        select(PurchaseItemModel)
+        .join(PurchaseModel)
+        .where(
+            PurchaseModel.userinfo_id == user_info.id,
+            PurchaseItemModel.blog_post_id == product_id,
+            PurchaseModel.status == PurchaseStatus.DELIVERED
+        )
+        .order_by(PurchaseModel.purchase_date.desc())
+    ).first()
+
+    if not purchase_item:
+        raise HTTPException(400, "Debes haber comprado y recibido este producto para opinar.")
+
+    # 2. Verificar si ya existe opinión padre
+    existing_comment = session.exec(
+        select(CommentModel)
+        .where(
+            CommentModel.purchase_item_id == purchase_item.id,
+            CommentModel.parent_comment_id == None
+        )
+    ).one_or_none()
+
+    if existing_comment:
+        # Lógica de Actualización
+        update_count = session.exec(
+            select(func.count(CommentModel.id))
+            .where(CommentModel.parent_comment_id == existing_comment.id)
+        ).one()
+
+        if update_count >= 3:
+            raise HTTPException(400, "Has alcanzado el límite de 3 actualizaciones para esta compra.")
+
+        new_update = CommentModel(
+            content=body.comment,
+            rating=body.rating,
+            author_username=user_info.user.username,
+            author_initial=user_info.user.username[0].upper(),
+            userinfo_id=user_info.id,
+            blog_post_id=product_id,
+            purchase_item_id=purchase_item.id,
+            parent_comment_id=existing_comment.id
+        )
+        session.add(new_update)
+        session.commit()
+        return {"message": "Opinión actualizada exitosamente"}
+    else:
+        # Lógica de Nueva Opinión
+        new_comment = CommentModel(
+            content=body.comment,
+            rating=body.rating,
+            author_username=user_info.user.username,
+            author_initial=user_info.user.username[0].upper(),
+            userinfo_id=user_info.id,
+            blog_post_id=product_id,
+            purchase_item_id=purchase_item.id,
+            parent_comment_id=None
+        )
+        session.add(new_comment)
+        session.commit()
+        return {"message": "Opinión creada exitosamente"}
 
 @router.get("/purchases/{purchase_id}/invoice/{user_id}", response_model=InvoiceDTO)
 async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
