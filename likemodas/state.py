@@ -387,9 +387,9 @@ class CommentData(rx.Base):
     author_username: str
     author_initial: str
     created_at_formatted: str
-    # Este campo es vital para el ordenamiento en Python
+    # --- CAMPO CRÍTICO PARA ARREGLAR EL ERROR DE TERMINAL ---
     created_at_timestamp: float = 0.0 
-    # Esta lista es vital para la jerarquía visual
+    # --------------------------------------------------------
     updates: List["CommentData"] = []
     likes: int = 0
     dislikes: int = 0
@@ -10136,10 +10136,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO DEL BLOQUE DE CÓDIGO CORREGIDO PARA VOTACIONES ✨ ---
 
     def _convert_comment_to_dto(self, comment_model: CommentModel) -> CommentData:
-        """
-        Convierte un CommentModel de la BD a un CommentData DTO.
-        CORREGIDO: Ahora incluye el timestamp para evitar el crash al ordenar.
-        """
+        """Convierte modelo a DTO, incluyendo timestamp para ordenamiento."""
         user_vote = ""
         if self.authenticated_user_info:
             vote = next(
@@ -10161,13 +10158,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             author_initial=comment_model.author_initial,
             created_at_formatted=comment_model.created_at_formatted,
             
-            # --- ✅ AQUÍ SE ASIGNA EL VALOR PARA EVITAR EL ERROR ---
+            # --- ASIGNACIÓN DEL TIMESTAMP ---
             created_at_timestamp=comment_model.created_at.timestamp(),
-            # -------------------------------------------------------
+            # --------------------------------
 
-            # Recursividad para las actualizaciones (hijos)
             updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at, reverse=True)],
-            
             likes=comment_model.likes,
             dislikes=comment_model.dislikes,
             user_vote=user_vote,
