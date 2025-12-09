@@ -1,3 +1,5 @@
+# likemodas/blog/public_page.py
+
 import reflex as rx
 from ..state import AppState, CommentData
 from ..ui.components import product_gallery_component, star_rating_display_safe

@@ -331,6 +331,14 @@ class BlogPostModel(rx.Model, table=True):
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     attr_material: Optional[str] = Field(default=None)
 
+    # NUEVOS CAMPOS PARA EL ALGORITMO
+    total_units_sold: int = Field(default=0, nullable=False, index=True) # Ventas totales
+    quality_score: float = Field(default=10.0, nullable=False) # Puntaje base (inicia con un bono)
+    
+    # Este campo será calculado por la base de datos o por Python al guardar
+    # para ordenar rápidamente.
+    last_interaction_at: datetime = Field(default_factory=get_utc_now) # Fecha de última venta/review
+
 # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
     attr_tipo: Optional[str] = Field(default=None)
 
