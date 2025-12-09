@@ -411,6 +411,7 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
+            # MAPEO DE ESTILOS
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -575,7 +576,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# ... (Endpoints purchase history, invoice, etc. permanecen iguales) ...
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
 async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
     try:
