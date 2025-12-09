@@ -48,6 +48,8 @@ from urllib.parse import urlparse, parse_qs
 
 from .data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from .logic.shipping_calculator import calculate_dynamic_shipping
+# Al principio de likemodas/state.py
+from .logic.ranking import calculate_review_impact, get_ranking_query_sort # <-- Importar esto
 
 from . import navigation
 from .models import (
@@ -1697,8 +1699,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
-        [VERSIÓN FINAL] Procesa la venta directa, guardando nombre y correo anónimos
-        y asignando correctamente al comprador y al actor de la venta.
+        [VERSIÓN CON RANKING] Procesa la venta directa y actualiza estadísticas de ranking.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             yield rx.toast.error("No tienes permisos para realizar esta acción.")
@@ -1709,7 +1710,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         purchase_id_for_toast = None
-        actor_id = self.authenticated_user_info.id # Quién está realizando la venta
+        actor_id = self.authenticated_user_info.id 
 
         with rx.session() as session:
             owner_id = self.context_user_id or self.authenticated_user_info.id
@@ -1724,11 +1725,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("El comprador o el contexto del vendedor no son válidos.")
                 return
 
-            subtotal = sum(item.subtotal for item in self.direct_sale_cart_details)
             items_to_create = []
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
             
-            # CORRECCIÓN CLAVE: Añadir .with_for_update() para bloquear las filas
             posts_to_check = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.id.in_(product_ids))
@@ -1743,26 +1742,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                     return
                 
                 variant_updated = False
+                current_variants = list(post.variants) 
                 
-                # --- INICIO DE LA CORRECCIÓN (FORZAR ACTUALIZACIÓN DE JSONB) ---
-                current_variants = list(post.variants) # 1. Copia superficial de la lista
-                
-                for i, variant in enumerate(current_variants): # Iteramos sobre la copia
+                for i, variant in enumerate(current_variants):
                     if variant.get("attributes") == item.variant_details:
                         if variant.get("stock", 0) < item.quantity:
                             yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                             return
                         
-                        # 2. Creamos un *nuevo* diccionario (copia profunda de la variante)
                         new_variant = variant.copy() 
-                        
-                        # 3. Modificamos el *nuevo* diccionario
                         new_stock = new_variant.get("stock", 0) - item.quantity
                         new_variant["stock"] = max(0, new_stock)
-                        
-                        # 4. Reemplazamos el diccionario antiguo por el nuevo en la lista
                         current_variants[i] = new_variant
-                        
                         variant_updated = True
                         break
                 
@@ -1770,20 +1761,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                     return
 
-                # 5. Re-asignamos la lista *modificada* al campo del modelo
                 post.variants = current_variants
-                
-                # 6. Forzamos a SQLAlchemy a marcar el campo 'variants' como "modificado"
-                # (Asegúrate de tener: from sqlalchemy.orm.attributes import flag_modified)
                 sqlalchemy.orm.attributes.flag_modified(post, "variants")
-                # --- FIN DE LA CORRECCIÓN ---
                                 
-                # Lógica Clave: Verificar el stock total de la PUBLICACIÓN
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
-                    post.publish_active = False # ¡Desactivar publicación!
+                    post.publish_active = False 
                 
-                session.add(post) # Persistir cambios en stock y publish_active
+                # --- ACTUALIZACIÓN DE RANKING ---
+                post.total_units_sold += item.quantity
+                post.last_interaction_at = datetime.now(timezone.utc)
+                # -------------------------------
+
+                session.add(post)
                  
                 items_to_create.append(
                     PurchaseItemModel(
@@ -1792,7 +1782,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
              
-            # --- LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ---
             final_shipping_name = "Cliente (Venta Directa)"
             if self.direct_sale_buyer_id:
                 final_shipping_name = buyer_info.user.username
@@ -1811,7 +1800,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_applied=0,
                 shipping_name=final_shipping_name,
                 is_direct_sale=True,
-                action_by_id=actor_id, # Guardamos quién hizo la venta
+                action_by_id=actor_id, 
                 anonymous_customer_email=self.direct_sale_anonymous_buyer_email.strip() if self.direct_sale_anonymous_buyer_email.strip() else None,
             )
 
@@ -1832,8 +1821,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.success(f"Venta #{purchase_id_for_toast} confirmada exitosamente.")
         
         yield AppState.load_purchase_history
-        # 🆕 CORRECCIÓN CLAVE 4: Recargar la lista de productos de la tienda del admin
-        # para que la publicación agotada desaparezca de la vista.
         yield AppState.on_load_admin_store
 
     @rx.var
@@ -3673,9 +3660,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
         except Exception as e:
             logger.error(f"Error fatal al procesar la imagen del QR: {e}")
+            
     @rx.event
     def load_gallery_and_shipping(self):
-        # ✅ CÓDIGO VERIFICADO: Reemplaza tu función con esta.
         self.is_loading = True
         yield
 
@@ -3686,22 +3673,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            # --- OPTIMIZACIÓN: PAGINACIÓN ---
-            # En lugar de .all(), usamos limit().
-            # Esto carga solo los 20 más recientes.
+            # --- USO DEL ALGORITMO DE RANKING ---
             results = session.exec(
-                query.order_by(BlogPostModel.created_at.desc()).limit(20) 
+                query.order_by(get_ranking_query_sort(BlogPostModel).desc()).limit(20) 
             ).all()
+            # ------------------------------------
 
             temp_posts = []
             for p in results:
+                # ... (el resto de la función es idéntico al original) ...
+                # COPIA EL RESTO DEL CÓDIGO DEL BUCLE FOR DE TU ARCHIVO ACTUAL
                 main_image = ""
                 if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
-
+                
+                # ... (resto de la lógica de creación de ProductCardData) ...
+                # (Para no hacer la respuesta gigante, asumo que mantienes el bloque for)
+                
+                # (Solo asegúrate de pegar esto dentro del for)
                 moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
-
+                
                 card_data = ProductCardData(
                     id=p.id,
                     userinfo_id=p.userinfo_id,
@@ -3712,30 +3704,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                     attributes={},
                     average_rating=p.average_rating,
                     rating_count=p.rating_count,
-                    main_image_url=main_image,
+                    main_image_url=p.main_image_url_variant or main_image,
                     shipping_cost=p.shipping_cost,
                     is_moda_completa_eligible=p.is_moda_completa_eligible,
                     free_shipping_threshold=p.free_shipping_threshold,
                     combines_shipping=p.combines_shipping,
                     shipping_combination_limit=p.shipping_combination_limit,
-                    shipping_display_text=_get_shipping_display_text(p.shipping_cost), # Solo aparece una vez
+                    shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     is_imported=p.is_imported,
                     moda_completa_tooltip_text=moda_completa_text,
                     envio_combinado_tooltip_text=combinado_text,
                     use_default_style=p.use_default_style,
-                    # ++ AÑADE ESTAS DOS LÍNEAS ++
-                    light_mode_appearance=p.light_mode_appearance, # Lee el valor del modelo de BD
-                    dark_mode_appearance=p.dark_mode_appearance,   # Lee el valor del modelo de BD
-                    # ++++++++++++++++++++++++++++++
+                    light_mode_appearance=p.light_mode_appearance,
+                    dark_mode_appearance=p.dark_mode_appearance,
                     light_card_bg_color=p.light_card_bg_color,
                     light_title_color=p.light_title_color,
                     light_price_color=p.light_price_color,
                     dark_card_bg_color=p.dark_card_bg_color,
                     dark_title_color=p.dark_title_color,
                     dark_price_color=p.dark_price_color,
+                    image_styles=p.image_styles,
                 )
                 temp_posts.append(card_data)
-                
+
             self._raw_posts = temp_posts
 
         yield AppState.recalculate_all_shipping_costs
@@ -9928,17 +9919,35 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not user_info or not user_info.user:
                 return rx.toast.error("No se pudo identificar al usuario.")
 
-            if self.my_review_for_product:
-                original_comment = session.get(CommentModel, self.my_review_for_product.id)
+            # --- OBTENER EL POST PARA ACTUALIZAR RANKING ---
+            post_to_update = session.get(BlogPostModel, self.product_in_modal.id)
+            if not post_to_update:
+                 return rx.toast.error("El producto ya no existe.")
 
+            if self.my_review_for_product:
+                # ES UNA ACTUALIZACIÓN
+                original_comment = session.get(CommentModel, self.my_review_for_product.id)
                 if not original_comment:
-                    return rx.toast.error("El comentario que intentas actualizar ya no existe.")
+                    return rx.toast.error("El comentario original no existe.")
 
                 while original_comment.parent:
                     original_comment = original_comment.parent
                 
                 if len(original_comment.updates) >= 2:
-                    return rx.toast.error("Ya has alcanzado el límite de 2 actualizaciones para esta compra.")
+                    return rx.toast.error("Límite de actualizaciones alcanzado.")
+
+                # --- LÓGICA DE RANKING (ACTUALIZACIÓN) ---
+                old_rating = self.my_review_for_product.rating
+                new_score = calculate_review_impact(
+                    current_score=post_to_update.quality_score,
+                    old_rating=old_rating,
+                    new_rating=self.review_rating,
+                    is_first_review=False # Ya había opinado
+                )
+                post_to_update.quality_score = new_score
+                post_to_update.last_interaction_at = datetime.now(timezone.utc)
+                session.add(post_to_update)
+                # ----------------------------------------
 
                 new_update = CommentModel(
                     userinfo_id=user_info.id,
@@ -9953,9 +9962,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(new_update)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
+                # ES UNA OPINIÓN NUEVA
                 unclaimed_purchase_item = self._find_unclaimed_purchase(session)
                 if not unclaimed_purchase_item:
-                    return rx.toast.error("Debes comprar este producto para poder dejar una opinión.")
+                    return rx.toast.error("Debes comprar este producto para opinar.")
+
+                # --- LÓGICA DE RANKING (NUEVA) ---
+                # Asumimos que si no tenía review, es su "primera impresión" válida
+                new_score = calculate_review_impact(
+                    current_score=post_to_update.quality_score,
+                    old_rating=0, # 0 indica nuevo
+                    new_rating=self.review_rating,
+                    is_first_review=True 
+                )
+                post_to_update.quality_score = new_score
+                post_to_update.last_interaction_at = datetime.now(timezone.utc)
+                session.add(post_to_update)
+                # ---------------------------------
 
                 new_review = CommentModel(
                     userinfo_id=user_info.id,
@@ -9968,7 +9991,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 session.add(new_review)
                 yield rx.toast.success("¡Gracias por tu opinión!")
-            
+             
             session.commit()
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 

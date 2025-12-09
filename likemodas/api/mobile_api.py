@@ -26,6 +26,9 @@ from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from likemodas.services import wompi_service, sistecredito_service
 
+# --- IMPORTACIÓN NUEVA PARA EL RANKING ---
+from likemodas.logic.ranking import get_ranking_query_sort, calculate_review_impact
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -74,7 +77,6 @@ class VariantDTO(BaseModel):
     available_quantity: int
     images: List[str]
 
-# --- DTO RECURSIVO CORREGIDO ---
 class ReviewDTO(BaseModel):
     id: int
     username: str
@@ -300,15 +302,11 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
 
-# --- ✅ CÁLCULO DE CALIFICACIÓN CORREGIDO ✅ ---
-# Reemplaza la función calculate_rating existente con esta versión robusta:
-
 def calculate_rating(session: Session, product_id: int):
     """
     Calcula el promedio de estrellas.
     Regla: Si un usuario editó su opinión, solo cuenta la nota de la ÚLTIMA actualización.
     """
-    # 1. Obtener solo los comentarios PADRE (raíz)
     parent_comments = session.exec(
         select(CommentModel)
         .where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None)
@@ -319,17 +317,13 @@ def calculate_rating(session: Session, product_id: int):
         return 0.0, 0
     
     total_rating = 0
-    # El conteo es igual a la cantidad de padres (usuarios únicos que opinaron)
     count = len(parent_comments) 
-   
+    
     for parent in parent_comments:
-        # 2. Si tiene actualizaciones, la nota válida es la del hijo más reciente (ordenado por fecha DESC)
         if parent.updates:
-            # Ordenamos por fecha descendente (el más nuevo primero) y tomamos el [0]
             latest_update = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
             total_rating += latest_update.rating
         else:
-            # 3. Si no hay actualizaciones, vale la nota del padre original
             total_rating += parent.rating
             
     avg = total_rating / count if count > 0 else 0.0
@@ -415,12 +409,19 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
             pass
     return {"message": "OK"}
 
+# --- ENDPOINT ACTUALIZADO PARA RANKING ---
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
+    
     if category and category != "todos": 
         query = query.where(BlogPostModel.category == category)
-    query = query.order_by(BlogPostModel.created_at.desc())
+    
+    # --- APLICACIÓN DEL ALGORITMO DE RANKING ---
+    # Ordenamos por la fórmula: (Calidad + Ventas) / DecaimientoTiempo
+    query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
+    # ------------------------------------------
+
     products = session.exec(query).all()
     result = []
     for p in products:
@@ -444,6 +445,7 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
 
 @router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO])
 async def get_seller_products(seller_id: int, session: Session = Depends(get_session)):
+    # Los productos de un vendedor específico siguen ordenados por fecha para su gestión
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id)
     query = query.order_by(BlogPostModel.created_at.desc())
     products = session.exec(query).all()
@@ -544,9 +546,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 images=v_images_list
             ))
 
-        # --- ESTRUCTURA JERÁRQUICA DE COMENTARIOS ---
-        # 1. Obtenemos comentarios padres (sin parent_id)
-        # 2. Obtenemos sus hijos (updates)
         reviews_list = []
         
         db_parent_reviews = session.exec(
@@ -555,11 +554,10 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             .order_by(CommentModel.created_at.desc())
             .options(joinedload(CommentModel.updates))
         ).unique().all()
-        
+
         for parent in db_parent_reviews:
             updates_dtos = []
             if parent.updates:
-                # Ordenar actualizaciones, la más reciente primero
                 sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
                 for up in sorted_updates:
                     updates_dtos.append(ReviewDTO(
@@ -568,22 +566,20 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         rating=up.rating,
                         comment=up.content,
                         date=up.created_at.strftime("%d/%m/%Y"),
-                        updates=[] # Los hijos no tienen más hijos
+                        updates=[]
                     ))
 
-            # Añadir el padre a la lista
             reviews_list.append(ReviewDTO(
                 id=parent.id,
                 username=parent.author_username or "Usuario",
                 rating=parent.rating,
                 comment=parent.content,
                 date=parent.created_at.strftime("%d/%m/%Y"),
-                updates=updates_dtos # <--- Lista de hijos adjunta
+                updates=updates_dtos
             ))
             
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # ✅ Corrección: Inicializar is_saved antes de usarla
         is_saved = False 
         can_review = False
         
@@ -596,7 +592,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == real_userinfo_id, SavedPostLink.blogpostmodel_id == p.id)).first()
                     is_saved = saved is not None
                     
-                    # Verificar si compró y recibió
                     has_bought = session.exec(
                         select(PurchaseItemModel.id)
                         .join(PurchaseModel)
@@ -630,13 +625,13 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
+# --- ENDPOINT ACTUALIZADO PARA RANKING (RESEÑAS) ---
 @router.post("/products/{product_id}/reviews")
 async def create_product_review(product_id: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
     user_info = session.exec(select(UserInfo).where(UserInfo.user_id == body.user_id)).one_or_none()
     if not user_info:
         raise HTTPException(404, "Usuario no encontrado")
 
-    # 1. Buscar compra ENTREGADA
     purchase_item = session.exec(
         select(PurchaseItemModel)
         .join(PurchaseModel)
@@ -651,7 +646,11 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     if not purchase_item:
         raise HTTPException(400, "Debes haber comprado y recibido este producto para opinar.")
 
-    # 2. Verificar si ya existe el PADRE (comentario raíz)
+    # --- OBTENER POST PARA RANKING ---
+    post_to_update = session.get(BlogPostModel, product_id)
+    if not post_to_update:
+        raise HTTPException(404, "Producto no encontrado")
+
     existing_comment = session.exec(
         select(CommentModel)
         .where(
@@ -661,14 +660,36 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
     ).one_or_none()
 
     if existing_comment:
-        # Lógica de Actualización (Crear Hijo)
+        # Lógica de Actualización
         update_count = session.exec(
             select(func.count(CommentModel.id))
             .where(CommentModel.parent_comment_id == existing_comment.id)
         ).one()
 
         if update_count >= 3:
-            raise HTTPException(400, "Has alcanzado el límite de 3 actualizaciones para esta compra.")
+            raise HTTPException(400, "Has alcanzado el límite de 3 actualizaciones.")
+
+        # --- RANKING: ACTUALIZACIÓN ---
+        # Buscamos la calificación anterior más reciente
+        last_update = session.exec(
+            select(CommentModel)
+            .where(CommentModel.parent_comment_id == existing_comment.id)
+            .order_by(CommentModel.created_at.desc())
+        ).first()
+        
+        # Si hay updates, usamos la nota del último. Si no, usamos la nota del padre.
+        old_rating = last_update.rating if last_update else existing_comment.rating
+
+        new_score = calculate_review_impact(
+            current_score=post_to_update.quality_score,
+            old_rating=old_rating,
+            new_rating=body.rating,
+            is_first_review=False
+        )
+        post_to_update.quality_score = new_score
+        post_to_update.last_interaction_at = datetime.now(timezone.utc)
+        session.add(post_to_update)
+        # -----------------------------
 
         new_update = CommentModel(
             content=body.comment,
@@ -678,13 +699,27 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             userinfo_id=user_info.id,
             blog_post_id=product_id,
             purchase_item_id=purchase_item.id,
-            parent_comment_id=existing_comment.id # Vinculación al padre
+            parent_comment_id=existing_comment.id
         )
         session.add(new_update)
         session.commit()
         return {"message": "Opinión actualizada exitosamente"}
     else:
-        # Lógica de Creación (Nuevo Padre)
+        # Lógica de Creación (Nueva Opinión)
+        
+        # --- RANKING: NUEVA OPINIÓN ---
+        # Asumimos que es la primera vez que opina sobre este producto (porque no había existing_comment)
+        new_score = calculate_review_impact(
+            current_score=post_to_update.quality_score,
+            old_rating=0, # 0 indica nuevo
+            new_rating=body.rating,
+            is_first_review=True
+        )
+        post_to_update.quality_score = new_score
+        post_to_update.last_interaction_at = datetime.now(timezone.utc)
+        session.add(post_to_update)
+        # ------------------------------
+
         new_comment = CommentModel(
             content=body.comment,
             rating=body.rating,
@@ -693,13 +728,12 @@ async def create_product_review(product_id: int, body: ReviewSubmissionBody, ses
             userinfo_id=user_info.id,
             blog_post_id=product_id,
             purchase_item_id=purchase_item.id,
-            parent_comment_id=None # Es Raíz
+            parent_comment_id=None
         )
         session.add(new_comment)
         session.commit()
         return {"message": "Opinión creada exitosamente"}
 
-# ... (El resto de endpoints Invoice, Support, etc. se mantienen igual) ...
 @router.get("/purchases/{purchase_id}/invoice/{user_id}", response_model=InvoiceDTO)
 async def get_mobile_invoice(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     try:
@@ -835,6 +869,7 @@ async def send_support_message(req: SendMessageRequest, user_id: int = Query(...
         return {"message": "Enviado"}
     except Exception as e: raise HTTPException(500, str(e))
 
+# --- ENDPOINT ACTUALIZADO PARA RANKING (VENTAS) ---
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
 async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
     try:
@@ -842,17 +877,32 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         if not user_info: raise HTTPException(404, "Usuario no encontrado")
         address = session.get(ShippingAddressModel, req.address_id)
         if not address or address.userinfo_id != user_info.id: raise HTTPException(400, "Dirección no válida")
+        
         product_ids = [item.product_id for item in req.items]
-        db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
+        
+        # --- BLOQUEO PARA ACTUALIZACIÓN ---
+        # Seleccionamos con bloqueo para actualizar stats de forma segura
+        db_posts = session.exec(
+            select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
+        ).all()
         post_map = {p.id: p for p in db_posts}
+        
         subtotal_base = 0.0
         items_to_create = []
         seller_groups = defaultdict(list)
         buyer_city = address.city
         buyer_barrio = address.neighborhood
+        
         for item in req.items:
             post = post_map.get(item.product_id)
             if not post: continue
+            
+            # --- RANKING: INCREMENTAR VENTAS ---
+            post.total_units_sold += item.quantity
+            post.last_interaction_at = datetime.now(timezone.utc)
+            session.add(post) # Marcamos el post para actualización
+            # -----------------------------------
+
             price = post.price
             if not post.price_includes_iva: price = price * 1.19
             subtotal_base += price * item.quantity
@@ -862,6 +912,7 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
                 target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
                 if target: selected_variant = target.get("attributes", {})
             items_to_create.append({"blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": price, "selected_variant": selected_variant})
+        
         subtotal_con_iva = subtotal_base
         free_shipping = False
         moda_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
