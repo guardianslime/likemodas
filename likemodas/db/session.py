@@ -4,18 +4,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Obtiene la URL. Si no hay, usa SQLite por defecto para evitar crashes locales.
+# 1. Obtener la URL del entorno. Si falla, usar SQLite local por seguridad.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
 
-# Configuración condicional del motor:
-# - SQLite (Local): Sin argumentos complejos.
-# - PostgreSQL (Railway): Con pool_recycle y timezone.
+# 2. Configuración condicional del motor
 if "sqlite" in DATABASE_URL:
+    # Configuración simple para SQLite (Tu PC)
+    # SQLite no soporta pool_recycle ni timezone args
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False}
     )
 else:
+    # Configuración robusta para PostgreSQL (Hetzner/Railway)
+    # PostgreSQL necesita estos argumentos para mantener la conexión viva
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"options": "-c timezone=utc"}, 
@@ -24,7 +26,8 @@ else:
 
 def get_session():
     """
-    Provee una sesión de base de datos a través de la inyección de dependencias.
+    Generador de sesión para inyección de dependencias.
+    Maneja automáticamente el commit y el cierre.
     """
     with Session(engine) as session:
         try:
