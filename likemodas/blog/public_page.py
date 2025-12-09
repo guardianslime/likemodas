@@ -34,6 +34,64 @@ def render_update_item(update: CommentData) -> rx.Component:
         width="95%"
     )
 
+def review_submission_form() -> rx.Component:
+    """Formulario para enviar o actualizar una reseña. Se adapta al ancho del contenedor."""
+    return rx.cond(
+        AppState.show_review_form,
+        rx.card(
+            rx.form(
+                rx.vstack(
+                    rx.heading(
+                        rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), 
+                        size="4"
+                    ),
+                    rx.text("Tu valoración:", size="2", weight="medium"),
+                    rx.hstack(
+                        rx.foreach(
+                            rx.Var.range(5),
+                            lambda i: rx.icon(
+                                "star", 
+                                color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
+                                on_click=AppState.set_review_rating(i + 1), 
+                                cursor="pointer", 
+                                size=28,
+                                style={"fill": rx.cond(AppState.review_rating > i, "gold", "none")}
+                            )
+                        ),
+                        spacing="1"
+                    ),
+                    rx.text_area(
+                        name="review_content", 
+                        placeholder="Cuéntanos qué te pareció el producto...", 
+                        value=AppState.review_content,
+                        on_change=AppState.set_review_content, 
+                        width="100%",
+                        min_height="80px"
+                    ),
+                    rx.button(
+                        rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Publicar Opinión"), 
+                        type="submit", 
+                        width="100%", 
+                        color_scheme="violet"
+                    ),
+                    spacing="3",
+                    width="100%",
+                ),
+                on_submit=AppState.submit_review,
+            ),
+            width="100%", 
+        ),
+        rx.cond(
+            AppState.review_limit_reached,
+            rx.callout(
+                "Has alcanzado el límite de 3 opiniones (original + 2 actualizaciones) para esta compra.",
+                icon="info",
+                color_scheme="orange",
+                width="100%"
+            ),
+        )
+    )
+
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal y su lógica de actualización."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
@@ -88,18 +146,17 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 width="100%", align="center", margin_top="0.5em",
             ),
 
-            # Historial desplegable
+            # --- CORRECCIÓN AQUÍ: Acceso directo al diccionario ---
+            # Antes estaba AppState.is_comment_expanded(comment.id), lo cual es incorrecto en rx.cond
             rx.cond(
-                AppState.is_comment_expanded(comment.id),
+                AppState.expanded_comments[comment.id], # <--- ASÍ ES COMO DEBE SER
                 rx.vstack(
                     rx.foreach(comment.updates, render_update_item),
                     width="100%", align_items="stretch"
                 )
             ),
 
-            # --- AQUI ESTÁ LA MAGIA: FORMULARIO INCRUSTADO ---
-            # Si este comentario es el mío Y estoy en modo edición (tengo una review previa),
-            # muestro el formulario AQUÍ.
+            # Formulario incrustado
             rx.cond(
                 AppState.my_review_for_product & (AppState.my_review_for_product.id == comment.id),
                 rx.box(
@@ -109,85 +166,20 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     margin_top="0.5em"
                 )
             ),
-            # -------------------------------------------------
 
             align_items="stretch", width="100%"
         ),
         width="100%", margin_bottom="1em"
     )
 
-def review_submission_form() -> rx.Component:
-    """Formulario para enviar o actualizar una reseña. Se adapta al ancho del contenedor."""
-    return rx.cond(
-        AppState.show_review_form,
-        rx.card(
-            rx.form(
-                rx.vstack(
-                    rx.heading(
-                        rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), 
-                        size="4"
-                    ),
-                    rx.text("Tu valoración:", size="2", weight="medium"),
-                    rx.hstack(
-                        rx.foreach(
-                            rx.Var.range(5),
-                            lambda i: rx.icon(
-                                "star", 
-                                color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
-                                on_click=AppState.set_review_rating(i + 1), 
-                                cursor="pointer", 
-                                size=28,
-                                style={"fill": rx.cond(AppState.review_rating > i, "gold", "none")}
-                            )
-                        ),
-                        spacing="1"
-                    ),
-                    rx.text_area(
-                        name="review_content", 
-                        placeholder="Cuéntanos qué te pareció el producto...", 
-                        value=AppState.review_content,
-                        on_change=AppState.set_review_content, 
-                        width="100%",
-                        min_height="80px"
-                    ),
-                    rx.button(
-                        rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Publicar Opinión"), 
-                        type="submit", 
-                        width="100%", 
-                        color_scheme="violet"
-                    ),
-                    spacing="3",
-                    width="100%",
-                ),
-                on_submit=AppState.submit_review,
-            ),
-            width="100%", # Asegura ancho completo
-        ),
-        rx.cond(
-            AppState.review_limit_reached,
-            rx.callout(
-                "Has alcanzado el límite de 3 opiniones (original + 2 actualizaciones) para esta compra.",
-                icon="info",
-                color_scheme="orange",
-                width="100%"
-            ),
-        )
-    )
-
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
         return rx.vstack(
             carousel(
-                rx.foreach(
-                    AppState.modal_image_urls,
-                    lambda image_url, index: rx.box(
-                        rx.image(src=rx.get_upload_url(image_url), width="100%", height="100%", object_fit="contain"),
-                        on_click=AppState.open_lightbox(index), cursor="pointer", height={"base": "350px", "md": "500px"},
-                    ),
-                ),
+                rx.foreach(AppState.modal_image_urls, lambda image_url, index: rx.box(rx.image(src=rx.get_upload_url(image_url), width="100%", height="100%", object_fit="contain"), on_click=AppState.open_lightbox(index), cursor="pointer", height={"base": "350px", "md": "500px"})),
                 show_thumbs=False, show_status=False, infinite_loop=True, width="100%",
             ),
-            # Miniaturas simples si hay más de 1 variante
+            # Miniaturas
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
@@ -214,10 +206,9 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
-            rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
-            rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
-            rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=32),
+            rx.text(AppState.product_in_modal.title, size="7", weight="bold"),
+            rx.text(AppState.product_in_modal.price_cop, size="6", color_scheme="violet"),
+            star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=24),
             
             rx.flex(
                 rx.badge(AppState.product_in_modal.shipping_display_text, variant="solid", size="2"),
@@ -226,7 +217,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 rx.cond(AppState.product_in_modal.is_imported, rx.badge("Importado", color_scheme="purple", variant="solid", size="2")),
                 spacing="3", align="center", wrap="wrap", margin_y="1em",
             ),
-            rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+            rx.text(AppState.product_in_modal.content, size="3", margin_top="1em", white_space="pre-wrap"),
             
             rx.vstack(
                 rx.divider(margin_y="1em"),
@@ -275,14 +266,12 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     
                     rx.heading("Opiniones de Clientes", size="5", width="100%"),
                     rx.vstack(
-                        # --- FORMULARIO DE NUEVA OPINIÓN ---
-                        # Solo se muestra aquí si NO es una actualización (es decir, no hay review previa)
+                        # Formulario de NUEVA opinión (Solo si no es actualización)
                         rx.cond(
                             ~AppState.my_review_for_product, 
                             review_submission_form()
                         ),
                         
-                        # --- LISTA DE OPINIONES ---
                         rx.cond(
                             AppState.product_comments,
                             rx.vstack(
