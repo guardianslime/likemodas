@@ -1,8 +1,8 @@
-"""Reinicio Final
+"""reinicio con ranking
 
-Revision ID: 18892e974476
+Revision ID: 1130e94b8f1b
 Revises: 
-Create Date: 2025-11-27 20:13:44.375897
+Create Date: 2025-12-09 03:28:13.066017
 
 """
 from typing import Sequence, Union
@@ -10,10 +10,10 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-import sqlmodel  # <--- ¡ESTA ES LA LÍNEA MÁGICA!
+import sqlmodel
 
 # revision identifiers, used by Alembic.
-revision: str = '18892e974476'
+revision: str = '1130e94b8f1b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -26,11 +26,13 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('session_id', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
-    sa.Column('expiration', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('expiration', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_localauthsession_session_id'), 'localauthsession', ['session_id'], unique=True)
-    op.create_index(op.f('ix_localauthsession_user_id'), 'localauthsession', ['user_id'], unique=False)
+    with op.batch_alter_table('localauthsession', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_localauthsession_session_id'), ['session_id'], unique=True)
+        batch_op.create_index(batch_op.f('ix_localauthsession_user_id'), ['user_id'], unique=False)
+
     op.create_table('localuser',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=255), nullable=False),
@@ -38,17 +40,21 @@ def upgrade() -> None:
     sa.Column('enabled', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_localuser_username'), 'localuser', ['username'], unique=True)
+    with op.batch_alter_table('localuser', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_localuser_username'), ['username'], unique=True)
+
     op.create_table('passwordresettoken',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('token', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['localuser.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_passwordresettoken_token'), 'passwordresettoken', ['token'], unique=True)
+    with op.batch_alter_table('passwordresettoken', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_passwordresettoken_token'), ['token'], unique=True)
+
     op.create_table('userinfo',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -59,8 +65,8 @@ def upgrade() -> None:
     sa.Column('is_verified', sa.Boolean(), nullable=False),
     sa.Column('is_banned', sa.Boolean(), nullable=False),
     sa.Column('ban_expires_at', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('seller_barrio', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('seller_city', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('seller_address', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
@@ -97,6 +103,9 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('category', sa.String(), server_default='otros', nullable=False),
     sa.Column('attr_material', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('total_units_sold', sa.Integer(), nullable=False),
+    sa.Column('quality_score', sa.Float(), nullable=False),
+    sa.Column('last_interaction_at', sa.DateTime(), nullable=False),
     sa.Column('attr_tipo', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('shipping_cost', sa.Float(), nullable=True),
     sa.Column('is_moda_completa_eligible', sa.Boolean(), nullable=False),
@@ -115,13 +124,16 @@ def upgrade() -> None:
     sa.Column('dark_price_color', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('light_mode_appearance', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('dark_mode_appearance', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('image_styles', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('image_styles', postgresql.JSONB(astext_type=Text()), nullable=True),
     sa.Column('main_image_url_variant', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.ForeignKeyConstraint(['creator_id'], ['userinfo.id'], ),
     sa.ForeignKeyConstraint(['last_modified_by_id'], ['userinfo.id'], ),
     sa.ForeignKeyConstraint(['userinfo_id'], ['userinfo.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    with op.batch_alter_table('blogpostmodel', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_blogpostmodel_total_units_sold'), ['total_units_sold'], unique=False)
+
     op.create_table('contactentrymodel',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('userinfo_id', sa.Integer(), nullable=True),
@@ -137,7 +149,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('vendedor_id', sa.Integer(), nullable=False),
     sa.Column('empleado_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['empleado_id'], ['userinfo.id'], ),
     sa.ForeignKeyConstraint(['vendedor_id'], ['userinfo.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -207,12 +219,14 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['userinfo_id'], ['userinfo.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_purchasemodel_anonymous_customer_email'), 'purchasemodel', ['anonymous_customer_email'], unique=False)
-    op.create_index(op.f('ix_purchasemodel_sistecredito_authorization_code'), 'purchasemodel', ['sistecredito_authorization_code'], unique=False)
-    op.create_index(op.f('ix_purchasemodel_sistecredito_invoice'), 'purchasemodel', ['sistecredito_invoice'], unique=False)
-    op.create_index(op.f('ix_purchasemodel_sistecredito_transaction_id'), 'purchasemodel', ['sistecredito_transaction_id'], unique=True)
-    op.create_index(op.f('ix_purchasemodel_wompi_payment_link_id'), 'purchasemodel', ['wompi_payment_link_id'], unique=False)
-    op.create_index(op.f('ix_purchasemodel_wompi_transaction_id'), 'purchasemodel', ['wompi_transaction_id'], unique=True)
+    with op.batch_alter_table('purchasemodel', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_purchasemodel_anonymous_customer_email'), ['anonymous_customer_email'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_sistecredito_authorization_code'), ['sistecredito_authorization_code'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_sistecredito_invoice'), ['sistecredito_invoice'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_sistecredito_transaction_id'), ['sistecredito_transaction_id'], unique=True)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_wompi_payment_link_id'), ['wompi_payment_link_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_wompi_transaction_id'), ['wompi_transaction_id'], unique=True)
+
     op.create_table('shippingaddress',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('userinfo_id', sa.Integer(), nullable=False),
@@ -231,11 +245,13 @@ def upgrade() -> None:
     sa.Column('token', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('userinfo_id', sa.Integer(), nullable=False),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['userinfo_id'], ['userinfo.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_verificationtoken_token'), 'verificationtoken', ['token'], unique=True)
+    with op.batch_alter_table('verificationtoken', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_verificationtoken_token'), ['token'], unique=True)
+
     op.create_table('purchaseitemmodel',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('purchase_id', sa.Integer(), nullable=False),
@@ -317,29 +333,42 @@ def downgrade() -> None:
     op.drop_table('supportticketmodel')
     op.drop_table('savedpostlink')
     op.drop_table('purchaseitemmodel')
-    op.drop_index(op.f('ix_verificationtoken_token'), table_name='verificationtoken')
+    with op.batch_alter_table('verificationtoken', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_verificationtoken_token'))
+
     op.drop_table('verificationtoken')
     op.drop_table('shippingaddress')
-    op.drop_index(op.f('ix_purchasemodel_wompi_transaction_id'), table_name='purchasemodel')
-    op.drop_index(op.f('ix_purchasemodel_wompi_payment_link_id'), table_name='purchasemodel')
-    op.drop_index(op.f('ix_purchasemodel_sistecredito_transaction_id'), table_name='purchasemodel')
-    op.drop_index(op.f('ix_purchasemodel_sistecredito_invoice'), table_name='purchasemodel')
-    op.drop_index(op.f('ix_purchasemodel_sistecredito_authorization_code'), table_name='purchasemodel')
-    op.drop_index(op.f('ix_purchasemodel_anonymous_customer_email'), table_name='purchasemodel')
+    with op.batch_alter_table('purchasemodel', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_wompi_transaction_id'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_wompi_payment_link_id'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_sistecredito_transaction_id'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_sistecredito_invoice'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_sistecredito_authorization_code'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_anonymous_customer_email'))
+
     op.drop_table('purchasemodel')
     op.drop_table('notificationmodel')
     op.drop_table('gasto')
     op.drop_table('employmentrequest')
     op.drop_table('empleadovendedorlink')
     op.drop_table('contactentrymodel')
+    with op.batch_alter_table('blogpostmodel', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_blogpostmodel_total_units_sold'))
+
     op.drop_table('blogpostmodel')
     op.drop_table('activitylog')
     op.drop_table('userinfo')
-    op.drop_index(op.f('ix_passwordresettoken_token'), table_name='passwordresettoken')
+    with op.batch_alter_table('passwordresettoken', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_passwordresettoken_token'))
+
     op.drop_table('passwordresettoken')
-    op.drop_index(op.f('ix_localuser_username'), table_name='localuser')
+    with op.batch_alter_table('localuser', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_localuser_username'))
+
     op.drop_table('localuser')
-    op.drop_index(op.f('ix_localauthsession_user_id'), table_name='localauthsession')
-    op.drop_index(op.f('ix_localauthsession_session_id'), table_name='localauthsession')
+    with op.batch_alter_table('localauthsession', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_localauthsession_user_id'))
+        batch_op.drop_index(batch_op.f('ix_localauthsession_session_id'))
+
     op.drop_table('localauthsession')
     # ### end Alembic commands ###
