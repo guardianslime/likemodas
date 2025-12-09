@@ -1,102 +1,102 @@
 <?xml version="1.0" ?>
 <urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.likemodas.com/</loc>
+    <loc>http://localhost:3000/</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/login</loc>
+    <loc>http://localhost:3000/login</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/register</loc>
+    <loc>http://localhost:3000/register</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/verify-email</loc>
+    <loc>http://localhost:3000/verify-email</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/forgot-password</loc>
+    <loc>http://localhost:3000/forgot-password</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/reset-password</loc>
+    <loc>http://localhost:3000/reset-password</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/verify-2fa</loc>
+    <loc>http://localhost:3000/verify-2fa</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/vendedor</loc>
+    <loc>http://localhost:3000/vendedor</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/my-account/profile</loc>
+    <loc>http://localhost:3000/my-account/profile</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/my-account/shipping-info</loc>
+    <loc>http://localhost:3000/my-account/shipping-info</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/my-account/saved-posts</loc>
+    <loc>http://localhost:3000/my-account/saved-posts</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/my-account/display-settings</loc>
+    <loc>http://localhost:3000/my-account/display-settings</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/cart</loc>
+    <loc>http://localhost:3000/cart</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/my-purchases</loc>
+    <loc>http://localhost:3000/my-purchases</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/payment-status</loc>
+    <loc>http://localhost:3000/payment-status</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/payment-pending</loc>
+    <loc>http://localhost:3000/payment-pending</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/processing-payment</loc>
+    <loc>http://localhost:3000/processing-payment</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/invoice</loc>
+    <loc>http://localhost:3000/invoice</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/returns</loc>
+    <loc>http://localhost:3000/returns</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/profile</loc>
+    <loc>http://localhost:3000/admin/profile</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/my-location</loc>
+    <loc>http://localhost:3000/admin/my-location</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/blog</loc>
+    <loc>http://localhost:3000/blog</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/finance</loc>
+    <loc>http://localhost:3000/admin/finance</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/users</loc>
+    <loc>http://localhost:3000/admin/users</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/blog/add</loc>
+    <loc>http://localhost:3000/blog/add</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/confirm-payments</loc>
+    <loc>http://localhost:3000/admin/confirm-payments</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/store</loc>
+    <loc>http://localhost:3000/admin/store</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/payment-history</loc>
+    <loc>http://localhost:3000/admin/payment-history</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/tickets</loc>
+    <loc>http://localhost:3000/admin/tickets</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/admin/employees</loc>
+    <loc>http://localhost:3000/admin/employees</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/terms</loc>
+    <loc>http://localhost:3000/terms</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/privacy</loc>
+    <loc>http://localhost:3000/privacy</loc>
   </url>
   <url>
-    <loc>https://www.likemodas.com/cookies</loc>
+    <loc>http://localhost:3000/cookies</loc>
   </url>
 </urlset>
