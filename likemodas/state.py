@@ -10377,7 +10377,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         else:
                             self.review_limit_reached = True
 
-        # --- 8. Guardados ---
+        # --- 8. Guardados --
         yield AppState.load_saved_post_ids
 
 
