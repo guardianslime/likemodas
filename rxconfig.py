@@ -4,24 +4,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuración
-api_url = "https://api.likemodas.com"
-
+# Configuración para entorno LOCAL
+# Cuando ejecutes `reflex run`, usará esto.
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
+    # URL de la base de datos (local o remota, definida en .env)
     db_url=os.getenv("DATABASE_URL", "sqlite:///reflex.db"),
     
-    api_url=api_url,
-    deploy_url="https://www.likemodas.com",
+    # URL del backend (FastAPI)
+    api_url="http://localhost:8000", 
+    
+    # URL del frontend (Next.js)
+    deploy_url="http://localhost:3000",
     
     cors_allowed_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
         "*"
     ],
-    
-    # --- ¡LÍNEA BORRADA AQUÍ! ---
-    # Ya no desactivamos el sitemap.
     
     theme=rx.theme(
         appearance="light",
