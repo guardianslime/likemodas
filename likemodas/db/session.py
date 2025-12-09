@@ -4,19 +4,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Obtiene la URL del entorno
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# --- PROTECCIÓN PARA ENTORNO LOCAL ---
-# Si tu PC lee "sqlite" del .env, usa configuración simple.
-# Si el servidor lee "postgres", usa configuración robusta.
+# --- LÓGICA DE SEGURIDAD ---
+# Si estamos en local (SQLite), usamos configuración simple.
 if DATABASE_URL and "sqlite" in DATABASE_URL:
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False}
     )
 else:
-    # Configuración para Producción (Hetzner)
+    # Si estamos en producción (Postgres), usamos configuración robusta.
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"options": "-c timezone=utc"}, 
@@ -24,9 +22,7 @@ else:
     )
 
 def get_session():
-    """
-    Provee una sesión de base de datos segura.
-    """
+    """Provee una sesión de base de datos segura."""
     with Session(engine) as session:
         try:
             yield session
