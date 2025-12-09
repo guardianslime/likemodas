@@ -7,6 +7,7 @@ import secrets
 from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
+import pytz
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
@@ -124,9 +125,11 @@ class ProductDetailDTO(BaseModel):
     created_at: str
     
     # --- CAMPOS DE ESTILO (DETALLE) ---
+    # Fondo de imagen (Lightbox)
     lightbox_bg_light: str = "dark"
     lightbox_bg_dark: str = "dark"
-    # IMPORTANTE: Enviamos la configuración de apariencia también en el detalle
+    
+    # Apariencia de la tarjeta (para etiquetas)
     light_mode_appearance: str = "light"
     dark_mode_appearance: str = "dark"
 
@@ -408,7 +411,6 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            # MAPEO DE ESTILOS
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -453,7 +455,6 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            # --- CAMPOS DE ESTILO ---
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -468,7 +469,6 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
-# --- ENDPOINT MODIFICADO: Envía configuración de estilo completa en el detalle ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
@@ -565,10 +565,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
             author=author_name, author_id=seller_info_id, created_at=date_created_str, can_review=can_review,
-            # Campos Lightbox Pasados
+            # MAPEO LIGHTBOX Y APARIENCIA
             lightbox_bg_light=lightbox_light,
             lightbox_bg_dark=lightbox_dark,
-            # Campos Apariencia Pasados
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance
         )
@@ -576,7 +575,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# ... (Resto de endpoints purchase history, invoice, etc. permanecen iguales) ...
+# ... (Endpoints purchase history, invoice, etc. permanecen iguales) ...
 @router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
 async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
     try:
