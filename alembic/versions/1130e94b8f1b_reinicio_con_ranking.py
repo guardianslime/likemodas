@@ -96,6 +96,7 @@ def upgrade() -> None:
     sa.Column('content', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.Column('profit', sa.Float(), nullable=True),
+    # --- CORRECCIÓN AQUÍ: sa.Text() ---
     sa.Column('variants', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('publish_active', sa.Boolean(), nullable=False),
     sa.Column('publish_date', sa.DateTime(), nullable=True),
@@ -124,7 +125,8 @@ def upgrade() -> None:
     sa.Column('dark_price_color', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('light_mode_appearance', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('dark_mode_appearance', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('image_styles', postgresql.JSONB(astext_type=Text()), nullable=True),
+    # --- CORRECCIÓN AQUÍ: sa.Text() ---
+    sa.Column('image_styles', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('main_image_url_variant', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.ForeignKeyConstraint(['creator_id'], ['userinfo.id'], ),
     sa.ForeignKeyConstraint(['last_modified_by_id'], ['userinfo.id'], ),
