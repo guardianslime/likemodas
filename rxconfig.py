@@ -4,24 +4,24 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Configuración
+api_url = "https://api.likemodas.com"
+
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
-    # Base de datos (Leerá SQLite del .env para poder exportar)
-    db_url=os.getenv("DATABASE_URL"),
+    db_url=os.getenv("DATABASE_URL", "sqlite:///reflex.db"),
     
-    # URLs (Leerá https://www.likemodas.com del .env para conectar Vercel con Hetzner)
-    api_url=os.getenv("API_URL"),
-    deploy_url=os.getenv("DEPLOY_URL"),
+    api_url=api_url,
+    deploy_url="https://www.likemodas.com",
     
     cors_allowed_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "https://www.likemodas.com",
-        "https://likemodas.com",
         "*"
     ],
+    
+    # --- ¡LÍNEA BORRADA AQUÍ! ---
+    # Ya no desactivamos el sitemap.
     
     theme=rx.theme(
         appearance="light",
