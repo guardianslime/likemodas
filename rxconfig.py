@@ -8,20 +8,18 @@ config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
-    # Base de datos: Obedece ciegamente a la variable de entorno
+    # Base de datos (Leerá SQLite del .env para poder exportar)
     db_url=os.getenv("DATABASE_URL"),
     
-    # URLs: Obedecen ciegamente a las variables de entorno
-    # Si no existen (en local sin .env cargado), usa localhost por defecto
-    api_url=os.getenv("API_URL", "http://localhost:8000"),
-    deploy_url=os.getenv("DEPLOY_URL", "http://localhost:3000"),
+    # URLs (Leerá https://www.likemodas.com del .env para conectar Vercel con Hetzner)
+    api_url=os.getenv("API_URL"),
+    deploy_url=os.getenv("DEPLOY_URL"),
     
     cors_allowed_origins=[
         "http://localhost:3000",
         "http://localhost:8000",
         "https://www.likemodas.com",
         "https://likemodas.com",
-        "https://www.likemodas.com/returns",
         "*"
     ],
     
