@@ -10211,12 +10211,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     modal_carousel_key: int = 0
 
     # --- ✨ 2. REEMPLAZA TU FUNCIÓN open_product_detail_modal CON ESTA VERSIÓN ✨ ---
+    # --- VERSIÓN CORREGIDA: Cambiado 'product_id' por 'post_id' ---
     @rx.event
-    def open_product_detail_modal(self, product_id: int):
+    def open_product_detail_modal(self, post_id: int):
         """
         [VERSIÓN FINAL CORREGIDA]
-        Abre el modal de detalle, carga preferencias de Lightbox y ordena
-        los comentarios correctamente usando timestamps numéricos para evitar crashes.
+        Abre el modal de detalle. Se renombró el argumento a 'post_id' para
+        coincidir con la llamada del frontend y evitar el TypeError.
         """
         self.modal_carousel_key += 1  # Fuerza re-renderizado del carrusel
 
@@ -10235,17 +10236,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # --- 2. Consulta a Base de Datos ---
         with rx.session() as session:
-            # Carga el post con todas las relaciones (comentarios, votos, actualizaciones, usuario)
+            # Usamos post_id aquí
             db_post = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.votes),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates),
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-                ).where(BlogPostModel.id == product_id)
+                ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
 
-            # Validación de existencia y publicación
             if not db_post or (not (self.is_admin or self.is_vendedor or self.is_empleado) and not db_post.publish_active):
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
@@ -10269,12 +10269,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
             
-            # Datos del vendedor para mostrar en el modal
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             seller_city_info = db_post.userinfo.seller_city if db_post.userinfo else None
             
-            # Textos de ayuda (Tooltips)
             moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
             combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
 
@@ -10283,7 +10281,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             initial_bg_dark = "dark"
             first_variant_index_to_load = 0
 
-            # Identificar variantes únicas por grupo de imágenes
             unique_variants_temp = []
             seen_image_groups_temp = set()
             if db_post.variants:
@@ -10293,7 +10290,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         seen_image_groups_temp.add(image_urls_tuple)
                         unique_variants_temp.append({"variant": variant, "index": i})
 
-            # Leer preferencias de la primera variante única encontrada
             if unique_variants_temp:
                 first_unique_item = unique_variants_temp[0]
                 first_variant_index_to_load = first_unique_item["index"]
@@ -10338,59 +10334,43 @@ class AppState(reflex_local_auth.LocalAuthState):
                 lightbox_bg_dark=initial_bg_dark
             )
 
-            # Sincronizar estado del lightbox
             self.current_lightbox_bg_light = initial_bg_light
             self.current_lightbox_bg_dark = initial_bg_dark
 
-            # Selección de atributos por defecto
             if self.product_in_modal.variants and 0 <= first_variant_index_to_load < len(self.product_in_modal.variants):
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[first_variant_index_to_load])
             elif self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # --- 6. Carga y Ordenamiento de Comentarios (CORREGIDO) ---
-            
-            # A. Obtener solo comentarios PADRE (Raíz)
+            # --- 6. Carga y Ordenamiento de Comentarios ---
             raw_parents = [c for c in db_post.comments if c.parent_comment_id is None]
-            
-            # B. Convertir a DTOs usando tu helper (que ahora debe incluir created_at_timestamp)
             parent_dtos = [self._convert_comment_to_dto(c) for c in raw_parents]
-            
-            # C. Ordenar usando el timestamp numérico (NO el objeto datetime)
-            # Esto evita el AttributeError: 'CommentData' object has no attribute 'created_at'
             self.product_comments = sorted(parent_dtos, key=lambda c: c.created_at_timestamp, reverse=True)
 
-            # --- 7. Lógica de "Mi Opinión" (Usuario Autenticado) ---
+            # --- 7. Lógica de "Mi Opinión" ---
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
-                
-                # Verificar si compró y recibió el producto
                 purchase_count = session.exec(
                     sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                     .join(PurchaseModel)
                     .where(
                         PurchaseModel.userinfo_id == user_info_id,
-                        PurchaseItemModel.blog_post_id == product_id,
+                        # Usamos post_id aquí
+                        PurchaseItemModel.blog_post_id == post_id,
                         PurchaseModel.status == PurchaseStatus.DELIVERED 
                     )
                 ).one()
 
                 if purchase_count > 0:
-                    # Buscar si ya dejó una opinión original (Padre)
                     user_original_comment = next((c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None), None)
                     
                     if not user_original_comment:
-                        # No ha comentado -> Mostrar formulario limpio
                         self.show_review_form = True 
                     else:
-                        # Ya comentó -> Verificar límite de actualizaciones
-                        if len(user_original_comment.updates) < 3: # Límite de 3 actualizaciones (original + 2 updates o 3 updates, ajusta según lógica)
+                        if len(user_original_comment.updates) < 3:
                             self.show_review_form = True
-                            
-                            # Obtener la versión más reciente para pre-llenar el formulario
                             all_versions = [user_original_comment] + user_original_comment.updates
                             latest_entry = sorted(all_versions, key=lambda c: c.created_at, reverse=True)[0]
-                            
                             self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
                             self.review_rating = latest_entry.rating
                             self.review_content = latest_entry.content
