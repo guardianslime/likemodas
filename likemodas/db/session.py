@@ -1,18 +1,33 @@
-# likemodas/db/session.py (Versión Definitiva con Dependencia de FastAPI)
+# likemodas/db/session.py
 
 from sqlmodel import create_engine, Session
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("La variable de entorno DATABASE_URL no está configurada.")
+    # Fallback por seguridad a SQLite si no encuentra nada
+    DATABASE_URL = "sqlite:///reflex.db"
 
-# Mantenemos el pool_recycle como una buena práctica de defensa
-engine = create_engine(DATABASE_URL, connect_args={"options": "-c timezone=utc"}, pool_recycle=300)
+# [CORRECCIÓN] Configuración condicional del motor
+# SQLite no soporta 'connect_args={"options": "-c timezone=utc"}' ni 'pool_recycle'
+if "sqlite" in DATABASE_URL:
+    # Configuración para SQLite (Local)
+    engine = create_engine(
+        DATABASE_URL, 
+        connect_args={"check_same_thread": False}
+    )
+else:
+    # Configuración para PostgreSQL (Producción/Railway)
+    engine = create_engine(
+        DATABASE_URL, 
+        connect_args={"options": "-c timezone=utc"}, 
+        pool_recycle=300
+    )
 
-# --- INICIO DE LA MODIFICACIÓN CRÍTICA ---
-# Esta función ahora es un generador que FastAPI usará para inyectar la sesión.
 def get_session():
     """
     Provee una sesión de base de datos a través de la inyección de dependencias de FastAPI.
