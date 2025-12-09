@@ -10,22 +10,18 @@ from ..models import UserReputation
 from ..ui.custom_carousel import carousel
 
 def render_update_item(update: CommentData) -> rx.Component:
-    """Renderiza una actualización de opinión (versión anterior o nueva)."""
+    """Renderiza una actualización (hijo) dentro del historial."""
     return rx.box(
         rx.vstack(
             rx.hstack(
                 rx.icon("history", size=16, color_scheme="gray"),
-                rx.text("Versión del historial", size="1", weight="bold", color_scheme="gray"),
+                rx.text("Versión anterior", size="1", weight="bold", color_scheme="gray"),
                 rx.spacer(),
                 rx.text(update.created_at_formatted, size="1", color_scheme="gray"),
-                width="100%",
-                align="center"
+                width="100%", align="center"
             ),
             rx.divider(margin_y="0.5em"),
-            rx.hstack(
-                star_rating_display_safe(update.rating, 0, size=14),
-                width="100%"
-            ),
+            star_rating_display_safe(update.rating, 0, size=14),
             rx.text(update.content, size="2", margin_top="0.25em", color_scheme="gray"),
             align_items="start", spacing="1"
         ),
@@ -39,7 +35,7 @@ def render_update_item(update: CommentData) -> rx.Component:
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
-    # Calculamos cuántas actualizaciones tiene
+    """Renderiza un comentario principal y su lógica de actualización."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     
     crown_map_var = rx.Var.create({
@@ -58,16 +54,11 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     
     return rx.card(
         rx.vstack(
+            # Cabecera
             rx.hstack(
                 rx.avatar(
-                    src=rx.cond(
-                        comment.author_avatar_url != "",
-                        rx.get_upload_url(comment.author_avatar_url),
-                        ""
-                    ), 
-                    fallback=fallback_str, 
-                    size="3",
-                    radius="full"
+                    src=rx.cond(comment.author_avatar_url != "", rx.get_upload_url(comment.author_avatar_url), ""), 
+                    fallback=fallback_str, size="3", radius="full"
                 ),
                 rx.vstack(
                     rx.text(comment.author_username, weight="bold", size="3"),
@@ -76,63 +67,57 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 ),
                 rx.spacer(),
                 star_rating_display_safe(comment.rating, 0, size=20),
-                align="center",
-                width="100%",
+                align="center", width="100%",
             ),
             
             rx.divider(margin_y="0.5em"),
-            
             rx.text(comment.content, size="3", white_space="pre-wrap"),
             
+            # Botones
             rx.hstack(
-                vote_buttons(
-                    comment.id,
-                    comment.likes,
-                    comment.dislikes,
-                    comment.user_vote,
-                ),
+                vote_buttons(comment.id, comment.likes, comment.dislikes, comment.user_vote),
                 rx.spacer(),
-                
-                # Botón para mostrar/ocultar historial
                 rx.cond(
                     comment.updates,
                     rx.button(
-                        rx.hstack(
-                            rx.icon("chevron-down"),
-                            rx.text("Ver historial (", update_count, ")")
-                        ),
+                        rx.hstack(rx.icon("chevron-down"), rx.text("Historial (", update_count, ")")),
                         on_click=AppState.toggle_comment_updates(comment.id),
-                        variant="ghost", 
-                        size="1",
-                        color_scheme="violet"
+                        variant="ghost", size="1", color_scheme="violet"
                     )
                 ),
-                width="100%",
-                align="center",
-                margin_top="0.5em",
+                width="100%", align="center", margin_top="0.5em",
             ),
 
-            # --- CORRECCIÓN AQUÍ: Acceso directo al diccionario ---
+            # Historial desplegable
             rx.cond(
-                AppState.expanded_comments[comment.id], # <--- ESTO SOLUCIONA EL ERROR TYPEERROR
+                AppState.is_comment_expanded(comment.id),
                 rx.vstack(
-                    rx.foreach(
-                        comment.updates,
-                        render_update_item
-                    ),
-                    width="100%",
-                    align_items="stretch"
+                    rx.foreach(comment.updates, render_update_item),
+                    width="100%", align_items="stretch"
                 )
             ),
-            
-            align_items="stretch", 
-            width="100%"
+
+            # --- AQUI ESTÁ LA MAGIA: FORMULARIO INCRUSTADO ---
+            # Si este comentario es el mío Y estoy en modo edición (tengo una review previa),
+            # muestro el formulario AQUÍ.
+            rx.cond(
+                AppState.my_review_for_product & (AppState.my_review_for_product.id == comment.id),
+                rx.box(
+                    rx.divider(margin_y="1em", border_style="dashed"),
+                    review_submission_form(),
+                    width="100%",
+                    margin_top="0.5em"
+                )
+            ),
+            # -------------------------------------------------
+
+            align_items="stretch", width="100%"
         ),
-        width="100%",
-        margin_bottom="1em"
+        width="100%", margin_bottom="1em"
     )
 
 def review_submission_form() -> rx.Component:
+    """Formulario para enviar o actualizar una reseña. Se adapta al ancho del contenedor."""
     return rx.cond(
         AppState.show_review_form,
         rx.card(
@@ -175,7 +160,8 @@ def review_submission_form() -> rx.Component:
                     width="100%",
                 ),
                 on_submit=AppState.submit_review,
-            )
+            ),
+            width="100%", # Asegura ancho completo
         ),
         rx.cond(
             AppState.review_limit_reached,
@@ -286,9 +272,17 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         width="100%",
                     ),
                     rx.divider(margin_y="1.5em"),
+                    
                     rx.heading("Opiniones de Clientes", size="5", width="100%"),
                     rx.vstack(
-                        review_submission_form(),
+                        # --- FORMULARIO DE NUEVA OPINIÓN ---
+                        # Solo se muestra aquí si NO es una actualización (es decir, no hay review previa)
+                        rx.cond(
+                            ~AppState.my_review_for_product, 
+                            review_submission_form()
+                        ),
+                        
+                        # --- LISTA DE OPINIONES ---
                         rx.cond(
                             AppState.product_comments,
                             rx.vstack(
