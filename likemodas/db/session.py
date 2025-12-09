@@ -4,22 +4,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Obtiene la URL. Si no hay, usa SQLite por defecto.
+# Obtiene la URL. Si falla, usa una por defecto para que no crashee la compilación local
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
 
-# Configuración del motor de base de datos
-# Si es PostgreSQL (Producción), usamos los argumentos necesarios para estabilidad.
-if "postgres" in DATABASE_URL:
+# Esta pequeña validación es necesaria porque SQLite NO soporta los argumentos de Postgres.
+# Esto no afecta al hosting (porque allá usará Postgres), pero salva tu entorno local.
+if "sqlite" in DATABASE_URL:
+    engine = create_engine(
+        DATABASE_URL, 
+        connect_args={"check_same_thread": False}
+    )
+else:
+    # Configuración optimizada para Producción (Hetzner/Coolify)
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"options": "-c timezone=utc"}, 
         pool_recycle=300
-    )
-# Si es SQLite (Local), usamos la configuración simple.
-else:
-    engine = create_engine(
-        DATABASE_URL, 
-        connect_args={"check_same_thread": False}
     )
 
 def get_session():
