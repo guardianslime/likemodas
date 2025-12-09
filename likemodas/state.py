@@ -9823,7 +9823,18 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ FIN: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
 
-    
+    # Diccionario para controlar qué comentarios están desplegados
+    # Clave: ID del comentario padre, Valor: Booleano (True = abierto)
+    expanded_comments: dict[int, bool] = {}
+
+    def is_comment_expanded(self, comment_id: int) -> bool:
+        """Devuelve True si el historial del comentario está desplegado."""
+        return self.expanded_comments.get(comment_id, False)
+
+    def toggle_comment_updates(self, comment_id: int):
+        """Alterna la visibilidad del historial de un comentario."""
+        current_val = self.expanded_comments.get(comment_id, False)
+        self.expanded_comments[comment_id] = not current_val
 
     product_comments: list[CommentData] = []
     my_review_for_product: Optional[CommentData] = None

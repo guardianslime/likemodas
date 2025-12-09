@@ -12,62 +12,42 @@ from ..models import UserReputation
 from ..ui.custom_carousel import carousel
 
 
-def render_update_item(comment: CommentData) -> rx.Component:
+# --- NUEVA FUNCIÓN: Renderiza un item del historial (Hijo) ---
+def render_update_item(update: CommentData) -> rx.Component:
+    """Renderiza una actualización de opinión (versión anterior o nueva)."""
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.icon("pencil", size=16, margin_right="0.5em"),
-                rx.text("Actualización:", weight="bold"),
-                star_rating_display_safe(comment.rating, 1, size=20),
+                rx.icon("history", size=16, color_scheme="gray"),
+                rx.text("Versión del historial", size="1", weight="bold", color_scheme="gray"),
                 rx.spacer(),
-                rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
+                rx.text(update.created_at_formatted, size="1", color_scheme="gray"),
+                width="100%",
+                align="center"
+            ),
+            rx.divider(margin_y="0.5em"),
+            rx.hstack(
+                star_rating_display_safe(update.rating, 0, size=14),
                 width="100%"
             ),
-            rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),
+            rx.text(update.content, size="2", margin_top="0.25em", color_scheme="gray"),
             align_items="start", spacing="1"
         ),
-        padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),
-        border_radius="md", margin_top="1em", margin_left="2.5em"
+        padding="0.75em",
+        margin_top="0.5em",
+        margin_left="1.5em", # Sangría para indicar jerarquía
+        border_left="2px solid var(--gray-6)", # Línea vertical visual
+        bg=rx.color("gray", 2),
+        border_radius="0 8px 8px 0",
+        width="95%"
     )
 
-def review_submission_form() -> rx.Component:
-    return rx.cond(
-        AppState.show_review_form,
-        rx.form(
-            rx.vstack(
-                rx.heading(rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), size="5"),
-                rx.text("Tu valoración:"),
-                rx.hstack(
-                    rx.foreach(
-                        rx.Var.range(5),
-                        lambda i: rx.icon(
-                            "star", color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
-                            on_click=AppState.set_review_rating(i + 1), cursor="pointer", size=32
-                        )
-                    )
-                ),
-                rx.text_area(
-                    name="review_content", placeholder="Escribe tu opinión aquí...", value=AppState.review_content,
-                    on_change=AppState.set_review_content, width="100%",
-                ),
-                rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%", color_scheme="violet"),
-                spacing="3", padding="1.5em", border="1px solid",
-                border_color=rx.color("gray", 6), border_radius="md", width="100%",
-            ),
-            on_submit=AppState.submit_review,
-        ),
-        rx.cond(
-            AppState.review_limit_reached,
-            rx.callout(
-                "Has alcanzado el límite de actualizaciones para esta compra.",
-                icon="info", margin_top="1.5em", width="100%"
-            ),
-        )
-    )
-
+# --- FUNCIÓN MODIFICADA: Renderiza el comentario principal ---
 def render_comment_item(comment: CommentData) -> rx.Component:
+    # Calculamos cuántas actualizaciones tiene
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     
+    # Mapa de coronas para reputación
     crown_map_var = rx.Var.create({
         UserReputation.WOOD.value: "🪵",
         UserReputation.COPPER.value: "🥉",
@@ -82,8 +62,9 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         comment.author_initial
     )
     
-    return rx.box(
+    return rx.card(
         rx.vstack(
+            # --- Cabecera del Comentario ---
             rx.hstack(
                 rx.avatar(
                     src=rx.cond(
@@ -92,14 +73,26 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                         ""
                     ), 
                     fallback=fallback_str, 
-                    size="2"
+                    size="3",
+                    radius="full"
                 ),
-                rx.text(comment.author_username, weight="bold"),
+                rx.vstack(
+                    rx.text(comment.author_username, weight="bold", size="3"),
+                    rx.text(f"Publicado: {comment.created_at_formatted}", size="1", color_scheme="gray"),
+                    spacing="0", align_items="start"
+                ),
                 rx.spacer(),
-                star_rating_display_safe(comment.rating, 1, size=20),
+                star_rating_display_safe(comment.rating, 0, size=20),
+                align="center",
                 width="100%",
             ),
-            rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
+            
+            rx.divider(margin_y="0.5em"),
+            
+            # --- Contenido Principal ---
+            rx.text(comment.content, size="3", white_space="pre-wrap"),
+            
+            # --- Botones de Voto y Botón de Historial ---
             rx.hstack(
                 vote_buttons(
                     comment.id,
@@ -108,33 +101,105 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     comment.user_vote,
                 ),
                 rx.spacer(),
+                
+                # Botón para mostrar/ocultar historial (Solo si hay updates)
                 rx.cond(
                     comment.updates,
                     rx.button(
-                        rx.cond(
-                            AppState.expanded_comments.get(comment.id, False), "Ocultar historial",
-                            rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
+                        rx.hstack(
+                            rx.icon("chevron-down"),
+                            rx.text("Ver historial (", update_count, ")")
                         ),
+                        # Necesitamos un estado para expandir/colapsar. 
+                        # Usaremos un diccionario en AppState: expanded_comments = {id: bool}
                         on_click=AppState.toggle_comment_updates(comment.id),
-                        variant="soft", size="1",
+                        variant="ghost", 
+                        size="1",
+                        color_scheme="violet"
                     )
                 ),
                 width="100%",
-                justify="between",
                 align="center",
-                margin_top="0.75em",
+                margin_top="0.5em",
             ),
+
+            # --- Zona de Actualizaciones (Historial) ---
+            # Se muestra solo si el ID está en el diccionario de expandidos
             rx.cond(
-                AppState.expanded_comments.get(comment.id, False),
-                rx.cond(comment.updates, rx.foreach(comment.updates, render_update_item))
+                AppState.is_comment_expanded(comment.id),
+                rx.vstack(
+                    rx.foreach(
+                        comment.updates,
+                        render_update_item # Llamamos a la nueva función
+                    ),
+                    width="100%",
+                    align_items="stretch"
+                )
             ),
-            rx.hstack(
-                rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
-                width="100%", justify="end", spacing="1", margin_top="1em"
-            ),
-            align_items="start", spacing="2"
+            
+            align_items="stretch", 
+            width="100%"
         ),
-        padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
+        width="100%",
+        margin_bottom="1em"
+    )
+
+def review_submission_form() -> rx.Component:
+    """Formulario para dejar o actualizar opinión."""
+    return rx.cond(
+        AppState.show_review_form,
+        rx.card(
+            rx.form(
+                rx.vstack(
+                    rx.heading(
+                        rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), 
+                        size="4"
+                    ),
+                    rx.text("Tu valoración:", size="2", weight="medium"),
+                    rx.hstack(
+                        rx.foreach(
+                            rx.Var.range(5),
+                            lambda i: rx.icon(
+                                "star", 
+                                color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
+                                on_click=AppState.set_review_rating(i + 1), 
+                                cursor="pointer", 
+                                size=28,
+                                style={"fill": rx.cond(AppState.review_rating > i, "gold", "none")}
+                            )
+                        ),
+                        spacing="1"
+                    ),
+                    rx.text_area(
+                        name="review_content", 
+                        placeholder="Cuéntanos qué te pareció el producto...", 
+                        value=AppState.review_content,
+                        on_change=AppState.set_review_content, 
+                        width="100%",
+                        min_height="80px"
+                    ),
+                    rx.button(
+                        rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Publicar Opinión"), 
+                        type="submit", 
+                        width="100%", 
+                        color_scheme="violet"
+                    ),
+                    spacing="3",
+                    width="100%",
+                ),
+                on_submit=AppState.submit_review,
+            )
+        ),
+        # Mensaje si ya alcanzó el límite
+        rx.cond(
+            AppState.review_limit_reached,
+            rx.callout(
+                "Has alcanzado el límite de 3 opiniones (original + 2 actualizaciones) para esta compra.",
+                icon="info",
+                color_scheme="orange",
+                width="100%"
+            ),
+        )
     )
 
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
@@ -367,41 +432,44 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
     return rx.dialog.root(
         rx.dialog.content(
-            rx.dialog.close(
-                rx.icon_button(
-                    rx.icon("x"),
-                    variant="soft",
-                    color_scheme="gray",
-                    style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "10"},
-                )
-            ),
+            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "10"})),
             rx.cond(
                 AppState.product_in_modal,
                 rx.vstack(
                     rx.grid(
-                        _modal_image_section(),
-                        _modal_info_section(),
+                        _modal_image_section(), # Usando la función interna (asegurate de tenerla)
+                        _modal_info_section(),  # Usando la función interna
                         columns={"initial": "1", "md": "2"},
-                        spacing={"initial": "3", "md": "6"},
+                        spacing="6",
                         align_items="start",
                         width="100%",
                     ),
                     rx.divider(margin_y="1.5em"),
-                    rx.heading("Opiniones", size="6", width="100%"),
+                    
+                    # --- SECCIÓN DE OPINIONES ACTUALIZADA ---
+                    rx.heading("Opiniones de Clientes", size="5", width="100%"),
                     rx.vstack(
-                        review_submission_form(),
+                        review_submission_form(), # Formulario condicional
+                        
                         rx.cond(
                             AppState.product_comments,
-                            rx.foreach(AppState.product_comments, render_comment_item),
-                            rx.text("Sé el primero en dejar una opinión.", padding="2em", color_scheme="gray")
+                            rx.vstack(
+                                rx.foreach(AppState.product_comments, render_comment_item), # Lista renderizada
+                                width="100%", spacing="4"
+                            ),
+                            rx.center(
+                                rx.text("Aún no hay opiniones. ¡Sé el primero!", color_scheme="gray"),
+                                padding="2em", width="100%"
+                            )
                         ),
-                        align_items="stretch",
-                        width="100%"
+                        width="100%", spacing="4"
                     ),
+                    # ----------------------------------------
                 ),
                 skeleton_product_detail_view(),
             ),
-            max_width="1200px",
+            max_width="1000px",
+            width="100%"
         ),
         open=AppState.show_detail_modal,
         on_open_change=AppState.close_product_detail_modal,
