@@ -4,20 +4,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- CONFIGURACIÓN DINÁMICA ---
-# Intenta leer del entorno. Si no existen (fallo), usa localhost por defecto.
-target_api_url = os.getenv("API_URL", "http://localhost:8000")
-target_deploy_url = os.getenv("APP_BASE_URL", "http://localhost:3000")
-target_db_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+# Obtenemos la URL de la base de datos
+database_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+
+# --- LÓGICA DE DETECCIÓN DE ENTORNO ---
+# Si la base de datos es PostgreSQL (Producción), forzamos las URLs de producción.
+# Esto arregla el error de WebSocket en Coolify.
+if "postgres" in database_url:
+    target_api_url = "https://www.likemodas.com"
+    target_deploy_url = "https://www.likemodas.com"
+else:
+    # Si es SQLite (Local), usamos localhost
+    target_api_url = "http://localhost:8000"
+    target_deploy_url = "http://localhost:3000"
 
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
-    # Base de datos dinámica
-    db_url=target_db_url,
+    # Base de datos
+    db_url=database_url,
     
-    # URLs dinámicas
+    # URLs definidas por la lógica de arriba
     api_url=target_api_url,
     deploy_url=target_deploy_url,
     
