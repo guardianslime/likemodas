@@ -301,6 +301,8 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                 session.add(item.blog_post)
 
 # --- ✅ CÁLCULO DE CALIFICACIÓN CORREGIDO ✅ ---
+# Reemplaza la función calculate_rating existente con esta versión robusta:
+
 def calculate_rating(session: Session, product_id: int):
     """
     Calcula el promedio de estrellas.
@@ -319,9 +321,9 @@ def calculate_rating(session: Session, product_id: int):
     total_rating = 0
     # El conteo es igual a la cantidad de padres (usuarios únicos que opinaron)
     count = len(parent_comments) 
-    
+   
     for parent in parent_comments:
-        # 2. Si tiene actualizaciones, la nota válida es la del hijo más reciente
+        # 2. Si tiene actualizaciones, la nota válida es la del hijo más reciente (ordenado por fecha DESC)
         if parent.updates:
             # Ordenamos por fecha descendente (el más nuevo primero) y tomamos el [0]
             latest_update = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
