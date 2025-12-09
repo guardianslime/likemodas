@@ -7,8 +7,8 @@ import pytz
 import reflex as rx
 import sqlalchemy
 from sqlmodel import Field, Relationship, Column, JSON
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import String
+from sqlmodel import Field, Relationship, Column, JSON
 from reflex_local_auth.user import LocalUser
 from .utils.timing import get_utc_now
 # from .utils.formatting import format_to_cop
@@ -323,7 +323,7 @@ class BlogPostModel(rx.Model, table=True):
     content: str
     price: float = 0.0
     profit: Optional[float] = Field(default=None)
-    variants: list = Field(default_factory=list, sa_column=Column(JSONB))
+    variants: list = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
     publish_date: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
@@ -375,7 +375,7 @@ class BlogPostModel(rx.Model, table=True):
     dark_mode_appearance: str = Field(default="dark", nullable=False)  # Opciones: "light", "dark"
 
     # El estilo de imagen se mantiene
-    image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    image_styles: dict = Field(default_factory=dict, sa_column=Column(JSON))
     # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
     main_image_url_variant: Optional[str] = Field(default=None)
 
