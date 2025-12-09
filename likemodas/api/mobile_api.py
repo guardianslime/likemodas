@@ -4,13 +4,13 @@ import os
 import logging
 from datetime import datetime, timedelta, timezone
 import secrets
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
+import pytz
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
-import pytz
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session, func
@@ -21,12 +21,13 @@ from likemodas.models import (
     BlogPostModel, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
     VerificationToken, PasswordResetToken, UserRole, NotificationModel,
-    SupportTicketModel, SupportMessageModel
+    SupportTicketModel, SupportMessageModel, TicketStatus
 )
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
-from likemodas.logic.ranking import calculate_review_impact, get_ranking_query_sort
+from likemodas.logic.ranking import get_ranking_query_sort, calculate_review_impact
+from likemodas.services import wompi_service, sistecredito_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,16 +68,24 @@ class ProductListDTO(BaseModel):
     combines_shipping: bool
     average_rating: float = 0.0
     rating_count: int = 0
-    # Campos de Estilo para la lista (Modo Artista)
+    
+    # --- CAMPOS DE ESTILO (MODO ARTISTA) PARA LISTAS ---
     use_default_style: bool = True
     light_mode_appearance: str = "light"
     dark_mode_appearance: str = "dark"
+    
+    # Colores Hexadecimales (Opcionales)
     light_card_bg_color: Optional[str] = None
     light_title_color: Optional[str] = None
     light_price_color: Optional[str] = None
+    
     dark_card_bg_color: Optional[str] = None
     dark_title_color: Optional[str] = None
     dark_price_color: Optional[str] = None
+    
+    # Fondo de imagen en la tarjeta (para consistencia en listado)
+    lightbox_bg_light: str = "dark" 
+    lightbox_bg_dark: str = "dark"
 
 class VariantDTO(BaseModel):
     id: str
@@ -115,7 +124,9 @@ class ProductDetailDTO(BaseModel):
     author: str
     author_id: int
     created_at: str
-    # Campos Lightbox (Fondo de imagen en detalle)
+    
+    # --- CAMPOS DE ESTILO (MODO ARTISTA) PARA DETALLE ---
+    # Fondo de imagen (Lightbox)
     lightbox_bg_light: str = "dark"
     lightbox_bg_dark: str = "dark"
 
@@ -221,6 +232,7 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
+    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
@@ -254,6 +266,10 @@ class CheckoutResponse(BaseModel):
     payment_url: Optional[str] = None
     purchase_id: Optional[int] = None
 
+class GenericStatusResponse(BaseModel):
+    message: str
+    status: Optional[str] = None
+
 class NotificationResponse(BaseModel):
     id: int
     message: str
@@ -276,6 +292,29 @@ def get_full_image_url(path: str) -> str:
     if not path: return ""
     if path.startswith("http"): return path
     return f"{BASE_URL}/_upload/{path}"
+
+def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel):
+    if not purchase.items:
+        return
+    for item in purchase.items:
+        if item.blog_post and item.selected_variant:
+            current_variants = list(item.blog_post.variants)
+            updated = False
+            for i, v in enumerate(current_variants):
+                if v.get("attributes") == item.selected_variant:
+                    new_v = v.copy()
+                    new_v["stock"] = new_v.get("stock", 0) + item.quantity
+                    current_variants[i] = new_v
+                    updated = True
+                    break
+            if updated:
+                item.blog_post.variants = current_variants
+                if not item.blog_post.publish_active:
+                    total_stock = sum(v.get("stock", 0) for v in item.blog_post.variants)
+                    if total_stock > 0:
+                        item.blog_post.publish_active = True
+                sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
+                session.add(item.blog_post)
 
 def calculate_rating(session: Session, product_id: int):
     parent_comments = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None).options(joinedload(CommentModel.updates))).unique().all()
@@ -344,6 +383,7 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         except: pass
     return {"message": "OK"}
 
+# --- ENDPOINT MODIFICADO: Incluye estilos para las tarjetas en la lista ---
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
@@ -353,8 +393,20 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     result = []
     for p in products:
         img_path = p.main_image_url_variant
-        if not img_path and p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
-            urls = p.variants[0].get("image_urls")
+        
+        # Extracción de fondo Lightbox desde la primera variante válida para la lista
+        lightbox_light = "dark"
+        lightbox_dark = "dark"
+        
+        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+        if safe_variants:
+            first_var = safe_variants[0]
+            if isinstance(first_var, dict):
+                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
+                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+        
+        if not img_path and safe_variants:
+            urls = safe_variants[0].get("image_urls")
             if urls and isinstance(urls, list) and len(urls) > 0: img_path = urls[0]
         
         avg_rating, rating_count = calculate_rating(session, p.id)
@@ -365,7 +417,8 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            # MAPEO DE ESTILOS
+            
+            # --- CAMPOS DE ESTILO ---
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -374,7 +427,10 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
             light_price_color=p.light_price_color,
             dark_card_bg_color=p.dark_card_bg_color,
             dark_title_color=p.dark_title_color,
-            dark_price_color=p.dark_price_color
+            dark_price_color=p.dark_price_color,
+            # Fondo de la imagen en la tarjeta (Listado)
+            lightbox_bg_light=lightbox_light,
+            lightbox_bg_dark=lightbox_dark
         ))
     return result
 
@@ -386,8 +442,18 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
     result = []
     for p in products:
         img_path = p.main_image_url_variant
-        if not img_path and p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
-            urls = p.variants[0].get("image_urls")
+        
+        lightbox_light = "dark"
+        lightbox_dark = "dark"
+        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+        if safe_variants:
+            first_var = safe_variants[0]
+            if isinstance(first_var, dict):
+                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
+                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+
+        if not img_path and safe_variants:
+            urls = safe_variants[0].get("image_urls")
             if urls and isinstance(urls, list) and len(urls) > 0: img_path = urls[0]
         
         avg_rating, rating_count = calculate_rating(session, p.id)
@@ -398,7 +464,7 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            # MAPEO DE ESTILOS
+            # --- CAMPOS DE ESTILO ---
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -407,10 +473,14 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
             light_price_color=p.light_price_color,
             dark_card_bg_color=p.dark_card_bg_color,
             dark_title_color=p.dark_title_color,
-            dark_price_color=p.dark_price_color
+            dark_price_color=p.dark_price_color,
+             # Fondo de la imagen en la tarjeta
+            lightbox_bg_light=lightbox_light,
+            lightbox_bg_dark=lightbox_dark
         ))
     return result
 
+# --- ENDPOINT MODIFICADO: Extrae Lightbox BG desde Variantes ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
@@ -437,9 +507,11 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0: main_img = first_v_urls[0]
         if main_img: all_images_set.add(main_img)
 
-        # Lógica de extracción de estilo Lightbox
+        # --- LÓGICA DE EXTRACCIÓN DE ESTILO LIGHTBOX ---
         lightbox_light = "dark"
         lightbox_dark = "dark"
+        
+        # Tomamos la configuración de la primera variante como default para el detalle inicial
         if safe_variants:
             first_var = safe_variants[0]
             if isinstance(first_var, dict):
@@ -508,7 +580,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
             author=author_name, author_id=seller_info_id, created_at=date_created_str, can_review=can_review,
-            # MAPEO LIGHTBOX
+            # Campos Lightbox Pasados
             lightbox_bg_light=lightbox_light,
             lightbox_bg_dark=lightbox_dark
         )
@@ -681,7 +753,13 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                          return_path = f"/returns?purchase_id={p.id}"
                     elif p.status == PurchaseStatus.PENDING_CONFIRMATION: tracking_msg = "Esperando confirmación del vendedor"
                     elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
-                        if p.wompi_payment_link_id: retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
+                        time_diff = datetime.now(timezone.utc) - p.purchase_date
+                        if time_diff > timedelta(minutes=15):
+                             p.status = PurchaseStatus.FAILED
+                             restore_stock_for_failed_purchase(session, p)
+                             session.add(p); session.commit()
+                        elif p.wompi_payment_link_id: 
+                             retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
                 except: tracking_msg = ""
                 sf = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}" if p.shipping_address else "N/A"
                 history.append(PurchaseHistoryDTO(id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg, retry_payment_url=retry_url, invoice_path=invoice_path, return_path=return_path, can_return=can_return, shipping_name=p.shipping_name, shipping_address=sf, shipping_phone=p.shipping_phone, shipping_cost=fmt_price(p.shipping_applied or 0.0)))
@@ -702,6 +780,58 @@ async def confirm_delivery_mobile(purchase_id: int, user_id: int, session: Sessi
         session.add(note); session.commit()
         return {"message": "Entrega confirmada exitosamente"}
     except HTTPException as he: raise he
+    except Exception as e: raise HTTPException(500, str(e))
+
+@router.post("/purchases/confirm_wompi_transaction")
+async def confirm_wompi_transaction(transaction_id: str = Body(..., embed=True), session: Session = Depends(get_session)):
+    try:
+        tx_data = await wompi_service.get_wompi_transaction_details(transaction_id)
+        if not tx_data: raise HTTPException(404, "Transacción no encontrada")
+        status = tx_data.get("status")
+        payment_link_id = tx_data.get("payment_link_id")
+        if not payment_link_id: raise HTTPException(400, "No hay link de pago")
+        purchase = session.exec(select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)).one_or_none()
+        if not purchase: raise HTTPException(404, "Compra no encontrada")
+        if status == "APPROVED":
+            if purchase.status != PurchaseStatus.CONFIRMED:
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = transaction_id
+                session.add(purchase)
+                note = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Pago confirmado! Tu orden #{purchase.id} ha sido procesada.", url="/my-purchases")
+                session.add(note); session.commit()
+                return {"message": "Pago confirmado", "status": "confirmed"}
+            else: return {"message": "Ya confirmado", "status": "confirmed"}
+        elif status in ["DECLINED", "ERROR", "VOIDED"]:
+             if purchase.status == PurchaseStatus.PENDING_PAYMENT:
+                 purchase.status = PurchaseStatus.FAILED
+                 restore_stock_for_failed_purchase(session, purchase)
+                 session.add(purchase); session.commit()
+             return {"message": "Pago rechazado", "status": "failed"}
+        return {"message": f"Estado: {status}", "status": "pending"}
+    except Exception as e: raise HTTPException(500, str(e))
+
+@router.post("/purchases/{purchase_id}/verify_payment")
+async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
+    try:
+        purchase = session.get(PurchaseModel, purchase_id)
+        if not purchase: raise HTTPException(404, "Orden no encontrada")
+        if purchase.status != PurchaseStatus.PENDING_PAYMENT: return {"message": "Orden procesada", "status": purchase.status}
+        transaction = await wompi_service.get_transaction_by_reference(str(purchase.id))
+        if transaction:
+            status = transaction.get("status")
+            if status == "APPROVED":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = transaction.get("id")
+                session.add(purchase); session.commit()
+                return {"message": "Confirmado", "status": "confirmed"}
+            elif status in ["DECLINED", "ERROR", "VOIDED"]:
+                 purchase.status = PurchaseStatus.FAILED
+                 restore_stock_for_failed_purchase(session, purchase)
+                 session.add(purchase); session.commit()
+                 return {"message": "Fallido", "status": "failed"}
+        return {"message": "Pendiente", "status": "pending"}
     except Exception as e: raise HTTPException(500, str(e))
 
 @router.get("/purchases/{purchase_id}/invoice/{user_id}", response_model=InvoiceDTO)
@@ -744,25 +874,20 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         if not user_info: raise HTTPException(404, "Usuario no encontrado")
         address = session.get(ShippingAddressModel, req.address_id)
         if not address or address.userinfo_id != user_info.id: raise HTTPException(400, "Dirección no válida")
-        
         product_ids = [item.product_id for item in req.items]
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()).all()
         post_map = {p.id: p for p in db_posts}
-        
         subtotal_base = 0.0
         items_to_create = []
         seller_groups = defaultdict(list)
         buyer_city = address.city
         buyer_barrio = address.neighborhood
-        
         for item in req.items:
             post = post_map.get(item.product_id)
             if not post: continue
-            
             post.total_units_sold += item.quantity
             post.last_interaction_at = datetime.now(timezone.utc)
             session.add(post)
-
             price = post.price
             if not post.price_includes_iva: price = price * 1.19
             subtotal_base += price * item.quantity
@@ -772,7 +897,6 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
                 target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
                 if target: selected_variant = target.get("attributes", {})
             items_to_create.append({"blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": price, "selected_variant": selected_variant})
-        
         subtotal_con_iva = subtotal_base
         free_shipping = False
         moda_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
@@ -800,9 +924,7 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         total_price = subtotal_con_iva + final_shipping_cost
         status = PurchaseStatus.PENDING_PAYMENT if req.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
         new_purchase = PurchaseModel(userinfo_id=user_info.id, total_price=total_price, shipping_applied=final_shipping_cost, status=status, payment_method=req.payment_method, shipping_name=address.name, shipping_city=address.city, shipping_neighborhood=address.neighborhood, shipping_address=address.address, shipping_phone=address.phone, purchase_date=datetime.now(timezone.utc))
-        session.add(new_purchase)
-        session.commit()
-        session.refresh(new_purchase)
+        session.add(new_purchase); session.commit(); session.refresh(new_purchase)
         for item in items_to_create:
             db_item = PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=item["blog_post_id"], quantity=item["quantity"], price_at_purchase=item["price_at_purchase"], selected_variant=item["selected_variant"])
             session.add(db_item)
@@ -961,7 +1083,3 @@ async def clear_all_notifications(user_id: int, session: Session = Depends(get_s
     for n in results: session.delete(n)
     session.commit()
     return {"message": "Notificaciones eliminadas"}
-
-@router.post("/purchases/{purchase_id}/verify_payment")
-async def verify_payment_mobile(purchase_id: int, session: Session = Depends(get_session)):
-    return {"message": "Endpoint no necesario para Wompi v2"}
