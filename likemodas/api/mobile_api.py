@@ -1,16 +1,16 @@
 # likemodas/api/mobile_api.py
 
+import math
 import os
 import logging
 from datetime import datetime, timedelta, timezone
 import secrets
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from collections import defaultdict
-import math
-import pytz
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
+import pytz
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session, func
@@ -21,13 +21,13 @@ from likemodas.models import (
     BlogPostModel, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
     VerificationToken, PasswordResetToken, UserRole, NotificationModel,
-    SupportTicketModel, SupportMessageModel, TicketStatus
+    SupportTicketModel, SupportMessageModel
 )
+from likemodas.services import wompi_service
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from likemodas.logic.ranking import get_ranking_query_sort, calculate_review_impact
-from likemodas.services import wompi_service, sistecredito_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,12 +69,12 @@ class ProductListDTO(BaseModel):
     average_rating: float = 0.0
     rating_count: int = 0
     
-    # --- CAMPOS DE ESTILO (MODO ARTISTA) PARA LISTAS ---
+    # --- CAMPOS DE ESTILO (MODO ARTISTA) ---
     use_default_style: bool = True
     light_mode_appearance: str = "light"
     dark_mode_appearance: str = "dark"
     
-    # Colores Hexadecimales (Opcionales)
+    # Colores Hexadecimales
     light_card_bg_color: Optional[str] = None
     light_title_color: Optional[str] = None
     light_price_color: Optional[str] = None
@@ -83,7 +83,7 @@ class ProductListDTO(BaseModel):
     dark_title_color: Optional[str] = None
     dark_price_color: Optional[str] = None
     
-    # Fondo de imagen en la tarjeta (para consistencia en listado)
+    # Fondo de imagen (Listado)
     lightbox_bg_light: str = "dark" 
     lightbox_bg_dark: str = "dark"
 
@@ -125,10 +125,12 @@ class ProductDetailDTO(BaseModel):
     author_id: int
     created_at: str
     
-    # --- CAMPOS DE ESTILO (MODO ARTISTA) PARA DETALLE ---
-    # Fondo de imagen (Lightbox)
+    # --- CAMPOS DE ESTILO (DETALLE) ---
     lightbox_bg_light: str = "dark"
     lightbox_bg_dark: str = "dark"
+    # También enviamos la apariencia por si se usa en el detalle
+    light_mode_appearance: str = "light"
+    dark_mode_appearance: str = "dark"
 
 class ReviewSubmissionBody(BaseModel):
     rating: int
@@ -232,7 +234,6 @@ class CartItemRequest(BaseModel):
     product_id: int
     variant_id: Optional[str] = None
     quantity: int
-    image_url: Optional[str] = None 
 
 class CartCalculationRequest(BaseModel):
     items: List[CartItemRequest]
@@ -266,10 +267,6 @@ class CheckoutResponse(BaseModel):
     payment_url: Optional[str] = None
     purchase_id: Optional[int] = None
 
-class GenericStatusResponse(BaseModel):
-    message: str
-    status: Optional[str] = None
-
 class NotificationResponse(BaseModel):
     id: int
     message: str
@@ -293,9 +290,22 @@ def get_full_image_url(path: str) -> str:
     if path.startswith("http"): return path
     return f"{BASE_URL}/_upload/{path}"
 
+def calculate_rating(session: Session, product_id: int):
+    parent_comments = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None).options(joinedload(CommentModel.updates))).unique().all()
+    if not parent_comments: return 0.0, 0
+    total_rating = 0
+    count = len(parent_comments) 
+    for parent in parent_comments:
+        if parent.updates:
+            latest_update = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
+            total_rating += latest_update.rating
+        else:
+            total_rating += parent.rating
+    avg = total_rating / count if count > 0 else 0.0
+    return avg, count
+
 def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel):
-    if not purchase.items:
-        return
+    if not purchase.items: return
     for item in purchase.items:
         if item.blog_post and item.selected_variant:
             current_variants = list(item.blog_post.variants)
@@ -315,20 +325,6 @@ def restore_stock_for_failed_purchase(session: Session, purchase: PurchaseModel)
                         item.blog_post.publish_active = True
                 sqlalchemy.orm.attributes.flag_modified(item.blog_post, "variants")
                 session.add(item.blog_post)
-
-def calculate_rating(session: Session, product_id: int):
-    parent_comments = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None).options(joinedload(CommentModel.updates))).unique().all()
-    if not parent_comments: return 0.0, 0
-    total_rating = 0
-    count = len(parent_comments) 
-    for parent in parent_comments:
-        if parent.updates:
-            latest_update = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)[0]
-            total_rating += latest_update.rating
-        else:
-            total_rating += parent.rating
-    avg = total_rating / count if count > 0 else 0.0
-    return avg, count
 
 # --- ENDPOINTS ---
 
@@ -383,7 +379,6 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         except: pass
     return {"message": "OK"}
 
-# --- ENDPOINT MODIFICADO: Incluye estilos para las tarjetas en la lista ---
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
@@ -394,10 +389,8 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     for p in products:
         img_path = p.main_image_url_variant
         
-        # Extracción de fondo Lightbox desde la primera variante válida para la lista
         lightbox_light = "dark"
         lightbox_dark = "dark"
-        
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
         if safe_variants:
             first_var = safe_variants[0]
@@ -417,8 +410,7 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            
-            # --- CAMPOS DE ESTILO ---
+            # MAPEO DE ESTILOS
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -428,7 +420,6 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
             dark_card_bg_color=p.dark_card_bg_color,
             dark_title_color=p.dark_title_color,
             dark_price_color=p.dark_price_color,
-            # Fondo de la imagen en la tarjeta (Listado)
             lightbox_bg_light=lightbox_light,
             lightbox_bg_dark=lightbox_dark
         ))
@@ -464,7 +455,6 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            # --- CAMPOS DE ESTILO ---
             use_default_style=p.use_default_style,
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance,
@@ -474,13 +464,11 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
             dark_card_bg_color=p.dark_card_bg_color,
             dark_title_color=p.dark_title_color,
             dark_price_color=p.dark_price_color,
-             # Fondo de la imagen en la tarjeta
             lightbox_bg_light=lightbox_light,
             lightbox_bg_dark=lightbox_dark
         ))
     return result
 
-# --- ENDPOINT MODIFICADO: Extrae Lightbox BG desde Variantes ---
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
@@ -507,11 +495,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0: main_img = first_v_urls[0]
         if main_img: all_images_set.add(main_img)
 
-        # --- LÓGICA DE EXTRACCIÓN DE ESTILO LIGHTBOX ---
         lightbox_light = "dark"
         lightbox_dark = "dark"
-        
-        # Tomamos la configuración de la primera variante como default para el detalle inicial
         if safe_variants:
             first_var = safe_variants[0]
             if isinstance(first_var, dict):
@@ -580,9 +565,10 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             is_saved=is_saved, is_imported=p.is_imported, average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
             author=author_name, author_id=seller_info_id, created_at=date_created_str, can_review=can_review,
-            # Campos Lightbox Pasados
             lightbox_bg_light=lightbox_light,
-            lightbox_bg_dark=lightbox_dark
+            lightbox_bg_dark=lightbox_dark,
+            light_mode_appearance=p.light_mode_appearance,
+            dark_mode_appearance=p.dark_mode_appearance
         )
     except Exception as e:
         print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
@@ -874,20 +860,25 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         if not user_info: raise HTTPException(404, "Usuario no encontrado")
         address = session.get(ShippingAddressModel, req.address_id)
         if not address or address.userinfo_id != user_info.id: raise HTTPException(400, "Dirección no válida")
+        
         product_ids = [item.product_id for item in req.items]
         db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()).all()
         post_map = {p.id: p for p in db_posts}
+        
         subtotal_base = 0.0
         items_to_create = []
         seller_groups = defaultdict(list)
         buyer_city = address.city
         buyer_barrio = address.neighborhood
+        
         for item in req.items:
             post = post_map.get(item.product_id)
             if not post: continue
+            
             post.total_units_sold += item.quantity
             post.last_interaction_at = datetime.now(timezone.utc)
             session.add(post)
+
             price = post.price
             if not post.price_includes_iva: price = price * 1.19
             subtotal_base += price * item.quantity
@@ -897,6 +888,7 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
                 target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id), None)
                 if target: selected_variant = target.get("attributes", {})
             items_to_create.append({"blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": price, "selected_variant": selected_variant})
+        
         subtotal_con_iva = subtotal_base
         free_shipping = False
         moda_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
@@ -924,7 +916,9 @@ async def mobile_checkout(user_id: int, req: CheckoutRequest, session: Session =
         total_price = subtotal_con_iva + final_shipping_cost
         status = PurchaseStatus.PENDING_PAYMENT if req.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
         new_purchase = PurchaseModel(userinfo_id=user_info.id, total_price=total_price, shipping_applied=final_shipping_cost, status=status, payment_method=req.payment_method, shipping_name=address.name, shipping_city=address.city, shipping_neighborhood=address.neighborhood, shipping_address=address.address, shipping_phone=address.phone, purchase_date=datetime.now(timezone.utc))
-        session.add(new_purchase); session.commit(); session.refresh(new_purchase)
+        session.add(new_purchase)
+        session.commit()
+        session.refresh(new_purchase)
         for item in items_to_create:
             db_item = PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=item["blog_post_id"], quantity=item["quantity"], price_at_purchase=item["price_at_purchase"], selected_variant=item["selected_variant"])
             session.add(db_item)
