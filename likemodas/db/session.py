@@ -7,16 +7,16 @@ load_dotenv()
 # Obtiene la URL del entorno
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# --- LÓGICA DE SEGURIDAD PARA EXPORT LOCAL ---
-# Si estamos en tu PC (SQLite), usamos configuración simple.
-# Si estamos en Hetzner (Postgres), usamos configuración robusta.
+# --- PROTECCIÓN PARA ENTORNO LOCAL ---
+# Si tu PC lee "sqlite" del .env, usa configuración simple.
+# Si el servidor lee "postgres", usa configuración robusta.
 if DATABASE_URL and "sqlite" in DATABASE_URL:
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False}
     )
 else:
-    # Esto se ejecutará en Hetzner
+    # Configuración para Producción (Hetzner)
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"options": "-c timezone=utc"}, 
@@ -24,6 +24,9 @@ else:
     )
 
 def get_session():
+    """
+    Provee una sesión de base de datos segura.
+    """
     with Session(engine) as session:
         try:
             yield session
