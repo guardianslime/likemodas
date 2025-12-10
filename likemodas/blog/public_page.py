@@ -245,7 +245,18 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 rx.button("Añadir al Carrito", on_click=rx.cond(is_for_direct_sale, AppState.add_to_direct_sale_cart(AppState.product_in_modal.id), AppState.add_to_cart(AppState.product_in_modal.id)), size="3", flex_grow="1", color_scheme="violet"),
                 rx.icon_button(rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")), on_click=AppState.toggle_save_post, size="3", variant="outline", color_scheme="violet"),
                 rx.icon_button(rx.icon(tag="share-2"), on_click=[rx.set_clipboard(AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()), rx.toast.success("¡Enlace copiado!")], size="3", variant="outline", color_scheme="violet"),
-                spacing="3", width="100%", margin_top="1.5em",
+                # NUEVO BOTÓN DE REPORTE
+                rx.tooltip(
+                    rx.icon_button(
+                        rx.icon("flag"), 
+                        variant="ghost", 
+                        color_scheme="gray",
+                        on_click=AppState.open_report_modal("post", AppState.product_in_modal.id)
+                    ),
+                    content="Reportar publicación"
+                ),
+                spacing="3",
+                margin_top="1.5em"                      
             ),
             align="start", height="100%",
         )
