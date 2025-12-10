@@ -677,23 +677,26 @@ class ActivityLog(rx.Model, table=True):
 # --- NUEVO ENUM PARA ESTADO DE REPORTES ---
 class ReportStatus(str, enum.Enum):
     PENDING = "pending"
-    RESOLVED = "resolved"   # Se tomó una acción (eliminar/banear)
-    DISMISSED = "dismissed" # Se descartó (falso positivo)
+    REVIEWED = "reviewed"
+    DISMISSED = "dismissed"
 
-# --- NUEVO MODELO DE REPORTE ---
 class ReportModel(rx.Model, table=True):
-    """Modelo para almacenar reportes de contenido generado por usuarios."""
-    __tablename__ = "reportmodel"
-    
+    """Modelo para gestionar reportes de contenido (UGC) para cumplimiento legal/Play Store."""
     reporter_id: int = Field(foreign_key="userinfo.id")
-    target_type: str = Field(nullable=False) # 'post' o 'comment'
-    target_id: int = Field(nullable=False)   # ID del BlogPost o CommentModel
-    reason: str = Field(nullable=False)
-    status: ReportStatus = Field(default=ReportStatus.PENDING, nullable=False)
+    
+    # Puede ser un reporte a un Producto O a un Comentario
+    blog_post_id: Optional[int] = Field(default=None, foreign_key="blogpostmodel.id")
+    comment_id: Optional[int] = Field(default=None, foreign_key="commentmodel.id")
+    
+    reason: str # Ej: "Contenido ofensivo", "Spam", "Fraude"
+    description: Optional[str] = None # Detalle opcional del usuario
+    status: ReportStatus = Field(default=ReportStatus.PENDING)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
 
-    # Relación con quien hace el reporte
+    # Relaciones
     reporter: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[ReportModel.reporter_id]"})
+    blog_post: Optional["BlogPostModel"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[ReportModel.blog_post_id]"})
+    comment: Optional["CommentModel"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[ReportModel.comment_id]"})
 
     @property
     def created_at_formatted(self) -> str:
