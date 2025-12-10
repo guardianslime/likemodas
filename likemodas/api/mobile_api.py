@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from likemodas.db.session import get_session
 from likemodas.models import (
-    BlogPostModel, LocalAuthSession, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
+    BlogPostModel, LocalAuthSession, LocalUser, ReportModel, ReportStatus, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
     VerificationToken, PasswordResetToken, UserRole, NotificationModel,
     SupportTicketModel, SupportMessageModel
@@ -274,6 +274,12 @@ class NotificationResponse(BaseModel):
     url: Optional[str]
     is_read: bool
     created_at: str
+
+# --- AÑADIR ESTE DTO AL PRINCIPIO ---
+class ReportRequest(BaseModel):
+    target_type: str  # "post" o "comment"
+    target_id: int
+    reason: str
 
 # --- HELPERS ---
 
@@ -852,3 +858,42 @@ async def clear_all_notifications(user_id: int, session: Session = Depends(get_s
     for n in results: session.delete(n)
     session.commit()
     return {"message": "Notificaciones eliminadas"}
+
+# --- AÑADIR ESTE ENDPOINT AL FINAL ---
+@router.post("/report")
+async def create_report(
+    req: ReportRequest, 
+    session: Session = Depends(get_session), 
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """Recibe un reporte de la App y notifica a los administradores."""
+    try:
+        # 1. Crear el reporte en la base de datos
+        new_report = ReportModel(
+            reporter_id=current_user.id,
+            target_type=req.target_type,
+            target_id=req.target_id,
+            reason=req.reason,
+            status=ReportStatus.PENDING
+        )
+        session.add(new_report)
+        
+        # 2. Buscar a todos los administradores para notificarles
+        admins = session.exec(select(UserInfo).where(UserInfo.role == UserRole.ADMIN)).all()
+        
+        # 3. Crear una notificación (campana) para cada admin
+        for admin in admins:
+            note = NotificationModel(
+                userinfo_id=admin.id,
+                # Mensaje corto para la notificación
+                message=f"🚨 Nuevo reporte de {req.target_type}: {req.reason[:30]}...",
+                url="/admin/reports" # URL de la nueva página de gestión
+            )
+            session.add(note)
+            
+        session.commit()
+        return {"message": "Reporte recibido. Gracias por ayudarnos a mantener la comunidad segura."}
+        
+    except Exception as e:
+        logger.error(f"Error creando reporte: {e}")
+        raise HTTPException(500, "Error interno al procesar el reporte.")

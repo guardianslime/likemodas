@@ -1,3 +1,5 @@
+# likemodas/likemodas.py
+
 from fastapi import FastAPI
 import reflex as rx
 import reflex_local_auth
@@ -30,6 +32,7 @@ from .admin.store_page import admin_store_page
 from .admin.tickets_page import admin_tickets_page_content
 from .admin.users_page import user_management_page
 from .admin import employees_page
+from .admin.reports_page import reports_page_content # <--- IMPORTAR
 
 # Vistas de Blog y Productos
 from .blog import blog_admin_page, blog_post_add_content
@@ -135,6 +138,7 @@ app.add_page(base_page(admin_store_page()), route="/admin/store", on_load=[AppSt
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_purchase_history)
 app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SUPPORT_TICKETS_ROUTE, on_load=AppState.on_load_admin_tickets_page, title="Solicitudes de Soporte")
 app.add_page(base_page(employees_page.employees_management_page()), route="/admin/employees", on_load=AppState.load_empleados, title="Gestión de Empleados")
+app.add_page(base_page(reports_page_content()), route="/admin/reports", on_load=AppState.load_admin_reports, title="Gestión de Reportes")
 
 # Páginas Legales
 app.add_page(terms_page, route="/terms", title="Términos y Condiciones")

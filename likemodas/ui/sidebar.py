@@ -57,6 +57,7 @@ def sidebar_items() -> rx.Component:
 
     elementos_exclusivos_admin = rx.fragment(
         sidebar_item("Gestión de Usuarios", "users", "/admin/users"),
+        sidebar_item("Reportes y Moderación", "flag", "/admin/reports"), # <--- AÑADIR ESTA LÍNEA
     )
 
     return rx.vstack(

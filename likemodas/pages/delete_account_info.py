@@ -1,3 +1,5 @@
+# likemodas/pages/delete_account_info.py
+
 import reflex as rx
 
 def delete_account_info() -> rx.Component:

@@ -673,3 +673,28 @@ class ActivityLog(rx.Model, table=True):
     @property
     def created_at_formatted(self) -> str:
         return format_utc_to_local(self.created_at)
+
+# --- NUEVO ENUM PARA ESTADO DE REPORTES ---
+class ReportStatus(str, enum.Enum):
+    PENDING = "pending"
+    RESOLVED = "resolved"   # Se tomó una acción (eliminar/banear)
+    DISMISSED = "dismissed" # Se descartó (falso positivo)
+
+# --- NUEVO MODELO DE REPORTE ---
+class ReportModel(rx.Model, table=True):
+    """Modelo para almacenar reportes de contenido generado por usuarios."""
+    __tablename__ = "reportmodel"
+    
+    reporter_id: int = Field(foreign_key="userinfo.id")
+    target_type: str = Field(nullable=False) # 'post' o 'comment'
+    target_id: int = Field(nullable=False)   # ID del BlogPost o CommentModel
+    reason: str = Field(nullable=False)
+    status: ReportStatus = Field(default=ReportStatus.PENDING, nullable=False)
+    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
+    # Relación con quien hace el reporte
+    reporter: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[ReportModel.reporter_id]"})
+
+    @property
+    def created_at_formatted(self) -> str:
+        return format_utc_to_local(self.created_at)
