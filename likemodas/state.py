@@ -14,6 +14,8 @@ from sqlalchemy.orm.attributes import flag_modified # <-- AÑADE ESTA LÍNEA
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple, Union
 from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, ReportModel, ReportStatus, RequestStatus, _format_to_cop_backend
+# ... otros imports ...
+from .models import ReportModel, ReportStatus # Asegúrate de haber creado ReportModel en models.py primero
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -10839,195 +10841,136 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
 
-# --- GESTIÓN DE REPORTES (UGC) ---
-    
-    admin_reports: List[ReportAdminDTO] = []
+    # ==========================================
+    # SISTEMA DE REPORTES (LOGICA QUE FALTABA)
+    # ==========================================
 
-    @rx.var
-    def pending_reports_count(self) -> int:
-        """Cuenta los reportes pendientes para mostrar en un badge rojo si se desea."""
-        return sum(1 for r in self.admin_reports if r.status == "pending")
+    # Variables de estado para el modal de reportes
+    show_report_modal: bool = False
+    report_target_type: str = "" # "post" o "comment"
+    report_target_id: int = 0
+    report_reason: str = ""
+    
+    # Lista de reportes para el Admin
+    admin_reports_list: list[ReportData] = []
+
+    def open_report_modal(self, type: str, id: int):
+        """Abre el modal para reportar contenido."""
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión para reportar.")
+        
+        self.report_target_type = type
+        self.report_target_id = id
+        self.report_reason = "" # Limpiar selección previa
+        self.show_report_modal = True
+
+    def set_show_report_modal(self, value: bool):
+        self.show_report_modal = value
+
+    def set_report_reason(self, reason: str):
+        self.report_reason = reason
+
+    @rx.event
+    def submit_report(self):
+        """Envía el reporte a la base de datos."""
+        if not self.report_reason:
+            return rx.toast.error("Por favor selecciona un motivo.")
+            
+        with rx.session() as session:
+            # Crear el reporte
+            new_report = ReportModel(
+                reporter_id=self.authenticated_user_info.id,
+                reason=self.report_reason,
+                status=ReportStatus.PENDING,
+                # Asigna el ID al campo correcto según el tipo
+                blog_post_id=self.report_target_id if self.report_target_type == "post" else None,
+                comment_id=self.report_target_id if self.report_target_type == "comment" else None
+            )
+            session.add(new_report)
+            
+            # Notificar a los admins
+            admins = session.exec(select(UserInfo).where(UserInfo.role == UserRole.ADMIN)).all()
+            for admin in admins:
+                notif = NotificationModel(
+                    userinfo_id=admin.id,
+                    message=f"⚠️ Nuevo Reporte de Contenido: {self.report_reason}",
+                    url="/admin/reports" # Asegúrate de tener esta ruta o cámbiala a donde gestiones reportes
+                )
+                session.add(notif)
+            
+            session.commit()
+            
+        self.show_report_modal = False
+        return rx.toast.success("Reporte enviado. Gracias por ayudar a la comunidad.")
 
     @rx.event
     def load_admin_reports(self):
-        """Carga los reportes pendientes y busca el contenido asociado para mostrarlo."""
-        if not self.is_admin:
-             return
-
-        with rx.session() as session:
-            # Cargar reportes pendientes
-            reports = session.exec(
-                sqlmodel.select(ReportModel)
-                .options(sqlalchemy.orm.joinedload(ReportModel.reporter).joinedload(UserInfo.user))
-                .where(ReportModel.status == ReportStatus.PENDING)
-                .order_by(ReportModel.created_at.desc())
-            ).all()
-
-            dtos = []
-            for r in reports:
-                content_preview = "Contenido no encontrado (posiblemente ya eliminado)"
-                offender_name = "Desconocido"
-                offender_id = 0
-
-                # Si es un reporte de PRODUCTO
-                if r.target_type == "post":
-                    post = session.get(BlogPostModel, r.target_id)
-                    if post:
-                        content_preview = f"[Producto] {post.title}"
-                        # Obtener dueño del post
-                        if post.userinfo_id:
-                            owner = session.get(UserInfo, post.userinfo_id)
-                            if owner and owner.user:
-                                offender_name = owner.user.username
-                                offender_id = owner.id
-                
-                # Si es un reporte de COMENTARIO
-                elif r.target_type == "comment":
-                    comment = session.get(CommentModel, r.target_id)
-                    if comment:
-                        content_preview = f"[Comentario] {comment.content[:60]}..."
-                        offender_name = comment.author_username
-                        offender_id = comment.userinfo_id
-
-                dtos.append(ReportAdminDTO(
-                    id=r.id,
-                    reporter_name=r.reporter.user.username if r.reporter and r.reporter.user else "Anónimo",
-                    target_type=r.target_type,
-                    reason=r.reason,
-                    status=r.status.value,
-                    created_at=r.created_at_formatted,
-                    content_preview=content_preview,
-                    offender_username=offender_name,
-                    offender_id=offender_id
-                ))
-            self.admin_reports = dtos
-
-    @rx.event
-    def dismiss_report(self, report_id: int):
-        """Descarta un reporte (falso positivo)."""
-        with rx.session() as session:
-            report = session.get(ReportModel, report_id)
-            if report:
-                report.status = ReportStatus.DISMISSED
-                session.add(report)
-                session.commit()
-                yield rx.toast.success("Reporte descartado.")
-                yield AppState.load_admin_reports
-
-    @rx.event
-    def resolve_report_and_ban(self, report_id: int, offender_id: int):
-        """Resuelve el reporte y VETA al usuario reportado por 1 año."""
-        if offender_id == 0:
-            return rx.toast.error("No se puede identificar al usuario para vetar.")
-
-        # 1. Vetar al usuario (Reutilizamos lógica existente si es posible, o manual)
-        with rx.session() as session:
-            user_info = session.get(UserInfo, offender_id)
-            if user_info:
-                user_info.is_banned = True
-                user_info.ban_expires_at = datetime.now(timezone.utc) + timedelta(days=365)
-                session.add(user_info)
-            
-            # 2. Marcar reporte como resuelto
-            report = session.get(ReportModel, report_id)
-            if report:
-                report.status = ReportStatus.RESOLVED
-                session.add(report)
-            
-            session.commit()
+        """Carga la lista de reportes para el panel de administración."""
+        if not (self.is_admin or self.is_vendedor): return
         
-        yield rx.toast.success("Reporte resuelto y usuario vetado.")
-        yield AppState.load_admin_reports
+        with rx.session() as session:
+            reports = session.exec(
+                select(ReportModel)
+                .options(
+                    sqlalchemy.orm.joinedload(ReportModel.reporter).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(ReportModel.blog_post),
+                    sqlalchemy.orm.joinedload(ReportModel.comment)
+                )
+                .order_by(ReportModel.status == ReportStatus.PENDING.desc(), ReportModel.created_at.desc())
+            ).all()
+            
+            self.admin_reports_list = []
+            for r in reports:
+                # Determinar tipo y nombre para mostrar
+                target_type = "Producto" if r.blog_post_id else "Comentario"
+                
+                target_name = "Contenido no disponible"
+                if r.blog_post:
+                    target_name = r.blog_post.title
+                elif r.comment:
+                    target_name = r.comment.content[:50] + "..."
+                
+                target_id = r.blog_post_id if r.blog_post_id else r.comment_id
+                
+                self.admin_reports_list.append(
+                    ReportData(
+                        id=r.id,
+                        type=target_type,
+                        target_name=target_name,
+                        reason=r.reason,
+                        reporter_name=r.reporter.user.username if r.reporter and r.reporter.user else "Anónimo",
+                        status=r.status,
+                        target_id=target_id or 0
+                    )
+                )
 
     @rx.event
-    def resolve_report_and_delete_content(self, report_id: int):
-        """Elimina el contenido reportado (Post o Comentario) y cierra el reporte."""
+    def resolve_report(self, report_id: int, action: str):
+        """Acciones del admin: Descartar reporte o Eliminar contenido (Ban)."""
         with rx.session() as session:
             report = session.get(ReportModel, report_id)
             if not report: return
 
-            if report.target_type == "post":
-                post = session.get(BlogPostModel, report.target_id)
-                if post: 
-                    session.delete(post)
-            elif report.target_type == "comment":
-                comment = session.get(CommentModel, report.target_id)
-                if comment: 
-                    session.delete(comment)
+            if action == "dismiss":
+                report.status = ReportStatus.DISMISSED
+                yield rx.toast.info("Reporte descartado.")
             
-            report.status = ReportStatus.RESOLVED
+            elif action == "ban":
+                report.status = ReportStatus.REVIEWED
+                # Lógica para ocultar post o borrar comentario
+                if report.blog_post_id:
+                    post = session.get(BlogPostModel, report.blog_post_id)
+                    if post: 
+                        post.publish_active = False # Ocultar producto
+                elif report.comment_id:
+                    comment = session.get(CommentModel, report.comment_id)
+                    if comment: 
+                        session.delete(comment) # Borrar comentario
+                
+                yield rx.toast.success("Contenido eliminado/oculto por moderación.")
+
             session.add(report)
             session.commit()
-        
-        yield rx.toast.success("Contenido eliminado y reporte cerrado.")
+            
+        # Recargar la lista
         yield AppState.load_admin_reports
-
-    # Lista para tu página /admin/reports
-admin_reports_list: list[ReportData] = []
-
-@rx.event
-def load_admin_reports(self):
-    """
-    Carga los reportes para tu pantalla existente.
-    ORDENAMIENTO: Prioriza los Pendientes y luego por fecha reciente.
-    """
-    if not (self.is_admin or self.is_vendedor): return
-
-    with rx.session() as session:
-        # Traemos los reportes
-        reports = session.exec(
-            select(ReportModel)
-            .options(
-                sqlalchemy.orm.joinedload(ReportModel.reporter).joinedload(UserInfo.user),
-                sqlalchemy.orm.joinedload(ReportModel.blog_post),
-                sqlalchemy.orm.joinedload(ReportModel.comment)
-            )
-            # ORDEN: Primero los pendientes, luego los más nuevos
-            .order_by(ReportModel.status == ReportStatus.PENDING.desc(), ReportModel.created_at.desc())
-        ).all()
-
-        self.admin_reports_list = []
-        for r in reports:
-            # Determinamos si es producto o comentario para mostrarlo bien en tu UI
-            target_type = "Producto" if r.blog_post_id else "Comentario"
-            target_name = r.blog_post.title if r.blog_post else (r.comment.content[:50] + "..." if r.comment else "Contenido Eliminado")
-            target_id = r.blog_post_id if r.blog_post_id else r.comment_id
-
-            self.admin_reports_list.append(
-                ReportData(
-                    id=r.id,
-                    type=target_type,
-                    target_name=target_name,
-                    reason=r.reason,
-                    reporter_name=r.reporter.user.username if r.reporter and r.reporter.user else "Anonimo",
-                    status=r.status,
-                    target_id=target_id or 0
-                )
-            )
-
-@rx.event
-def resolve_report(self, report_id: int, action: str):
-    """Maneja los botones de 'Descartar' o 'Eliminar' en tu panel"""
-    with rx.session() as session:
-        report = session.get(ReportModel, report_id)
-        if not report: return
-
-        if action == "dismiss":
-            report.status = ReportStatus.DISMISSED
-            yield rx.toast.info("Reporte descartado.")
-
-        elif action == "ban":
-            report.status = ReportStatus.REVIEWED
-            # Lógica para ocultar el post o borrar el comentario automáticamente
-            if report.blog_post_id:
-                post = session.get(BlogPostModel, report.blog_post_id)
-                if post: post.publish_active = False # Ocultamos el producto
-            elif report.comment_id:
-                comment = session.get(CommentModel, report.comment_id)
-                if comment: session.delete(comment) # Borramos el comentario
-
-            yield rx.toast.success("Contenido eliminado por moderación.")
-
-        session.add(report)
-        session.commit()
-        yield AppState.load_admin_reports # Recargamos tu lista
