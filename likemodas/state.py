@@ -614,12 +614,13 @@ DEFAULT_DARK_IMAGE_BG: str = "#222529" # Un gris más claro que el fondo
 
 class ReportData(rx.Base):
     id: int
-    type: str # "Producto" o "Comentario"
-    target_name: str # El nombre del producto o el texto del comentario
+    type: str 
+    target_name: str 
     reason: str
     reporter_name: str
     status: str
-    target_id: int # ID para ir a ver el contenido
+    target_id: int
+    created_at: str  # <--- ¡ESTA LÍNEA FALTABA!
 
 class ReportAdminDTO(rx.Base):
     id: int
