@@ -4,27 +4,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuración
-# Si no encuentra la variable (ej. en producción automática), usa la de producción por defecto
-api_url = os.getenv("API_URL", "https://api.likemodas.com")
-deploy_url = os.getenv("DEPLOY_URL", "https://www.likemodas.com")
-
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
-    
-    # Base de datos
     db_url=os.getenv("DATABASE_URL"),
+    api_url=os.getenv("API_URL", "https://api.likemodas.com"),
+    deploy_url=os.getenv("DEPLOY_URL", "https://www.likemodas.com"),
     
-    # URLs de conexión
-    api_url=api_url,
-    deploy_url=deploy_url,
-    
+    # --- CAMBIO DE SEGURIDAD: CORS RESTRICTIVO ---
     cors_allowed_origins=[
-        "http://localhost:3000",
-        "https://www.likemodas.com",
-        "https://likemodas.com",
-        "*"
+        "http://localhost:3000",        # Desarrollo local
+        "https://www.likemodas.com",    # Producción
+        "https://likemodas.com",        # Producción sin www
+        # La App móvil no usa CORS, así que no necesita estar aquí.
     ],
     
     theme=rx.theme(

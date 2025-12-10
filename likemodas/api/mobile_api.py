@@ -10,7 +10,7 @@ import math
 import pytz
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from fastapi import APIRouter, Depends, HTTPException, Body, Header, Query
 import sqlalchemy
 from sqlalchemy.orm import joinedload 
 from sqlmodel import select, Session, func
@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from likemodas.db.session import get_session
 from likemodas.models import (
-    BlogPostModel, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
+    BlogPostModel, LocalAuthSession, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
     VerificationToken, PasswordResetToken, UserRole, NotificationModel,
     SupportTicketModel, SupportMessageModel
@@ -335,17 +335,68 @@ async def get_cities(): return ALL_CITIES
 @router.post("/geography/neighborhoods", response_model=List[str])
 async def get_neighborhoods(city: str = Body(..., embed=True)): return COLOMBIA_LOCATIONS.get(city, [])
 
+# 1. NUEVA FUNCIÓN DE DEPENDENCIA (Middleware de Seguridad)
+# Esta función protege tus endpoints. Verifica que el token enviado en el Header sea válido.
+async def get_current_user(
+    authorization: str = Header(..., description="Token Bearer"),
+    session: Session = Depends(get_session)
+) -> UserInfo:
+    # Extraer el token del formato "Bearer <token>"
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Formato de token inválido")
+    
+    token = authorization.split(" ")[1]
+    
+    # Buscar la sesión en base de datos
+    # Nota: Asegúrate de que el modelo LocalAuthSession esté importado de ..models
+    auth_session = session.exec(
+        select(LocalAuthSession).where(
+            LocalAuthSession.session_id == token,
+            LocalAuthSession.expiration > datetime.now(timezone.utc)
+        )
+    ).one_or_none()
+    
+    if not auth_session:
+        raise HTTPException(401, "Sesión expirada o inválida")
+        
+    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == auth_session.user_id)).one()
+    return user_info
+
+# 2. LOGIN SEGURO (Generación de Token Real)
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
     try:
         user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
         if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): raise HTTPException(400, detail="Contraseña incorrecta")
+        
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
         if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
+        
+        # --- CAMBIO DE SEGURIDAD ---
+        # Generar un token criptográficamente seguro (48 bytes)
+        secure_token = secrets.token_urlsafe(48)
+        
+        # Guardar la sesión en la base de datos (duración 30 días para móvil)
+        new_session = LocalAuthSession(
+            user_id=user.id,
+            session_id=secure_token,
+            expiration=datetime.now(timezone.utc) + timedelta(days=30)
+        )
+        session.add(new_session)
+        session.commit()
+        
         role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
-        return UserResponse(id=user_info.id, username=user.username, email=user_info.email, role=role_str, token=str(user.id))
+        
+        # Devolver el token seguro en lugar del ID
+        return UserResponse(
+            id=user_info.id, 
+            username=user.username, 
+            email=user_info.email, 
+            role=role_str, 
+            token=secure_token # <--- Token Real
+        )
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(400, detail=str(e))
 
@@ -766,10 +817,19 @@ async def send_support_message(req: SendMessageRequest, user_id: int = Query(...
         return {"message": "Enviado"}
     except Exception as e: raise HTTPException(500, str(e))
 
+# 3. EJEMPLO DE ENDPOINT PROTEGIDO (Actualiza tus endpoints críticos así)
 @router.get("/notifications/{user_id}", response_model=List[NotificationResponse])
-async def get_notifications(user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id).order_by(NotificationModel.created_at.desc()).limit(20)).all()
+async def get_notifications(
+    user_id: int, 
+    current_user: UserInfo = Depends(get_current_user), # <--- Validación automática
+    session: Session = Depends(get_session)
+):
+    # Verificación extra: El usuario logueado solo puede ver SUS notificaciones
+    if current_user.id != user_id:
+        raise HTTPException(403, "No tienes permiso para ver estos datos")
+
+    notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == current_user.id).order_by(NotificationModel.created_at.desc()).limit(20)).all()
+    # ... (resto de la función igual)
     result = []
     for n in notifs:
         date_str = n.created_at.strftime("%d-%m-%Y %I:%M %p") if n.created_at else ""
