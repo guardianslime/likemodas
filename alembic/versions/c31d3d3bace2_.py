@@ -25,8 +25,9 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('blog_post_id', sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column('comment_id', sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
-        batch_op.create_foreign_key(None, 'blogpostmodel', ['blog_post_id'], ['id'])
-        batch_op.create_foreign_key(None, 'commentmodel', ['comment_id'], ['id'])
+        # CORRECCIÓN: Ponemos un nombre en el primer argumento
+        batch_op.create_foreign_key('fk_report_blogpost', 'blogpostmodel', ['blog_post_id'], ['id'])
+        batch_op.create_foreign_key('fk_report_comment', 'commentmodel', ['comment_id'], ['id'])
         batch_op.drop_column('target_type')
         batch_op.drop_column('target_id')
 
