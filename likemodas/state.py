@@ -610,6 +610,15 @@ DEFAULT_DARK_PRICE = "#A0A0A0" # Un gris claro
 DEFAULT_LIGHT_IMAGE_BG: str = "#F8F9FA" # Blanco sutil para la imagen en modo claro
 DEFAULT_DARK_IMAGE_BG: str = "#222529" # Un gris más claro que el fondo
 
+class ReportData(rx.Base):
+    id: int
+    type: str # "Producto" o "Comentario"
+    target_name: str # El nombre del producto o el texto del comentario
+    reason: str
+    reporter_name: str
+    status: str
+    target_id: int # ID para ir a ver el contenido
+
 class ReportAdminDTO(rx.Base):
     id: int
     reporter_name: str
@@ -10952,3 +10961,73 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         yield rx.toast.success("Contenido eliminado y reporte cerrado.")
         yield AppState.load_admin_reports
+
+    # Lista para tu página /admin/reports
+admin_reports_list: list[ReportData] = []
+
+@rx.event
+def load_admin_reports(self):
+    """
+    Carga los reportes para tu pantalla existente.
+    ORDENAMIENTO: Prioriza los Pendientes y luego por fecha reciente.
+    """
+    if not (self.is_admin or self.is_vendedor): return
+
+    with rx.session() as session:
+        # Traemos los reportes
+        reports = session.exec(
+            select(ReportModel)
+            .options(
+                sqlalchemy.orm.joinedload(ReportModel.reporter).joinedload(UserInfo.user),
+                sqlalchemy.orm.joinedload(ReportModel.blog_post),
+                sqlalchemy.orm.joinedload(ReportModel.comment)
+            )
+            # ORDEN: Primero los pendientes, luego los más nuevos
+            .order_by(ReportModel.status == ReportStatus.PENDING.desc(), ReportModel.created_at.desc())
+        ).all()
+
+        self.admin_reports_list = []
+        for r in reports:
+            # Determinamos si es producto o comentario para mostrarlo bien en tu UI
+            target_type = "Producto" if r.blog_post_id else "Comentario"
+            target_name = r.blog_post.title if r.blog_post else (r.comment.content[:50] + "..." if r.comment else "Contenido Eliminado")
+            target_id = r.blog_post_id if r.blog_post_id else r.comment_id
+
+            self.admin_reports_list.append(
+                ReportData(
+                    id=r.id,
+                    type=target_type,
+                    target_name=target_name,
+                    reason=r.reason,
+                    reporter_name=r.reporter.user.username if r.reporter and r.reporter.user else "Anonimo",
+                    status=r.status,
+                    target_id=target_id or 0
+                )
+            )
+
+@rx.event
+def resolve_report(self, report_id: int, action: str):
+    """Maneja los botones de 'Descartar' o 'Eliminar' en tu panel"""
+    with rx.session() as session:
+        report = session.get(ReportModel, report_id)
+        if not report: return
+
+        if action == "dismiss":
+            report.status = ReportStatus.DISMISSED
+            yield rx.toast.info("Reporte descartado.")
+
+        elif action == "ban":
+            report.status = ReportStatus.REVIEWED
+            # Lógica para ocultar el post o borrar el comentario automáticamente
+            if report.blog_post_id:
+                post = session.get(BlogPostModel, report.blog_post_id)
+                if post: post.publish_active = False # Ocultamos el producto
+            elif report.comment_id:
+                comment = session.get(CommentModel, report.comment_id)
+                if comment: session.delete(comment) # Borramos el comentario
+
+            yield rx.toast.success("Contenido eliminado por moderación.")
+
+        session.add(report)
+        session.commit()
+        yield AppState.load_admin_reports # Recargamos tu lista
