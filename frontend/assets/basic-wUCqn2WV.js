@@ -1,0 +1,1 @@
+import{b as e}from"./basic-CHfaLBCl.js";export default e();
