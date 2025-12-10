@@ -39,6 +39,7 @@ from .pages import landing, seller_page
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .pages import payment_status, payment_pending, processing_payment
+from likemodas.pages.delete_account_info import delete_account_info
 
 # Importamos las páginas legales
 from .pages.legal.terms_page import terms_page
@@ -139,3 +140,6 @@ app.add_page(base_page(employees_page.employees_management_page()), route="/admi
 app.add_page(terms_page, route="/terms", title="Términos y Condiciones")
 app.add_page(privacy_page, route="/privacy", title="Política de Privacidad")
 app.add_page(cookies_page, route="/cookies", title="Política de Cookies")
+
+# Eliminar cuenta
+app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar Cuenta")
