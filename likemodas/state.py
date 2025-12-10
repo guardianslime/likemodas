@@ -10906,10 +10906,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_admin_reports(self):
-        """Carga la lista de reportes para el panel de administración."""
+        """
+        Carga los reportes para tu pantalla existente.
+        ORDENAMIENTO: Prioriza los Pendientes y luego por fecha reciente.
+        """
         if not (self.is_admin or self.is_vendedor): return
         
         with rx.session() as session:
+            # Traemos los reportes
             reports = session.exec(
                 select(ReportModel)
                 .options(
@@ -10917,20 +10921,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(ReportModel.blog_post),
                     sqlalchemy.orm.joinedload(ReportModel.comment)
                 )
-                .order_by(ReportModel.status == ReportStatus.PENDING.desc(), ReportModel.created_at.desc())
+                # --- CORRECCIÓN AQUÍ: Paréntesis añadidos ---
+                # (Condición).desc() pone los True (Pendientes) primero
+                .order_by((ReportModel.status == ReportStatus.PENDING).desc(), ReportModel.created_at.desc())
             ).all()
             
             self.admin_reports_list = []
             for r in reports:
-                # Determinar tipo y nombre para mostrar
+                # Determinamos si es producto o comentario para mostrarlo bien en tu UI
                 target_type = "Producto" if r.blog_post_id else "Comentario"
-                
-                target_name = "Contenido no disponible"
-                if r.blog_post:
-                    target_name = r.blog_post.title
-                elif r.comment:
-                    target_name = r.comment.content[:50] + "..."
-                
+                target_name = r.blog_post.title if r.blog_post else (r.comment.content[:50] + "..." if r.comment else "Contenido Eliminado")
                 target_id = r.blog_post_id if r.blog_post_id else r.comment_id
                 
                 self.admin_reports_list.append(
@@ -10939,9 +10939,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         type=target_type,
                         target_name=target_name,
                         reason=r.reason,
-                        reporter_name=r.reporter.user.username if r.reporter and r.reporter.user else "Anónimo",
+                        reporter_name=r.reporter.user.username if r.reporter and r.reporter.user else "Anonimo",
                         status=r.status,
-                        target_id=target_id or 0
+                        target_id=target_id or 0,
+                        created_at=r.created_at_formatted
                     )
                 )
 
