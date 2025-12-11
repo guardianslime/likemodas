@@ -37,10 +37,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
+# Aseguramos que BASE_URL nunca sea None para evitar URLs rotas
 BASE_URL = os.getenv("APP_BASE_URL", "https://www.likemodas.com")
 
 # ==============================================================================
-# 1. DTOs (DATA TRANSFER OBJECTS) - DEFINICIÓN AL PRINCIPIO
+# 1. DTOs (DATA TRANSFER OBJECTS)
 # ==============================================================================
 
 # --- Autenticación ---
@@ -290,7 +291,7 @@ class SendMessageRequest(BaseModel):
     content: str
 
 # --- Notificaciones ---
-class NotificationResponse(BaseModel): # <--- AQUI ESTABA EL PROBLEMA (Ahora está arriba)
+class NotificationResponse(BaseModel):
     id: int
     message: str
     url: Optional[str]
@@ -298,7 +299,7 @@ class NotificationResponse(BaseModel): # <--- AQUI ESTABA EL PROBLEMA (Ahora est
     created_at: str
 
     class Config:
-        from_attributes = True # Corregido para Pydantic V2
+        from_attributes = True
 
 class GenericResponse(BaseModel):
     message: str
@@ -318,9 +319,38 @@ def fmt_price(val):
     return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
+    """Concatena la URL base con la ruta de la imagen si no es absoluta."""
     if not path: return ""
     if path.startswith("http"): return path
     return f"{BASE_URL}/_upload/{path}"
+
+def extract_display_image(post: BlogPostModel) -> str:
+    """
+    [FUNCIÓN CORREGIDA] Extrae la mejor imagen disponible para mostrar en listados.
+    Busca en este orden:
+    1. Imagen principal explícita.
+    2. Primera imagen de la primera variante (formato nuevo lista).
+    3. Primera imagen de la primera variante (formato antiguo string).
+    """
+    # 1. Imagen principal guardada
+    if post.main_image_url_variant:
+        return get_full_image_url(post.main_image_url_variant)
+    
+    # 2. Buscar dentro de las variantes
+    if post.variants and isinstance(post.variants, list) and len(post.variants) > 0:
+        first_variant = post.variants[0]
+        if isinstance(first_variant, dict):
+            # Intento A: Lista 'image_urls' (Nuevo sistema)
+            urls = first_variant.get("image_urls", [])
+            if urls and isinstance(urls, list) and len(urls) > 0:
+                return get_full_image_url(urls[0])
+            
+            # Intento B: String 'image_url' (Sistema antiguo/backup)
+            legacy_url = first_variant.get("image_url")
+            if legacy_url and isinstance(legacy_url, str):
+                return get_full_image_url(legacy_url)
+    
+    return "" # No se encontró imagen
 
 def calculate_rating(session: Session, product_id: int):
     parent_comments = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None).options(joinedload(CommentModel.updates))).unique().all()
@@ -363,9 +393,6 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
         
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
-        
-        # En producción, descomentar esto si quieres forzar verificación de email
-        # if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
         
         secure_token = secrets.token_urlsafe(48)
         new_session = LocalAuthSession(
@@ -575,26 +602,25 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
     products = session.exec(query).all()
     result = []
+    
     for p in products:
-        img_path = p.main_image_url_variant
+        # Usamos la nueva función inteligente para encontrar la imagen
+        image_url = extract_display_image(p)
+        
+        # Recuperamos datos de estilos y variantes para DTO
         lightbox_light = "dark"
         lightbox_dark = "dark"
-        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
-        if safe_variants:
-            first_var = safe_variants[0]
+        if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
+            first_var = p.variants[0]
             if isinstance(first_var, dict):
                  lightbox_light = first_var.get("lightbox_bg_light", "dark")
                  lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
-        
-        if not img_path and safe_variants:
-            urls = safe_variants[0].get("image_urls")
-            if urls and isinstance(urls, list) and len(urls) > 0: img_path = urls[0]
         
         avg_rating, rating_count = calculate_rating(session, p.id)
 
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path or ""), 
+            image_url=image_url, 
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
@@ -629,17 +655,18 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     seller_info_id = user_info.id
             except: pass
 
-        main_img = p.main_image_url_variant
-        all_images_set = set()
-        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+        # Usamos la función inteligente para la imagen principal
+        main_image_final = extract_display_image(p)
 
-        if not main_img and safe_variants:
-            first_v_urls = safe_variants[0].get("image_urls")
-            if first_v_urls and isinstance(first_v_urls, list) and len(first_v_urls) > 0: main_img = first_v_urls[0]
-        if main_img: all_images_set.add(main_img)
+        # Recopilamos TODAS las imágenes de todas las variantes
+        all_images_set = set()
+        if main_image_final:
+            all_images_set.add(main_image_final)
 
         lightbox_light = "dark"
         lightbox_dark = "dark"
+        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
+
         if safe_variants:
             first_var = safe_variants[0]
             if isinstance(first_var, dict):
@@ -651,18 +678,18 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 urls = v.get("image_urls", [])
                 if urls and isinstance(urls, list):
                     for img in urls: 
-                        if img: all_images_set.add(img)
+                        if img: all_images_set.add(get_full_image_url(img))
         
-        final_images = [get_full_image_url(img) for img in all_images_set if img]
-        main_image_final = get_full_image_url(main_img or "")
-        if not main_image_final and final_images: main_image_final = final_images[0]
+        final_images = list(all_images_set)
 
         variants_dto = []
         for v in safe_variants:
             if not isinstance(v, dict): continue
             v_urls = v.get("image_urls", [])
+            # Lógica para imagen de variante específica
             v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_image_final
             v_images_list = [get_full_image_url(img) for img in v_urls if img] if v_urls else [main_image_final]
+            
             attrs = v.get("attributes", {})
             if not isinstance(attrs, dict): attrs = {}
             title_parts = []
@@ -672,8 +699,11 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             v_title = " ".join(title_parts) if title_parts else "Estándar"
             
             variants_dto.append(VariantDTO(
-                id=str(v.get("variant_uuid") or v.get("id") or ""), title=v_title, image_url=get_full_image_url(v_img_raw or ""),
-                price=float(v.get("price") or p.price or 0.0), available_quantity=int(v.get("stock") or 0), 
+                id=str(v.get("variant_uuid") or v.get("id") or ""), 
+                title=v_title, 
+                image_url=get_full_image_url(v_img_raw) if not v_img_raw.startswith("http") else v_img_raw,
+                price=float(v.get("price") or p.price or 0.0), 
+                available_quantity=int(v.get("stock") or 0), 
                 images=v_images_list,
                 attributes=attrs
             ))
@@ -710,7 +740,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         return ProductDetailDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            description=p.content, category=p.category, main_image_url=main_image_final, images=final_images, variants=variants_dto,
+            description=p.content, category=p.category, 
+            main_image_url=main_image_final, 
+            images=final_images, variants=variants_dto,
             shipping_cost=p.shipping_cost,
             is_moda_completa=p.is_moda_completa_eligible,
             combines_shipping=p.combines_shipping,
@@ -761,7 +793,9 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
     
     result = []
     for p in products:
-        img_path = p.main_image_url_variant
+        # Usa la función inteligente
+        image_url = extract_display_image(p)
+        
         lightbox_light = "dark"
         lightbox_dark = "dark"
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
@@ -771,15 +805,11 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
                  lightbox_light = first_var.get("lightbox_bg_light", "dark")
                  lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
         
-        if not img_path and safe_variants:
-            urls = safe_variants[0].get("image_urls")
-            if urls and isinstance(urls, list) and len(urls) > 0: img_path = urls[0]
-        
         avg_rating, rating_count = calculate_rating(session, p.id)
 
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=get_full_image_url(img_path or ""), 
+            image_url=image_url, 
             category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
@@ -886,18 +916,19 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
     result = []
     for p in saved_posts:
         if not p.publish_active: continue
-        img_path = p.main_image_url_variant or (p.variants[0]["image_urls"][0] if p.variants and p.variants[0].get("image_urls") else "")
+        # Usa la función inteligente
+        image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), 
-            image_url=get_full_image_url(img_path), category=p.category, description=p.content, 
+            image_url=image_url, category=p.category, description=p.content, 
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping, 
             average_rating=avg_rating, rating_count=rating_count
         ))
     return result
 
 # ==========================================
-# 4. CARRITO Y CHECKOUT (CORREGIDO)
+# 4. CARRITO Y CHECKOUT
 # ==========================================
 
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
@@ -1072,37 +1103,52 @@ async def checkout(user_id: int, req: CheckoutRequest, session: Session = Depend
     return CheckoutResponse(success=True, message="OK", payment_url=payment_url_generated, purchase_id=new_purchase.id)
 
 # ==========================================
-# 5. HISTORIAL DE COMPRAS (CORREGIDO)
+# 5. HISTORIAL DE COMPRAS
 # ==========================================
 
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     get_user_info(session, user_id)
-    purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_id).order_by(PurchaseModel.purchase_date.desc())).all()
+    
+    purchases = session.exec(
+        select(PurchaseModel)
+        .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
+        .where(PurchaseModel.userinfo_id == user_id)
+        .order_by(PurchaseModel.purchase_date.desc())
+    ).all()
+    
     history = []
     
     for p in purchases:
+        # Se elimina el try/except global para no ocultar pedidos
         items_dto = []
         if p.items:
             for item in p.items:
-                img = ""
                 title = "Producto no disponible"
+                img = "" # Imagen por defecto si falla todo
+
                 if item.blog_post:
                     title = item.blog_post.title
-                    variant_img = ""
+                    
+                    # Lógica para encontrar la imagen correcta
                     try:
+                        # 1. Intentar con variante seleccionada
+                        variant_img = ""
                         if item.blog_post.variants and item.selected_variant:
-                            target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
-                            if target_variant and target_variant.get("image_urls"): variant_img = target_variant["image_urls"][0]
+                            target = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                            if target and target.get("image_urls"): 
+                                variant_img = target["image_urls"][0]
                         
-                        img_path = variant_img or item.blog_post.main_image_url_variant or ""
-                        if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list) and len(item.blog_post.variants) > 0:
-                             first_v = item.blog_post.variants[0]
-                             if isinstance(first_v, dict) and first_v.get("image_urls"): img_path = first_v["image_urls"][0]
+                        # 2. Usar variante seleccionada, o imagen principal, o primera variante
+                        if variant_img:
+                             img_path = variant_img
+                        else:
+                             # Usamos la nueva función inteligente para fallback
+                             img_path = extract_display_image(item.blog_post)
                         
-                        img = get_full_image_url(img_path)
+                        img = img_path # La función extract_display_image ya devuelve URL completa
                     except Exception:
-                        img = "" 
+                        img = ""
                 
                 variant_str = ""
                 if item.selected_variant:
