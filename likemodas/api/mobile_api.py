@@ -37,8 +37,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
-# Aseguramos que BASE_URL nunca sea None para evitar URLs rotas
-BASE_URL = os.getenv("APP_BASE_URL", "https://www.likemodas.com")
+
+# --- CORRECCIÓN CRÍTICA DE IMÁGENES ---
+# Las imágenes están en el servidor API (Reflex), no en el frontend (Next.js/Nginx root).
+BASE_URL = "https://api.likemodas.com"
 
 # ==============================================================================
 # 1. DTOs (DATA TRANSFER OBJECTS)
@@ -319,20 +321,19 @@ def fmt_price(val):
     return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
-    """Concatena la URL base con la ruta de la imagen si no es absoluta."""
     if not path: return ""
     if path.startswith("http"): return path
     return f"{BASE_URL}/_upload/{path}"
 
 def extract_display_image(post: BlogPostModel) -> str:
     """
-    [FUNCIÓN CORREGIDA] Extrae la mejor imagen disponible para mostrar en listados.
-    Busca en este orden:
+    [FUNCIÓN CORREGIDA] Extrae la imagen principal para la tarjeta del producto.
+    Prioriza en este orden:
     1. Imagen principal explícita.
-    2. Primera imagen de la primera variante (formato nuevo lista).
-    3. Primera imagen de la primera variante (formato antiguo string).
+    2. Primera imagen de la primera variante (lista de URLs).
+    3. Imagen legacy de la primera variante (string simple).
     """
-    # 1. Imagen principal guardada
+    # 1. Intento principal
     if post.main_image_url_variant:
         return get_full_image_url(post.main_image_url_variant)
     
@@ -345,12 +346,12 @@ def extract_display_image(post: BlogPostModel) -> str:
             if urls and isinstance(urls, list) and len(urls) > 0:
                 return get_full_image_url(urls[0])
             
-            # Intento B: String 'image_url' (Sistema antiguo/backup)
+            # Intento B: String 'image_url' (Sistema antiguo)
             legacy_url = first_variant.get("image_url")
             if legacy_url and isinstance(legacy_url, str):
                 return get_full_image_url(legacy_url)
     
-    return "" # No se encontró imagen
+    return "" # Fallback final (se mostrará "Sin imagen" en la app)
 
 def calculate_rating(session: Session, product_id: int):
     parent_comments = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None).options(joinedload(CommentModel.updates))).unique().all()
@@ -1120,7 +1121,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
     history = []
     
     for p in purchases:
-        # Se elimina el try/except global para no ocultar pedidos
         items_dto = []
         if p.items:
             for item in p.items:
@@ -1141,12 +1141,12 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         
                         # 2. Usar variante seleccionada, o imagen principal, o primera variante
                         if variant_img:
-                             img_path = variant_img
+                             img_path = get_full_image_url(variant_img)
                         else:
                              # Usamos la nueva función inteligente para fallback
                              img_path = extract_display_image(item.blog_post)
                         
-                        img = img_path # La función extract_display_image ya devuelve URL completa
+                        img = img_path
                     except Exception:
                         img = ""
                 
