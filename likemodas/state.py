@@ -1510,6 +1510,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.is_banned = True
                 user_info.ban_expires_at = datetime.now(timezone.utc) + delta
                 session.add(user_info)
+                
+                # --- ✨ NUEVO: NOTIFICACIÓN DE VETO ✨ ---
+                # Aunque esté baneado, intentamos enviarle la notificación 
+                # para que la vea en su barra de estado antes de ser expulsado.
+                notif = NotificationModel(
+                    userinfo_id=user_info.id,
+                    message=f"🚫 Tu cuenta ha sido suspendida temporalmente por administración.",
+                    url="/login" 
+                )
+                session.add(notif)
+                # -----------------------------------------
+
                 session.commit()
 
                 for i, u in enumerate(self.managed_users):

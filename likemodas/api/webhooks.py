@@ -7,6 +7,8 @@ import logging
 from fastapi import APIRouter, Request, Response, HTTPException, status, Depends  # <-- 1. IMPORTAR Depends
 from sqlmodel import Session  # <-- 2. IMPORTAR Session
 from datetime import datetime, timezone
+# AÑADE ESTE IMPORT
+from likemodas.models import PurchaseModel, PurchaseStatus, NotificationModel
 
 # 3. IMPORTAR LA NUEVA FUNCIÓN DE SESIÓN
 from likemodas.db.session import get_session
@@ -60,8 +62,17 @@ async def handle_wompi_webhook(request: Request, session: Session = Depends(get_
                     purchase.confirmed_at = datetime.now(timezone.utc)
                     purchase.wompi_transaction_id = transaction_id
                     session.add(purchase)
-                    # El session.commit() se hará automáticamente al final por el generador `get_session`
-                    logger.info(f"ÉXITO: Compra #{purchase.id} actualizada a CONFIRMED vía webhook.")
+                    
+                    # --- ✨ NUEVO: CREAR NOTIFICACIÓN PARA EL USUARIO ✨ ---
+                    notification = NotificationModel(
+                        userinfo_id=purchase.userinfo_id,
+                        message=f"✅ ¡Pago confirmado! Tu compra #{purchase.id} está siendo procesada.",
+                        url="/my-purchases" # Esto hará que la app navegue a compras al tocarla
+                    )
+                    session.add(notification)
+                    # -----------------------------------------------------
+
+                    logger.info(f"ÉXITO: Compra #{purchase.id} actualizada y notificada.")
                 else:
                     logger.info(f"Webhook ignorado (idempotencia): Compra #{purchase.id} ya estaba confirmada.")
             else:
@@ -116,6 +127,16 @@ async def handle_sistecredito_webhook(request: Request, session: Session = Depen
             purchase.sistecredito_authorization_code = verified_data.get("paymentMethodResponse", {}).get("authorizationCode")
             purchase.sistecredito_invoice = verified_data.get("invoice")
             session.add(purchase)
+            
+            # --- ✨ NUEVO: NOTIFICACIÓN SISTECREDITO ✨ ---
+            notification = NotificationModel(
+                userinfo_id=purchase.userinfo_id,
+                message=f"✅ Crédito aprobado. Tu compra #{purchase.id} ha sido confirmada.",
+                url="/my-purchases"
+            )
+            session.add(notification)
+            # ---------------------------------------------
+            
             session.commit()
             logger.info(f"ÉXITO: Compra #{purchase.id} (Sistecredito) actualizada a CONFIRMED vía webhook.")
         

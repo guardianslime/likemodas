@@ -1,3 +1,5 @@
+# likemodas/api/mobile_api.py
+
 import os
 import logging
 from datetime import datetime, timedelta, timezone
@@ -286,7 +288,7 @@ class NotificationResponse(BaseModel):
     message: str
     url: Optional[str]
     is_read: bool
-    created_at: str
+    created_at_formatted: str
     class Config:
         from_attributes = True
 
@@ -1058,11 +1060,22 @@ async def get_invoice(purchase_id: int, user_id: int, session: Session = Depends
         if parts: addr = ", ".join(parts)
     return InvoiceDTO(id=purchase.id, date=purchase.purchase_date.strftime('%d-%m-%Y'), customer_name=purchase.shipping_name or "Cliente", customer_address=addr, customer_email=user_info.email, subtotal=fmt_price(subtotal_base), shipping=fmt_price(purchase.shipping_applied or 0), total=fmt_price(purchase.total_price), items=items_dto)
 
+# 2. Modifica el endpoint get_notifications
 @router.get("/notifications/{user_id}", response_model=List[NotificationResponse])
 async def get_notifications(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id).order_by(NotificationModel.created_at.desc()).limit(30)).all()
-    return [NotificationResponse.model_validate(n) for n in notifs]
+    
+    # Mapeo manual para usar la propiedad formatted del modelo
+    return [
+        NotificationResponse(
+            id=n.id,
+            message=n.message,
+            url=n.url,
+            is_read=n.is_read,
+            created_at=n.created_at_formatted # <-- Usa la propiedad del modelo
+        ) for n in notifs
+    ]
 
 @router.put("/notifications/{notification_id}/read")
 async def mark_notification_read(notification_id: int, session: Session = Depends(get_session)):
