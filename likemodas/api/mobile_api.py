@@ -37,7 +37,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
-BASE_URL = os.getenv("APP_BASE_URL", "https://www.likemodas.com")
+
+# --- CORRECCIÓN CRÍTICA DE IMÁGENES ---
+# Las imágenes están en el servidor API (Reflex), no en el frontend.
+BASE_URL = "https://api.likemodas.com"
 
 # ==============================================================================
 # 1. DTOs (DATA TRANSFER OBJECTS)
@@ -318,25 +321,37 @@ def fmt_price(val):
     return f"$ {val:,.0f}".replace(",", ".")
 
 def get_full_image_url(path: str) -> str:
+    """Concatena la URL base con la ruta de la imagen si no es absoluta."""
     if not path: return ""
     if path.startswith("http"): return path
+    # Elimina barra inicial si existe para evitar dobles barras
+    if path.startswith("/"): path = path[1:]
     return f"{BASE_URL}/_upload/{path}"
 
 def extract_display_image(post: BlogPostModel) -> str:
-    """Extrae la imagen principal para la tarjeta del producto."""
+    """
+    [FUNCIÓN CORREGIDA Y ROBUSTA] Extrae la imagen principal.
+    Busca en TODAS partes para asegurar que siempre haya una imagen.
+    """
+    # 1. Imagen principal explícita
     if post.main_image_url_variant:
         return get_full_image_url(post.main_image_url_variant)
     
+    # 2. Buscar dentro de las variantes (si existen)
     if post.variants and isinstance(post.variants, list) and len(post.variants) > 0:
         first_variant = post.variants[0]
         if isinstance(first_variant, dict):
+            # Intento A: Lista 'image_urls' (Nuevo sistema)
             urls = first_variant.get("image_urls", [])
             if urls and isinstance(urls, list) and len(urls) > 0:
                 return get_full_image_url(urls[0])
+            
+            # Intento B: String 'image_url' (Sistema antiguo/backup)
             legacy_url = first_variant.get("image_url")
             if legacy_url and isinstance(legacy_url, str):
                 return get_full_image_url(legacy_url)
-    return ""
+    
+    return "" # Fallback final
 
 def calculate_rating(session: Session, product_id: int):
     parent_comments = session.exec(select(CommentModel).where(CommentModel.blog_post_id == product_id, CommentModel.parent_comment_id == None).options(joinedload(CommentModel.updates))).unique().all()
@@ -481,6 +496,7 @@ async def delete_account(user_id: int, req: DeleteAccountRequest, session: Sessi
     if not local_user or not bcrypt.checkpw(req.password.encode('utf-8'), local_user.password_hash):
         raise HTTPException(400, "Contraseña incorrecta.")
 
+    # Anonimización
     anonymized_username = f"usuario_eliminado_{user_info.id}"
     anonymized_email = f"deleted_{user_info.id}@likemodas.com"
 
@@ -500,9 +516,11 @@ async def delete_account(user_id: int, req: DeleteAccountRequest, session: Sessi
     local_user.enabled = False
     session.add(local_user)
 
+    # Limpiar direcciones
     addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).all()
     for addr in addresses: session.delete(addr)
         
+    # Anonimizar compras
     purchases = session.exec(select(PurchaseModel).where(PurchaseModel.userinfo_id == user_id)).all()
     for p in purchases:
         p.shipping_name = "Dato Eliminado"
@@ -543,6 +561,7 @@ async def get_addresses(user_id: int, session: Session = Depends(get_session)):
 @router.post("/addresses/{user_id}")
 async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
     get_user_info(session, user_id)
+    
     count = session.exec(select(func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).one()
     is_def = req.is_default or (count == 0)
     
@@ -586,8 +605,10 @@ async def get_products_for_mobile(category: Optional[str] = None, session: Sessi
     result = []
     
     for p in products:
+        # Usamos la función inteligente para encontrar la imagen
         image_url = extract_display_image(p)
         
+        # Recuperamos datos de estilos y variantes para DTO
         lightbox_light = "dark"
         lightbox_dark = "dark"
         if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
@@ -635,8 +656,10 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     seller_info_id = user_info.id
             except: pass
 
+        # Usamos la función inteligente para la imagen principal
         main_image_final = extract_display_image(p)
 
+        # Recopilamos TODAS las imágenes de todas las variantes
         all_images_set = set()
         if main_image_final:
             all_images_set.add(main_image_final)
@@ -664,6 +687,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         for v in safe_variants:
             if not isinstance(v, dict): continue
             v_urls = v.get("image_urls", [])
+            # Lógica para imagen de variante específica
             v_img_raw = v_urls[0] if (v_urls and isinstance(v_urls, list) and len(v_urls) > 0) else main_image_final
             v_images_list = [get_full_image_url(img) for img in v_urls if img] if v_urls else [main_image_final]
             
@@ -717,7 +741,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         return ProductDetailDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            description=p.content, category=p.category, main_image_url=main_image_final, images=final_images, variants=variants_dto,
+            description=p.content, category=p.category, 
+            main_image_url=main_image_final, 
+            images=final_images, variants=variants_dto,
             shipping_cost=p.shipping_cost,
             is_moda_completa=p.is_moda_completa_eligible,
             combines_shipping=p.combines_shipping,
@@ -768,6 +794,7 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
     
     result = []
     for p in products:
+        # Usa la función inteligente
         image_url = extract_display_image(p)
         
         lightbox_light = "dark"
@@ -890,19 +917,9 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
     result = []
     for p in saved_posts:
         if not p.publish_active: continue
+        # Usa la función inteligente
         image_url = extract_display_image(p)
-        
-        lightbox_light = "dark"
-        lightbox_dark = "dark"
-        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
-        if safe_variants:
-            first_var = safe_variants[0]
-            if isinstance(first_var, dict):
-                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
-                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
-        
         avg_rating, rating_count = calculate_rating(session, p.id)
-
         result.append(ProductListDTO(
             id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), 
             image_url=image_url, category=p.category, description=p.content, 
@@ -917,8 +934,8 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
             dark_card_bg_color=p.dark_card_bg_color,
             dark_title_color=p.dark_title_color,
             dark_price_color=p.dark_price_color,
-            lightbox_bg_light=lightbox_light,
-            lightbox_bg_dark=lightbox_dark
+            lightbox_bg_light=p.light_mode_appearance, # Fallback seguro
+            lightbox_bg_dark=p.dark_mode_appearance # Fallback seguro
         ))
     return result
 
@@ -1115,12 +1132,13 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                     
                     # Lógica para encontrar la imagen correcta
                     try:
+                        # 1. Intentar con variante seleccionada
                         variant_img = ""
                         if item.blog_post.variants and item.selected_variant:
                             target = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
                             if target and target.get("image_urls"): variant_img = target["image_urls"][0]
                         
-                        # Usar extract_display_image si no se encuentra variante específica
+                        # 2. Usar variante seleccionada, o imagen principal, o primera variante
                         if variant_img:
                              img_path = get_full_image_url(variant_img)
                         else:
@@ -1128,7 +1146,7 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                         
                         img = img_path
                     except Exception:
-                        img = ""
+                        img = "" 
                 
                 variant_str = ""
                 if item.selected_variant:
@@ -1228,6 +1246,7 @@ async def confirm_delivery(purchase_id: int, user_id: int, session: Session = De
 
 @router.post("/purchases/confirm_wompi_transaction")
 async def confirm_wompi_transaction(data: dict = Body(...), session: Session = Depends(get_session)):
+    """Endpoint para que la App fuerce una verificación de transacción."""
     transaction_id = data.get("transaction_id")
     if not transaction_id: return {"message": "ID no proporcionado"}
     return {"message": "Verificación en proceso"}
