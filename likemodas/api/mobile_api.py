@@ -918,9 +918,64 @@ async def confirm_delivery(purchase_id: int, user_id: int, session: Session = De
 
 @router.post("/purchases/confirm_wompi_transaction")
 async def confirm_wompi_transaction(data: dict = Body(...), session: Session = Depends(get_session)):
+    """
+    Recibe el ID de transacción de Wompi desde la App,
+    verifica el estado con Wompi y actualiza la compra inmediatamente.
+    """
     transaction_id = data.get("transaction_id")
-    if not transaction_id: return {"message": "ID no proporcionado"}
-    return {"message": "Verificación en proceso"}
+    if not transaction_id:
+        return {"message": "ID no proporcionado"}
+
+    try:
+        # 1. Preguntar a Wompi por el estado real de esta transacción
+        tx_details = await wompi_service.get_wompi_transaction_details(transaction_id)
+        
+        if not tx_details:
+            return {"message": "Transacción no encontrada en Wompi"}
+
+        status = tx_details.get("status")
+        payment_link_id = tx_details.get("payment_link_id")
+        
+        if status == "APPROVED" and payment_link_id:
+            # 2. Buscar la compra en nuestra BD usando el payment_link_id
+            purchase = session.exec(
+                select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)
+            ).one_or_none()
+
+            if purchase:
+                # 3. Si la compra aún no está confirmada, la confirmamos YA.
+                if purchase.status != PurchaseStatus.CONFIRMED:
+                    purchase.status = PurchaseStatus.CONFIRMED
+                    purchase.confirmed_at = datetime.now(timezone.utc)
+                    purchase.wompi_transaction_id = transaction_id
+                    session.add(purchase)
+                    
+                    # 4. Notificar al Vendedor (Esto hace que le aparezca la orden)
+                    # Obtenemos el ID del vendedor del primer producto
+                    if purchase.items and purchase.items[0].blog_post:
+                        seller_id = purchase.items[0].blog_post.userinfo_id
+                        notification = NotificationModel(
+                            userinfo_id=seller_id,
+                            message=f"¡Nueva venta Online confirmada! Orden #{purchase.id}.",
+                            url="/admin/confirm-payments"
+                        )
+                        session.add(notification)
+                    
+                    session.commit()
+                    return {"message": "Pago APROBADO y orden creada exitosamente."}
+                else:
+                    return {"message": "La orden ya estaba confirmada."}
+            else:
+                return {"message": "Referencia de compra no encontrada en el sistema."}
+        
+        elif status == "DECLINED":
+             return {"message": "El pago fue declinado por el banco."}
+             
+    except Exception as e:
+        logger.error(f"Error verificando Wompi desde App: {e}")
+        return {"message": "Error verificando el pago."}
+
+    return {"message": f"Estado del pago: {status}"}
 
 @router.post("/purchases/{purchase_id}/verify_payment")
 async def verify_payment(purchase_id: int, session: Session = Depends(get_session)):
