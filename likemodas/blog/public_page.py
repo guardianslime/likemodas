@@ -240,6 +240,15 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             ),
             
             rx.text("Publicado por: ", rx.hover_card.root(rx.hover_card.trigger(rx.link(AppState.product_in_modal.seller_name, href=f"/vendedor?id={AppState.product_in_modal.seller_id}", color_scheme="violet", font_weight="bold")), rx.hover_card.content(rx.vstack(rx.text("Puntuación del Vendedor"), seller_score_stars(AppState.product_in_modal.seller_score), align="center", spacing="2"), padding="0.75em")), size="3", color_scheme="gray", margin_top="1.5em"),
+            # --- ✨ NUEVO: FECHA DE PUBLICACIÓN EXPLÍCITA ✨ ---
+            rx.text(
+                AppState.product_in_modal.created_at_formatted,
+                size="2",
+                color_scheme="gray",
+                margin_top="0.2em"
+            ),
+            # -------------------------------------------------
+
             rx.spacer(),
             rx.hstack(
                 rx.button("Añadir al Carrito", on_click=rx.cond(is_for_direct_sale, AppState.add_to_direct_sale_cart(AppState.product_in_modal.id), AppState.add_to_cart(AppState.product_in_modal.id)), size="3", flex_grow="1", color_scheme="violet"),
