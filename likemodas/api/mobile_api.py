@@ -361,18 +361,31 @@ async def get_neighborhoods(data: dict = Body(...)):
 # --- CORRECCIÓN 1: LOGIN SEGURO (CON .strip()) ---
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
-    # Limpiamos espacios para asegurar coincidencia con la Web
-    username_clean = creds.username.strip()
+    # Limpiamos espacios
+    login_input = creds.username.strip() # Puede ser usuario O email
     password_clean = creds.password.strip()
 
     try:
-        user = session.exec(select(LocalUser).where(LocalUser.username == username_clean)).one_or_none()
-        if not user: raise HTTPException(404, detail="Usuario no existe")
+        # --- ✨ LÓGICA DE LOGIN DUAL (USUARIO O EMAIL) ✨ ---
+        # Buscamos un LocalUser uniendo con UserInfo para chequear el email
+        user = session.exec(
+            select(LocalUser)
+            .join(UserInfo)
+            .where(
+                (LocalUser.username == login_input) | 
+                (UserInfo.email == login_input)
+            )
+        ).first()
+
+        if not user: 
+            # Mensaje genérico por seguridad, o específico si prefieres
+            raise HTTPException(404, detail="Usuario o correo no registrado")
         
-        # Verificamos contraseña limpia
+        # Verificamos contraseña
         if not bcrypt.checkpw(password_clean.encode('utf-8'), user.password_hash): 
             raise HTTPException(400, detail="Contraseña incorrecta")
         
+        # ... (Resto del código de token y sesión igual que antes) ...
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
         

@@ -1155,41 +1155,48 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        [VERSIÓN MODIFICADA] Manejador de login que valida, crea la sesión
-        y establece el contexto de usuario inicial.
+        Manejador de login que soporta Usuario O Email y muestra errores claros.
         """
-        self.error_message = ""
-        username = (form_data.get("username") or "").strip()
+        self.error_message = "" # Limpiar errores previos
+        # El campo del formulario se llama 'username' pero puede traer el email
+        login_input = (form_data.get("username") or "").strip()
         password = (form_data.get("password") or "").strip()
 
-        if not username or not password:
-            self.error_message = "Usuario y contraseña son requeridos."
+        if not login_input or not password:
+            self.error_message = "Usuario/Correo y contraseña son requeridos."
             return
 
         with rx.session() as session:
-            user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
-            if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
-                self.error_message = "Usuario o contraseña inválidos."
+            # --- ✨ BÚSQUEDA DUAL: USUARIO O EMAIL ✨ ---
+            user = session.exec(
+                select(LocalUser)
+                .join(UserInfo)
+                .where(
+                    (LocalUser.username == login_input) | 
+                    (UserInfo.email == login_input)
+                )
+            ).first()
+
+            # --- ✨ MENSAJES DE ERROR EXPLÍCITOS ✨ ---
+            if not user:
+                self.error_message = "El usuario o correo ingresado no existe."
+                return
+            
+            if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
+                self.error_message = "La contraseña es incorrecta."
                 return
 
             user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
+            
+            # ... (Resto de la lógica de verificación y contexto igual) ...
             if not user_info or not user_info.is_verified:
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
-
-            # ---- INICIO DE LA LÓGICA DE CONTEXTO ----
-            # Revisa si el usuario que inicia sesión es un empleado
-            empleador_link = session.exec(
-                select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == user_info.id)
-            ).one_or_none()
             
-            if empleador_link:  # Si es un empleado
-                # El contexto es el ID de su empleador (Vendedor)
-                self.context_user_id = empleador_link.vendedor_id
-            else:  # Si es Admin, Vendedor o Cliente
-                # El contexto es su propio ID
-                self.context_user_id = user_info.id
-            # ---- FIN DE LA LÓGICA DE CONTEXTO ----
+            # (Lógica de contexto y 2FA igual que antes...)
+            empleador_link = session.exec(select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == user_info.id)).one_or_none()
+            if empleador_link: self.context_user_id = empleador_link.vendedor_id
+            else: self.context_user_id = user_info.id
 
             if user_info.tfa_enabled:
                 self.tfa_user_id_pending_verification = user.id

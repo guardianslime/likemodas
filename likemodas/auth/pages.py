@@ -13,21 +13,27 @@ def my_login_page_content() -> rx.Component:
             rx.vstack(
                 rx.form(
                     rx.vstack(
-                        rx.heading("Inicia Sesión en tu Cuenta", size="7"),
+                        rx.heading("Inicia Sesión", size="7"),
+                        
+                        # --- ✨ CORRECCIÓN: Usar AppState.error_message ✨ ---
                         rx.cond(
-                            reflex_local_auth.LoginState.error_message != "",
+                            AppState.error_message != "",
                             rx.callout(
-                                reflex_local_auth.LoginState.error_message,
-                                icon="triangle_alert", color_scheme="red", role="alert", width="100%"
+                                AppState.error_message,
+                                icon="triangle_alert", 
+                                color_scheme="red", 
+                                role="alert", 
+                                width="100%"
                             ),
                         ),
-                        rx.text("Nombre de usuario"),
-                        input_100w("username"),
+                        # -----------------------------------------------------
+
+                        rx.text("Usuario o Correo Electrónico"), # Actualizar etiqueta
+                        input_100w("username"), # El nombre interno sigue siendo username
+                        
                         rx.text("Contraseña"),
-                        password_input(
-                            placeholder="Password",
-                            name="password"
-                        ),
+                        password_input(placeholder="Password", name="password"),
+                        
                         rx.button("Iniciar Sesión", width="100%", type="submit", color_scheme="violet"),
                         spacing="4"
                     ),
