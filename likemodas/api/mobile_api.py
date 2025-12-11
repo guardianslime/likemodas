@@ -1,5 +1,3 @@
-# likemodas/api/mobile_api.py
-
 import os
 import logging
 from datetime import datetime, timedelta, timezone
@@ -87,8 +85,10 @@ class ProductListDTO(BaseModel):
     combines_shipping: bool
     average_rating: float = 0.0
     rating_count: int = 0
-    # --- ✨ NUEVO CAMPO PARA EL TEXTO DE ENVÍO ✨ ---
+    
+    # --- CAMPO CLAVE PARA LA ETIQUETA DE ENVÍO ---
     shipping_display_text: str = "Envío a convenir"
+    
     use_default_style: bool = True
     light_mode_appearance: str = "light"
     dark_mode_appearance: str = "dark"
@@ -358,10 +358,10 @@ async def get_neighborhoods(data: dict = Body(...)):
     city = data.get("city", "")
     return sorted(COLOMBIA_LOCATIONS.get(city, []))
 
-# --- CORRECCIÓN 1: LOGIN SEGURO ---
+# --- CORRECCIÓN 1: LOGIN SEGURO (CON .strip()) ---
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
-    # 1. Limpiamos espacios (trim) para asegurar coincidencia exacta con la Web
+    # Limpiamos espacios para asegurar coincidencia con la Web
     username_clean = creds.username.strip()
     password_clean = creds.password.strip()
 
@@ -369,7 +369,7 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
         user = session.exec(select(LocalUser).where(LocalUser.username == username_clean)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
         
-        # 2. Verificamos contraseña limpia
+        # Verificamos contraseña limpia
         if not bcrypt.checkpw(password_clean.encode('utf-8'), user.password_hash): 
             raise HTTPException(400, detail="Contraseña incorrecta")
         
@@ -386,10 +386,10 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(400, detail=str(e))
 
-# --- CORRECCIÓN 2: REGISTRO SEGURO ---
+# --- CORRECCIÓN 2: REGISTRO SEGURO (CON .strip()) ---
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
-    # 1. Limpiamos espacios al registrar para que se guarde limpio en la BD
+    # Limpiamos espacios al registrar para que se guarde limpio
     username_clean = creds.username.strip()
     email_clean = creds.email.strip().lower()
     password_clean = creds.password.strip()
@@ -398,7 +398,7 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
         raise HTTPException(400, detail="Usuario ya existe")
     
     try:
-        # 2. Guardamos la contraseña limpia (sin espacios fantasma)
+        # Guardamos la contraseña limpia
         hashed_pw = bcrypt.hashpw(password_clean.encode('utf-8'), bcrypt.gensalt())
         
         new_user = LocalUser(username=username_clean, password_hash=hashed_pw, enabled=True)
@@ -541,14 +541,14 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
         return {"message": "Dirección actualizada"}
     raise HTTPException(404, "Dirección no encontrada")
 
-# 2. ACTUALIZA EL ENDPOINT DE PRODUCTOS
+# --- CORRECCIÓN 3: CÁLCULO DE ENVÍO Y user_id OPCIONAL ---
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(
     category: Optional[str] = None, 
-    user_id: Optional[int] = Query(None), # <-- ACEPTA USER_ID OPCIONAL
+    user_id: Optional[int] = Query(None), # <-- Aceptamos el user_id
     session: Session = Depends(get_session)
 ):
-    # 1. Preparar datos del COMPRADOR (si existe)
+    # 1. Preparar datos del comprador (si existe)
     buyer_city = None
     buyer_barrio = None
     
@@ -561,24 +561,29 @@ async def get_products_for_mobile(
             buyer_city = default_addr.city
             buyer_barrio = default_addr.neighborhood
 
-    # 2. Consultar Productos (Incluyendo datos del Vendedor para saber su ubicación)
+    # 2. Consultar Productos (Incluyendo datos del Vendedor)
     query = select(BlogPostModel).options(joinedload(BlogPostModel.userinfo)).where(BlogPostModel.publish_active == True)
-    
-    if category and category != "todos": 
-        query = query.where(BlogPostModel.category == category)
-    
+    if category and category != "todos": query = query.where(BlogPostModel.category == category)
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
-    products = session.exec(query).unique().all()
     
+    products = session.exec(query).unique().all()
     result = []
+    
     for p in products:
         image_url = extract_display_image(p)
+        lightbox_light = "dark"; lightbox_dark = "dark"
+        if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
+            first_var = p.variants[0]
+            if isinstance(first_var, dict):
+                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
+                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
         
-        # --- ✨ CÁLCULO DE ENVÍO DINÁMICO ✨ ---
+        avg_rating, rating_count = calculate_rating(session, p.id)
+        
+        # --- CÁLCULO DINÁMICO DE ENVÍO ---
         seller_city = p.userinfo.seller_city if p.userinfo else None
         seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
         
-        # Calculamos usando la misma lógica del carrito
         final_shipping_cost = calculate_dynamic_shipping(
             base_cost=p.shipping_cost or 0.0,
             seller_barrio=seller_barrio,
@@ -587,52 +592,28 @@ async def get_products_for_mobile(
             buyer_city=buyer_city
         )
         
-        # Generamos el texto
         if final_shipping_cost == 0:
             shipping_txt = "Envío Gratis"
         elif final_shipping_cost > 0:
             shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
         else:
             shipping_txt = "Envío a convenir"
-        # --------------------------------------
+        # --------------------------------
 
-        # Lógica de lightbox (se mantiene igual)
-        lightbox_light = "dark"; lightbox_dark = "dark"
-        if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
-            first_var = p.variants[0]
-            if isinstance(first_var, dict):
-                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
-                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
-                 
-        avg_rating, rating_count = calculate_rating(session, p.id)
-        
         result.append(ProductListDTO(
-            id=p.id, 
-            title=p.title, 
-            price=p.price, 
-            price_formatted=fmt_price(p.price),
-            image_url=image_url, 
-            category=p.category, 
-            description=p.content,
-            is_moda_completa=p.is_moda_completa_eligible, 
-            combines_shipping=p.combines_shipping,
-            average_rating=avg_rating, 
-            rating_count=rating_count,
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
+            image_url=image_url, category=p.category, description=p.content,
+            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
+            average_rating=avg_rating, rating_count=rating_count,
             
-            # --- ✨ PASAMOS EL TEXTO CALCULADO ✨ ---
+            # --- ASIGNAMOS EL TEXTO CALCULADO ---
             shipping_display_text=shipping_txt,
             
-            use_default_style=p.use_default_style, 
-            light_mode_appearance=p.light_mode_appearance,
-            dark_mode_appearance=p.dark_mode_appearance, 
-            light_card_bg_color=p.light_card_bg_color,
-            light_title_color=p.light_title_color, 
-            light_price_color=p.light_price_color,
-            dark_card_bg_color=p.dark_card_bg_color, 
-            dark_title_color=p.dark_title_color,
-            dark_price_color=p.dark_price_color, 
-            lightbox_bg_light=lightbox_light, 
-            lightbox_bg_dark=lightbox_dark
+            use_default_style=p.use_default_style, light_mode_appearance=p.light_mode_appearance,
+            dark_mode_appearance=p.dark_mode_appearance, light_card_bg_color=p.light_card_bg_color,
+            light_title_color=p.light_title_color, light_price_color=p.light_price_color,
+            dark_card_bg_color=p.dark_card_bg_color, dark_title_color=p.dark_title_color,
+            dark_price_color=p.dark_price_color, lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark
         ))
     return result
 
@@ -709,6 +690,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
     except Exception as e:
         logger.error(f"Error 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+# ... (resto de endpoints: toggle-save, seller products, reviews, reports, saved-posts, cart, checkout, purchases, confirm-delivery, wompi, verify, support, invoice, notifications - todo igual que antes) ...
 
 @router.post("/products/{product_id}/toggle-save/{user_id}", response_model=ToggleSaveResponse)
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
@@ -909,13 +892,9 @@ async def checkout(user_id: int, req: CheckoutRequest, session: Session = Depend
         except Exception as e: logger.error(f"Excepción Wompi: {e}")
     return CheckoutResponse(success=True, message="OK", payment_url=payment_url_generated, purchase_id=new_purchase.id)
 
-# ==========================================
-# 5. HISTORIAL DE COMPRAS (CORREGIDO PARA EVITAR 500)
-# ==========================================
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     try:
-        # --- ORDENAMIENTO POR FECHA DESCENDENTE ---
         purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_id).order_by(PurchaseModel.purchase_date.desc())).all()
         history = []
         
@@ -948,10 +927,8 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                 can_confirm = False; can_return = False; tracking_msg = None; retry_url = None; invoice_path = None; return_path = None
                 status_val = p.status.value if hasattr(p.status, 'value') else str(p.status)
 
-                # --- CORRECCIÓN DE FECHAS (Offset-Naive vs Offset-Aware) ---
                 if status_val == PurchaseStatus.PENDING_PAYMENT.value and p.payment_method == "Online":
                     if p.purchase_date:
-                        # Aseguramos que purchase_date tenga zona horaria UTC
                         purchase_dt = p.purchase_date
                         if purchase_dt.tzinfo is None:
                             purchase_dt = purchase_dt.replace(tzinfo=timezone.utc)
@@ -965,7 +942,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                             retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
                             tracking_msg = "Pendiente de pago"
                     else: tracking_msg = "Procesando..."
-                # -------------------------------------------------------------
 
                 elif status_val == PurchaseStatus.SHIPPED.value:
                     can_confirm = True
@@ -1023,57 +999,35 @@ async def confirm_delivery(purchase_id: int, user_id: int, session: Session = De
 
 @router.post("/purchases/confirm_wompi_transaction")
 async def confirm_wompi_transaction(data: dict = Body(...), session: Session = Depends(get_session)):
-    """
-    Recibe el ID de transacción de Wompi desde la App,
-    verifica el estado con Wompi y actualiza la compra inmediatamente.
-    """
     transaction_id = data.get("transaction_id")
     if not transaction_id:
         return {"message": "ID no proporcionado"}
 
     try:
-        # 1. Preguntar a Wompi por el estado real de esta transacción
         tx_details = await wompi_service.get_wompi_transaction_details(transaction_id)
-        
-        if not tx_details:
-            return {"message": "Transacción no encontrada en Wompi"}
+        if not tx_details: return {"message": "Transacción no encontrada en Wompi"}
 
         status = tx_details.get("status")
         payment_link_id = tx_details.get("payment_link_id")
         
         if status == "APPROVED" and payment_link_id:
-            # 2. Buscar la compra en nuestra BD usando el payment_link_id
-            purchase = session.exec(
-                select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)
-            ).one_or_none()
-
+            purchase = session.exec(select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)).one_or_none()
             if purchase:
-                # 3. Si la compra aún no está confirmada, la confirmamos YA.
                 if purchase.status != PurchaseStatus.CONFIRMED:
                     purchase.status = PurchaseStatus.CONFIRMED
                     purchase.confirmed_at = datetime.now(timezone.utc)
                     purchase.wompi_transaction_id = transaction_id
                     session.add(purchase)
-                    
-                    # 4. Notificar al Vendedor (Esto hace que le aparezca la orden)
                     if purchase.items and purchase.items[0].blog_post:
                         seller_id = purchase.items[0].blog_post.userinfo_id
-                        notification = NotificationModel(
-                            userinfo_id=seller_id,
-                            message=f"¡Nueva venta Online confirmada! Orden #{purchase.id}.",
-                            url="/admin/confirm-payments"
-                        )
+                        notification = NotificationModel(userinfo_id=seller_id, message=f"¡Nueva venta Online confirmada! Orden #{purchase.id}.", url="/admin/confirm-payments")
                         session.add(notification)
-                    
                     session.commit()
                     return {"message": "Pago APROBADO y orden creada exitosamente."}
-                else:
-                    return {"message": "La orden ya estaba confirmada."}
-            else:
-                return {"message": "Referencia de compra no encontrada en el sistema."}
+                else: return {"message": "La orden ya estaba confirmada."}
+            else: return {"message": "Referencia de compra no encontrada en el sistema."}
         
-        elif status == "DECLINED":
-             return {"message": "El pago fue declinado por el banco."}
+        elif status == "DECLINED": return {"message": "El pago fue declinado por el banco."}
              
     except Exception as e:
         logger.error(f"Error verificando Wompi desde App: {e}")
@@ -1167,15 +1121,13 @@ async def get_notifications(user_id: int, session: Session = Depends(get_session
     user_info = get_user_info(session, user_id)
     notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id).order_by(NotificationModel.created_at.desc()).limit(30)).all()
     
-    # --- CORRECCIÓN CRÍTICA DE NOTIFICACIONES ---
-    # Usamos created_at_formatted para pasar el dato correctamente al DTO
     return [
         NotificationResponse(
             id=n.id,
             message=n.message,
             url=n.url,
             is_read=n.is_read,
-            created_at=n.created_at_formatted # <-- ESTA ES LA SOLUCIÓN AL ERROR DE VALIDACIÓN
+            created_at_formatted=n.created_at_formatted
         ) for n in notifs
     ]
 
