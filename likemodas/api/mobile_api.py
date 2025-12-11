@@ -283,14 +283,12 @@ class SendMessageRequest(BaseModel):
     ticket_id: int
     content: str
 
-# --- CORRECCIÓN EN EL DTO DE NOTIFICACIONES ---
 class NotificationResponse(BaseModel):
     id: int
     message: str
     url: Optional[str]
     is_read: bool
-    # CAMBIO: Usamos 'created_at' porque Android lo espera así (@SerializedName("created_at"))
-    created_at: str 
+    created_at_formatted: str 
     
     class Config:
         from_attributes = True
@@ -358,12 +356,20 @@ async def get_neighborhoods(data: dict = Body(...)):
     city = data.get("city", "")
     return sorted(COLOMBIA_LOCATIONS.get(city, []))
 
+# --- CORRECCIÓN 1: LOGIN SEGURO ---
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
+    # 1. Limpiamos espacios (trim) para asegurar coincidencia exacta con la Web
+    username_clean = creds.username.strip()
+    password_clean = creds.password.strip()
+
     try:
-        user = session.exec(select(LocalUser).where(LocalUser.username == creds.username)).one_or_none()
+        user = session.exec(select(LocalUser).where(LocalUser.username == username_clean)).one_or_none()
         if not user: raise HTTPException(404, detail="Usuario no existe")
-        if not bcrypt.checkpw(creds.password.encode('utf-8'), user.password_hash): raise HTTPException(400, detail="Contraseña incorrecta")
+        
+        # 2. Verificamos contraseña limpia
+        if not bcrypt.checkpw(password_clean.encode('utf-8'), user.password_hash): 
+            raise HTTPException(400, detail="Contraseña incorrecta")
         
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
@@ -378,14 +384,25 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(400, detail=str(e))
 
+# --- CORRECCIÓN 2: REGISTRO SEGURO ---
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
-    if session.exec(select(LocalUser).where(LocalUser.username == creds.username)).first(): raise HTTPException(400, detail="Usuario ya existe")
+    # 1. Limpiamos espacios al registrar para que se guarde limpio en la BD
+    username_clean = creds.username.strip()
+    email_clean = creds.email.strip().lower()
+    password_clean = creds.password.strip()
+
+    if session.exec(select(LocalUser).where(LocalUser.username == username_clean)).first(): 
+        raise HTTPException(400, detail="Usuario ya existe")
+    
     try:
-        hashed_pw = bcrypt.hashpw(creds.password.encode('utf-8'), bcrypt.gensalt())
-        new_user = LocalUser(username=creds.username, password_hash=hashed_pw, enabled=True)
+        # 2. Guardamos la contraseña limpia (sin espacios fantasma)
+        hashed_pw = bcrypt.hashpw(password_clean.encode('utf-8'), bcrypt.gensalt())
+        
+        new_user = LocalUser(username=username_clean, password_hash=hashed_pw, enabled=True)
         session.add(new_user); session.commit(); session.refresh(new_user)
-        new_info = UserInfo(email=creds.email, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
+        
+        new_info = UserInfo(email=email_clean, user_id=new_user.id, role=UserRole.CUSTOMER, is_verified=False)
         session.add(new_info); session.commit(); session.refresh(new_info)
         
         try:
@@ -393,7 +410,7 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
             expires = datetime.now(timezone.utc) + timedelta(hours=24)
             vt = VerificationToken(token=token_str, userinfo_id=new_info.id, expires_at=expires)
             session.add(vt); session.commit()
-            send_verification_email(recipient_email=creds.email, token=token_str)
+            send_verification_email(recipient_email=email_clean, token=token_str)
         except Exception as ex:
             logger.error(f"Error enviando email: {ex}")
 
@@ -435,9 +452,15 @@ async def update_mobile_profile(user_id: int, phone: str = Query(...), session: 
 async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     local_user = session.get(LocalUser, user_info.user_id)
-    if not local_user or not bcrypt.checkpw(req.current_password.encode('utf-8'), local_user.password_hash): raise HTTPException(400, "Contraseña incorrecta.")
-    if len(req.new_password) < 8: raise HTTPException(400, "Contraseña muy corta.")
-    new_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), bcrypt.gensalt())
+    # Limpiamos inputs aquí también
+    current_clean = req.current_password.strip()
+    new_clean = req.new_password.strip()
+
+    if not local_user or not bcrypt.checkpw(current_clean.encode('utf-8'), local_user.password_hash): 
+        raise HTTPException(400, "Contraseña incorrecta.")
+    if len(new_clean) < 8: raise HTTPException(400, "Contraseña muy corta.")
+    
+    new_hash = bcrypt.hashpw(new_clean.encode('utf-8'), bcrypt.gensalt())
     local_user.password_hash = new_hash
     session.add(local_user); session.commit()
     return {"message": "Contraseña actualizada."}
@@ -446,7 +469,8 @@ async def change_password(user_id: int, req: ChangePasswordRequest, session: Ses
 async def delete_account(user_id: int, req: DeleteAccountRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     local_user = session.get(LocalUser, user_info.user_id)
-    if not local_user or not bcrypt.checkpw(req.password.encode('utf-8'), local_user.password_hash): raise HTTPException(400, "Contraseña incorrecta.")
+    if not local_user or not bcrypt.checkpw(req.password.strip().encode('utf-8'), local_user.password_hash): 
+        raise HTTPException(400, "Contraseña incorrecta.")
     
     anonymized_username = f"usuario_eliminado_{user_info.id}"
     anonymized_email = f"deleted_{user_info.id}@likemodas.com"
@@ -480,7 +504,8 @@ async def get_tfa_status(user_id: int, session: Session = Depends(get_session)):
 async def disable_tfa(user_id: int, req: DeleteAccountRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     local_user = session.get(LocalUser, user_info.user_id)
-    if not bcrypt.checkpw(req.password.encode('utf-8'), local_user.password_hash): raise HTTPException(400, "Incorrecta.")
+    if not bcrypt.checkpw(req.password.strip().encode('utf-8'), local_user.password_hash): 
+        raise HTTPException(400, "Incorrecta.")
     user_info.tfa_enabled = False; user_info.tfa_secret = None
     session.add(user_info); session.commit()
     return {"message": "2FA desactivado."}
