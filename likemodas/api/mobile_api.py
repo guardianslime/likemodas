@@ -87,6 +87,8 @@ class ProductListDTO(BaseModel):
     combines_shipping: bool
     average_rating: float = 0.0
     rating_count: int = 0
+    # --- ✨ NUEVO CAMPO PARA EL TEXTO DE ENVÍO ✨ ---
+    shipping_display_text: str = "Envío a convenir"
     use_default_style: bool = True
     light_mode_appearance: str = "light"
     dark_mode_appearance: str = "dark"
@@ -539,32 +541,98 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
         return {"message": "Dirección actualizada"}
     raise HTTPException(404, "Dirección no encontrada")
 
+# 2. ACTUALIZA EL ENDPOINT DE PRODUCTOS
 @router.get("/products", response_model=List[ProductListDTO])
-async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
-    query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
-    if category and category != "todos": query = query.where(BlogPostModel.category == category)
+async def get_products_for_mobile(
+    category: Optional[str] = None, 
+    user_id: Optional[int] = Query(None), # <-- ACEPTA USER_ID OPCIONAL
+    session: Session = Depends(get_session)
+):
+    # 1. Preparar datos del COMPRADOR (si existe)
+    buyer_city = None
+    buyer_barrio = None
+    
+    if user_id:
+        default_addr = session.exec(
+            select(ShippingAddressModel)
+            .where(ShippingAddressModel.userinfo_id == user_id, ShippingAddressModel.is_default == True)
+        ).first()
+        if default_addr:
+            buyer_city = default_addr.city
+            buyer_barrio = default_addr.neighborhood
+
+    # 2. Consultar Productos (Incluyendo datos del Vendedor para saber su ubicación)
+    query = select(BlogPostModel).options(joinedload(BlogPostModel.userinfo)).where(BlogPostModel.publish_active == True)
+    
+    if category and category != "todos": 
+        query = query.where(BlogPostModel.category == category)
+    
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
-    products = session.exec(query).all()
+    products = session.exec(query).unique().all()
+    
     result = []
     for p in products:
         image_url = extract_display_image(p)
+        
+        # --- ✨ CÁLCULO DE ENVÍO DINÁMICO ✨ ---
+        seller_city = p.userinfo.seller_city if p.userinfo else None
+        seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
+        
+        # Calculamos usando la misma lógica del carrito
+        final_shipping_cost = calculate_dynamic_shipping(
+            base_cost=p.shipping_cost or 0.0,
+            seller_barrio=seller_barrio,
+            buyer_barrio=buyer_barrio,
+            seller_city=seller_city,
+            buyer_city=buyer_city
+        )
+        
+        # Generamos el texto
+        if final_shipping_cost == 0:
+            shipping_txt = "Envío Gratis"
+        elif final_shipping_cost > 0:
+            shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
+        else:
+            shipping_txt = "Envío a convenir"
+        # --------------------------------------
+
+        # Lógica de lightbox (se mantiene igual)
         lightbox_light = "dark"; lightbox_dark = "dark"
         if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
             first_var = p.variants[0]
             if isinstance(first_var, dict):
                  lightbox_light = first_var.get("lightbox_bg_light", "dark")
                  lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+                 
         avg_rating, rating_count = calculate_rating(session, p.id)
+        
         result.append(ProductListDTO(
-            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=image_url, category=p.category, description=p.content,
-            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-            average_rating=avg_rating, rating_count=rating_count,
-            use_default_style=p.use_default_style, light_mode_appearance=p.light_mode_appearance,
-            dark_mode_appearance=p.dark_mode_appearance, light_card_bg_color=p.light_card_bg_color,
-            light_title_color=p.light_title_color, light_price_color=p.light_price_color,
-            dark_card_bg_color=p.dark_card_bg_color, dark_title_color=p.dark_title_color,
-            dark_price_color=p.dark_price_color, lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark
+            id=p.id, 
+            title=p.title, 
+            price=p.price, 
+            price_formatted=fmt_price(p.price),
+            image_url=image_url, 
+            category=p.category, 
+            description=p.content,
+            is_moda_completa=p.is_moda_completa_eligible, 
+            combines_shipping=p.combines_shipping,
+            average_rating=avg_rating, 
+            rating_count=rating_count,
+            
+            # --- ✨ PASAMOS EL TEXTO CALCULADO ✨ ---
+            shipping_display_text=shipping_txt,
+            
+            use_default_style=p.use_default_style, 
+            light_mode_appearance=p.light_mode_appearance,
+            dark_mode_appearance=p.dark_mode_appearance, 
+            light_card_bg_color=p.light_card_bg_color,
+            light_title_color=p.light_title_color, 
+            light_price_color=p.light_price_color,
+            dark_card_bg_color=p.dark_card_bg_color, 
+            dark_title_color=p.dark_title_color,
+            dark_price_color=p.dark_price_color, 
+            lightbox_bg_light=lightbox_light, 
+            lightbox_bg_dark=lightbox_dark
         ))
     return result
 
