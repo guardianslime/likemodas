@@ -15,6 +15,7 @@ from sqlmodel import select, Session, func
 from pydantic import BaseModel
 
 from likemodas.db.session import get_session
+from likemodas.logic.ranking import calculate_review_impact, get_ranking_query_sort
 from likemodas.models import (
     BlogPostModel, LocalAuthSession, LocalUser, UserInfo, PurchaseModel, PurchaseItemModel, 
     ShippingAddressModel, SavedPostLink, CommentModel, PurchaseStatus,
@@ -23,8 +24,10 @@ from likemodas.models import (
 )
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
+# --- IMPORTACIONES NUEVAS NECESARIAS ---
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
-from likemodas.logic.ranking import get_ranking_query_sort, calculate_review_impact
+from likemodas.utils.validators import validate_password
+# ---------------------------------------
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,7 +35,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
 BASE_URL = "https://api.likemodas.com"
 
-# --- DTOs ---
+# --- DTOs (Modelos de Datos) ---
 
 class LoginRequest(BaseModel):
     username: str
@@ -211,9 +214,16 @@ class SendMessageRequest(BaseModel):
     ticket_id: int
     content: str
 
+# --- DTOs PARA SEGURIDAD (NUEVOS) ---
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+class TfaStatusResponse(BaseModel):
+    enabled: bool
 
 class AddressDTO(BaseModel):
     id: int
@@ -286,7 +296,7 @@ class GenericResponse(BaseModel):
 # --- HELPERS ---
 
 def get_user_info(session: Session, user_id: int) -> UserInfo:
-    """Busca el usuario por el ID de la tabla UserInfo (NO LocalUser)."""
+    """Busca el usuario por el ID de la tabla UserInfo."""
     user_info = session.get(UserInfo, user_id)
     if not user_info: raise HTTPException(404, "Usuario no encontrado")
     return user_info
@@ -314,26 +324,23 @@ def calculate_rating(session: Session, product_id: int):
     avg = total_rating / count if count > 0 else 0.0
     return avg, count
 
-def get_current_user(
-    authorization: str = Header(..., description="Token Bearer"),
-    session: Session = Depends(get_session)
-) -> UserInfo:
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Formato de token inválido")
-    token = authorization.split(" ")[1]
-    auth_session = session.exec(
-        select(LocalAuthSession).where(
-            LocalAuthSession.session_id == token,
-            LocalAuthSession.expiration > datetime.now(timezone.utc)
-        )
-    ).one_or_none()
-    if not auth_session:
-        raise HTTPException(401, "Sesión expirada o inválida")
-    # Buscamos el UserInfo asociado al LocalUser de la sesión
-    user_info = session.exec(select(UserInfo).where(UserInfo.user_id == auth_session.user_id)).one()
-    return user_info
-
 # --- ENDPOINTS ---
+
+# --- 1. GEOGRAFÍA (SOLUCIÓN ERROR DIRECCIONES) ---
+@router.get("/geography/cities")
+async def get_cities():
+    """Devuelve la lista de ciudades para el selector de la App."""
+    # Retorna la lista ordenada de ciudades disponibles en el sistema
+    return sorted(ALL_CITIES)
+
+@router.post("/geography/neighborhoods")
+async def get_neighborhoods(data: dict = Body(...)):
+    """Devuelve los barrios basados en la ciudad enviada."""
+    city = data.get("city", "")
+    # Busca en el diccionario de datos. Si no existe la ciudad, retorna lista vacía.
+    return sorted(COLOMBIA_LOCATIONS.get(city, []))
+
+# --- AUTENTICACIÓN ---
 
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
@@ -356,7 +363,7 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
         session.commit()
         
         role_str = user_info.role.value if hasattr(user_info.role, 'value') else str(user_info.role)
-        # Importante: Devolvemos user_info.id, que es el ID que se usa para relaciones
+        # Importante: Devolvemos user_info.id, que es el ID que se usa para relaciones (Purchases, etc.)
         return UserResponse(id=user_info.id, username=user.username, email=user_info.email, role=role_str, token=secure_token)
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(400, detail=str(e))
@@ -392,40 +399,93 @@ async def mobile_forgot_password(req: ForgotPasswordRequest, session: Session = 
         except: pass
     return {"message": "OK"}
 
-# --- Endpoint de Reportes (Consistente con LikemodasApi.kt) ---
-@router.post("/reports")
-async def create_report(
-    req: ReportRequest, 
-    user_id: int = Query(...), # Recibimos user_id como query parameter
-    session: Session = Depends(get_session)
-):
-    try:
-        user_info = get_user_info(session, user_id)
+# --- SEGURIDAD ---
+
+@router.post("/profile/{user_id}/change-password")
+async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    local_user = session.get(LocalUser, user_info.user_id)
+    
+    if not local_user or not bcrypt.checkpw(req.current_password.encode('utf-8'), local_user.password_hash):
+        raise HTTPException(400, "La contraseña actual es incorrecta.")
+    
+    if len(req.new_password) < 8:
+        raise HTTPException(400, "La nueva contraseña es muy corta (mínimo 8 caracteres).")
+
+    new_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), bcrypt.gensalt())
+    local_user.password_hash = new_hash
+    session.add(local_user)
+    session.commit()
+    return {"message": "Contraseña actualizada exitosamente."}
+
+@router.post("/profile/{user_id}/delete")
+async def delete_account(user_id: int, req: DeleteAccountRequest, session: Session = Depends(get_session)):
+    """Eliminación de cuenta segura con anonimización (igual que la Web)."""
+    user_info = get_user_info(session, user_id)
+    local_user = session.get(LocalUser, user_info.user_id)
+
+    if not local_user or not bcrypt.checkpw(req.password.encode('utf-8'), local_user.password_hash):
+        raise HTTPException(400, "Contraseña incorrecta. No se puede eliminar la cuenta.")
+
+    # Lógica de Anonimización
+    anonymized_username = f"usuario_eliminado_{user_info.id}"
+    anonymized_email = f"deleted_{user_info.id}@likemodas.com"
+
+    # 1. Limpiar Info Personal
+    user_info.email = anonymized_email
+    user_info.phone = None
+    user_info.avatar_url = None
+    user_info.seller_address = None
+    user_info.seller_city = None
+    user_info.seller_barrio = None
+    user_info.tfa_enabled = False
+    user_info.tfa_secret = None
+    user_info.is_banned = True # Bloquear acceso
+    session.add(user_info)
+
+    # 2. Limpiar Credenciales
+    local_user.username = anonymized_username
+    local_user.password_hash = bcrypt.hashpw(secrets.token_bytes(32), bcrypt.gensalt()) # Hash basura
+    local_user.enabled = False
+    session.add(local_user)
+
+    # 3. Borrar Direcciones de Envío
+    addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).all()
+    for addr in addresses:
+        session.delete(addr)
         
-        new_report = ReportModel(
-            reporter_id=user_info.id,
-            reason=req.reason,
-            status=ReportStatus.PENDING,
-            # Asignamos ID según el tipo
-            blog_post_id=req.target_id if req.target_type == "post" else None,
-            comment_id=req.target_id if req.target_type == "comment" else None
-        )
-        session.add(new_report)
-        
-        admins = session.exec(select(UserInfo).where(UserInfo.role == UserRole.ADMIN)).all()
-        for admin in admins:
-            note = NotificationModel(
-                userinfo_id=admin.id,
-                message=f"🚨 Nuevo reporte de {req.target_type}: {req.reason[:30]}...",
-                url="/admin/reports"
-            )
-            session.add(note)
-            
-        session.commit()
-        return {"message": "Reporte recibido."}
-    except Exception as e:
-        logger.error(f"Error reportando: {e}")
-        raise HTTPException(500, "Error interno.")
+    # 4. Anonimizar Pedidos Pasados
+    purchases = session.exec(select(PurchaseModel).where(PurchaseModel.userinfo_id == user_id)).all()
+    for p in purchases:
+        p.shipping_name = "Dato Eliminado"
+        p.shipping_address = "Dato Eliminado"
+        p.shipping_phone = None
+        session.add(p)
+
+    session.commit()
+    return {"message": "Cuenta eliminada y datos anonimizados correctamente."}
+
+@router.get("/profile/{user_id}/2fa/status", response_model=TfaStatusResponse)
+async def get_tfa_status(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    return TfaStatusResponse(enabled=user_info.tfa_enabled)
+
+@router.post("/profile/{user_id}/2fa/disable")
+async def disable_tfa(user_id: int, req: DeleteAccountRequest, session: Session = Depends(get_session)):
+    """Desactiva 2FA requiriendo contraseña (DTO reusado)."""
+    user_info = get_user_info(session, user_id)
+    local_user = session.get(LocalUser, user_info.user_id)
+    
+    if not bcrypt.checkpw(req.password.encode('utf-8'), local_user.password_hash):
+        raise HTTPException(400, "Contraseña incorrecta.")
+    
+    user_info.tfa_enabled = False
+    user_info.tfa_secret = None
+    session.add(user_info)
+    session.commit()
+    return {"message": "2FA desactivado."}
+
+# --- PRODUCTOS Y TIENDA ---
 
 @router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(category: Optional[str] = None, session: Session = Depends(get_session)):
@@ -550,7 +610,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         is_saved, can_review = False, False
         if user_id and user_id > 0:
             try:
-                # Ya recibimos el UserInfo ID directamente, no necesitamos buscar por LocalUser
                 saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_id, SavedPostLink.blogpostmodel_id == p.id)).first()
                 is_saved = saved is not None
                 has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_id, PurchaseItemModel.blog_post_id == p.id, PurchaseModel.status == PurchaseStatus.DELIVERED)).first()
@@ -590,72 +649,12 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             dark_price_color=p.dark_price_color
         )
     except Exception as e:
-        print(f"CRITICAL ERROR 500 product_detail id={product_id}: {str(e)}")
+        logger.error(f"Error 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
-# ✅ ENDPOINT CORREGIDO: Recibe user_id en el PATH
-@router.get("/profile/{user_id}", response_model=ProfileDTO)
-async def get_mobile_profile(user_id: int, session: Session = Depends(get_session)):
-    try:
-        user_info = get_user_info(session, user_id)
-        local_user = session.get(LocalUser, user_info.user_id)
-        if not local_user: raise HTTPException(404, "Usuario local no encontrado")
-        avatar = get_full_image_url(user_info.avatar_url)
-        return ProfileDTO(
-            username=local_user.username, 
-            email=user_info.email, 
-            phone=user_info.phone or "", 
-            avatar_url=avatar
-        )
-    except Exception as e:
-        raise HTTPException(500, str(e))
-
-@router.put("/profile/{user_id}")
-async def update_mobile_profile(user_id: int, phone: str = Query(...), session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    user_info.phone = phone
-    session.add(user_info)
-    session.commit()
-    return {"message": "Perfil actualizado"}
-
-@router.get("/addresses/{user_id}", response_model=List[AddressDTO])
-async def get_addresses(user_id: int, session: Session = Depends(get_session)):
-    get_user_info(session, user_id)
-    addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id).order_by(ShippingAddressModel.is_default.desc())).all()
-    return [AddressDTO(id=a.id, name=a.name, phone=a.phone, city=a.city, neighborhood=a.neighborhood, address=a.address, is_default=a.is_default) for a in addresses]
-
-@router.post("/addresses/{user_id}")
-async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    if req.is_default:
-        existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).all()
-        for addr in existing: 
-            addr.is_default = False
-            session.add(addr)
-    count = session.exec(select(func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).one()
-    is_def = req.is_default or (count == 0)
-    new_addr = ShippingAddressModel(userinfo_id=user_id, name=req.name, phone=req.phone, city=req.city, neighborhood=req.neighborhood, address=req.address, is_default=is_def)
-    session.add(new_addr)
-    session.commit()
-    return {"message": "Dirección guardada"}
-
-@router.put("/addresses/{user_id}/set_default/{address_id}")
-async def set_default_address(user_id: int, address_id: int, session: Session = Depends(get_session)):
-    existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).all()
-    for addr in existing: 
-        addr.is_default = False
-        session.add(addr)
-    target = session.get(ShippingAddressModel, address_id)
-    if target and target.userinfo_id == user_id:
-        target.is_default = True
-        session.add(target)
-        session.commit()
-        return {"message": "Dirección actualizada"}
-    raise HTTPException(404, "Dirección no encontrada")
 
 @router.post("/products/{product_id}/toggle-save/{user_id}", response_model=ToggleSaveResponse)
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
-    get_user_info(session, user_id) # Valida que exista
+    get_user_info(session, user_id) 
     product = session.get(BlogPostModel, product_id)
     if not product: raise HTTPException(404, "Producto no encontrado")
 
@@ -672,7 +671,6 @@ async def toggle_save_product(product_id: int, user_id: int, session: Session = 
 
 @router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO])
 async def get_seller_products(seller_id: int, session: Session = Depends(get_session)):
-    # Validar que el vendedor existe
     seller = session.get(UserInfo, seller_id)
     if not seller: raise HTTPException(404, "Vendedor no encontrado")
 
@@ -685,7 +683,6 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         img_path = p.main_image_url_variant
         lightbox_light = "dark"
         lightbox_dark = "dark"
-        
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
         if safe_variants:
             first_var = safe_variants[0]
@@ -719,6 +716,113 @@ async def get_seller_products(seller_id: int, session: Session = Depends(get_ses
         ))
     return result
 
+@router.post("/products/{productId}/reviews")
+async def create_product_review(productId: int, body: ReviewSubmissionBody, session: Session = Depends(get_session)):
+    user_info = session.get(UserInfo, body.user_id)
+    if not user_info: raise HTTPException(404, "Usuario no encontrado")
+    
+    # Verificar compra
+    has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_info.id, PurchaseItemModel.blog_post_id == productId, PurchaseModel.status == PurchaseStatus.DELIVERED)).first()
+    if not has_bought: raise HTTPException(403, "Debes comprar el producto para opinar")
+    
+    # Verificar si ya existe review
+    existing = session.exec(select(CommentModel).where(CommentModel.userinfo_id == user_info.id, CommentModel.blog_post_id == productId, CommentModel.parent_comment_id == None)).first()
+    
+    post = session.get(BlogPostModel, productId)
+    if not post: raise HTTPException(404, "Producto no existe")
+
+    if existing:
+        # Actualización
+        if len(existing.updates) >= 2: raise HTTPException(400, "Límite de actualizaciones alcanzado")
+        
+        # Calcular impacto en ranking
+        new_score = calculate_review_impact(post.quality_score, existing.rating, body.rating, is_first_review=False)
+        post.quality_score = new_score
+        post.last_interaction_at = datetime.now(timezone.utc)
+        session.add(post)
+
+        new_update = CommentModel(
+            userinfo_id=user_info.id, blog_post_id=productId, rating=body.rating, content=body.comment,
+            author_username=user_info.user.username, author_initial=user_info.user.username[0].upper(),
+            parent_comment_id=existing.id, purchase_item_id=existing.purchase_item_id
+        )
+        session.add(new_update)
+        session.commit()
+        return {"message": "Opinión actualizada"}
+    else:
+        # Nueva review
+        new_score = calculate_review_impact(post.quality_score, 0, body.rating, is_first_review=True)
+        post.quality_score = new_score
+        post.last_interaction_at = datetime.now(timezone.utc)
+        session.add(post)
+
+        new_comment = CommentModel(
+            userinfo_id=user_info.id, blog_post_id=productId, rating=body.rating, content=body.comment,
+            author_username=user_info.user.username, author_initial=user_info.user.username[0].upper(),
+            purchase_item_id=has_bought # ID de purchase item
+        )
+        session.add(new_comment)
+        session.commit()
+        return {"message": "Opinión creada"}
+
+@router.post("/reports")
+async def create_report(
+    req: ReportRequest, 
+    user_id: int = Query(...), 
+    session: Session = Depends(get_session)
+):
+    try:
+        user_info = get_user_info(session, user_id)
+        new_report = ReportModel(
+            reporter_id=user_info.id,
+            reason=req.reason,
+            status=ReportStatus.PENDING,
+            blog_post_id=req.target_id if req.target_type == "post" else None,
+            comment_id=req.target_id if req.target_type == "comment" else None
+        )
+        session.add(new_report)
+        
+        admins = session.exec(select(UserInfo).where(UserInfo.role == UserRole.ADMIN)).all()
+        for admin in admins:
+            note = NotificationModel(
+                userinfo_id=admin.id,
+                message=f"🚨 Nuevo reporte de {req.target_type}: {req.reason[:30]}...",
+                url="/admin/reports"
+            )
+            session.add(note)
+            
+        session.commit()
+        return {"message": "Reporte recibido."}
+    except Exception as e:
+        logger.error(f"Error reportando: {e}")
+        raise HTTPException(500, "Error interno.")
+
+# --- PERFIL Y DIRECCIONES ---
+
+@router.get("/profile/{user_id}", response_model=ProfileDTO)
+async def get_mobile_profile(user_id: int, session: Session = Depends(get_session)):
+    try:
+        user_info = get_user_info(session, user_id)
+        local_user = session.get(LocalUser, user_info.user_id)
+        if not local_user: raise HTTPException(404, "Usuario local no encontrado")
+        avatar = get_full_image_url(user_info.avatar_url)
+        return ProfileDTO(
+            username=local_user.username, 
+            email=user_info.email, 
+            phone=user_info.phone or "", 
+            avatar_url=avatar
+        )
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@router.put("/profile/{user_id}")
+async def update_mobile_profile(user_id: int, phone: str = Query(...), session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    user_info.phone = phone
+    session.add(user_info)
+    session.commit()
+    return {"message": "Perfil actualizado"}
+
 @router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
 async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
     get_user_info(session, user_id)
@@ -737,187 +841,55 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
         ))
     return result
 
-@router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
-async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
+@router.get("/addresses/{user_id}", response_model=List[AddressDTO])
+async def get_addresses(user_id: int, session: Session = Depends(get_session)):
     get_user_info(session, user_id)
-    purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_id).order_by(PurchaseModel.purchase_date.desc())).all()
-    history = []
-    for p in purchases:
-        try:
-            items_dto = []
-            if p.items:
-                for item in p.items:
-                    img = ""
-                    try:
-                        if item.blog_post:
-                            variant_img = ""
-                            if item.blog_post.variants and item.selected_variant:
-                                target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
-                                if target_variant and target_variant.get("image_urls"): variant_img = target_variant["image_urls"][0]
-                            img_path = variant_img or item.blog_post.main_image_url_variant or ""
-                            if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
-                                first_v = item.blog_post.variants[0]
-                                if isinstance(first_v, dict) and first_v.get("image_urls"): img_path = first_v["image_urls"][0]
-                            img = get_full_image_url(img_path)
-                    except: img = ""
-                    variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
-                    items_dto.append(PurchaseItemDTO(product_id=item.blog_post_id, title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img, variant_details=variant_str))
-            
-            estimated_str = None
-            can_confirm = False
-            can_return = False
-            tracking_msg = None
-            retry_url = None
-            invoice_path = None
-            return_path = None
-            
-            try:
-                if p.status == PurchaseStatus.SHIPPED:
-                    can_confirm = True
-                    if p.estimated_delivery_date:
-                        local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
-                        estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
-                        tracking_msg = f"Llega aprox: {estimated_str}"
-                    else:
-                        tracking_msg = "Tu pedido llegará pronto."
-                elif p.status == PurchaseStatus.DELIVERED:
-                        can_return = True
-                        invoice_path = f"/invoice?id={p.id}"
-                        return_path = f"/returns?purchase_id={p.id}"
-                elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
-                        tracking_msg = "Esperando confirmación del vendedor"
-                elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
-                    time_diff = datetime.now(timezone.utc) - p.purchase_date
-                    if time_diff > timedelta(minutes=15):
-                        p.status = PurchaseStatus.FAILED
-                        # restore_stock_for_failed_purchase(session, p) # Comentado para evitar errores si no está importado
-                        session.add(p)
-                        session.commit()
-                    elif p.wompi_payment_link_id:
-                        retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
-            except: tracking_msg = ""
-            
-            shipping_full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}" if p.shipping_address else "N/A"
-            history.append(PurchaseHistoryDTO(
-                id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), 
-                items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, 
-                tracking_message=tracking_msg, retry_payment_url=retry_url, invoice_path=invoice_path, return_path=return_path, 
-                can_return=can_return, shipping_name=p.shipping_name, shipping_address=shipping_full_address, 
-                shipping_phone=p.shipping_phone, shipping_cost=fmt_price(p.shipping_applied or 0.0)
-            ))
-        except Exception as e:
-            continue
-    return history
+    addresses = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id).order_by(ShippingAddressModel.is_default.desc())).all()
+    return [AddressDTO(id=a.id, name=a.name, phone=a.phone, city=a.city, neighborhood=a.neighborhood, address=a.address, is_default=a.is_default) for a in addresses]
 
-@router.post("/purchases/{purchase_id}/confirm-delivery/{user_id}")
-async def confirm_delivery(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    purchase = session.get(PurchaseModel, purchase_id)
-    if not purchase or purchase.userinfo_id != user_info.id: raise HTTPException(404, "Compra no encontrada")
-    purchase.status = PurchaseStatus.DELIVERED
-    purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
-    session.add(purchase)
-    note = NotificationModel(userinfo_id=user_info.id, message=f"Has confirmado la entrega del pedido #{purchase.id}. ¡Gracias!", url="/my-purchases")
-    session.add(note)
-    session.commit()
-    return {"message": "Entrega confirmada exitosamente"}
-
-@router.post("/purchases/confirm_wompi_transaction")
-async def confirm_wompi_transaction(transaction_id: str = Body(..., embed=True), session: Session = Depends(get_session)):
-    # ... (Se asume implementación existente o estándar)
-    return {"message": "Endpoint stub"}
-
-@router.post("/purchases/{purchase_id}/verify_payment")
-async def verify_payment(purchase_id: int, session: Session = Depends(get_session)):
-    # ... (Se asume implementación existente o estándar)
-    return {"message": "Endpoint stub"}
-
-@router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
-async def checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
-    user_info = get_user_info(session, user_id)
-    address = session.get(ShippingAddressModel, req.address_id)
-    if not address or address.userinfo_id != user_id: raise HTTPException(400, "Dirección no válida")
-
-    product_ids = [item.product_id for item in req.items]
-    db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
-    post_map = {p.id: p for p in db_posts}
-
-    subtotal_base = 0.0
-    items_to_create = []
-    seller_groups = defaultdict(list)
-    buyer_city = address.city
-    buyer_barrio = address.neighborhood
-
-    for item in req.items:
-        post = post_map.get(item.product_id)
-        if not post: continue
-        price = post.price
-        if not post.price_includes_iva: price = price * 1.19
-        subtotal_base += price * item.quantity
-        seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
-        
-        # Encontrar atributos
-        selected_variant = {}
-        if item.variant_id:
-             # Buscar por ID
-             target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id or v.get("id") == item.variant_id), None)
-             if target: selected_variant = target.get("attributes", {})
-
-        items_to_create.append({"blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": price, "selected_variant": selected_variant})
-
-    subtotal_con_iva = subtotal_base
-    free_shipping = False
-    moda_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
-    if moda_items:
-        thresholds = [p.free_shipping_threshold for p in moda_items if p.free_shipping_threshold]
-        if thresholds and subtotal_con_iva >= max(thresholds): free_shipping = True
-
-    final_shipping_cost = 0.0
-    if not free_shipping:
-        sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_groups.keys()))).all()
-        seller_map = {u.id: u for u in sellers_info}
-        for uid, products in seller_groups.items():
-            seller = seller_map.get(uid)
-            s_city = seller.seller_city if seller else None
-            s_barrio = seller.seller_barrio if seller else None
-            combinables = [x["post"] for x in products if x["post"].combines_shipping]
-            individuales = [x["post"] for x in products if not x["post"].combines_shipping]
-
-            for p in individuales:
-                cost = calculate_dynamic_shipping(p.shipping_cost or 0, s_barrio, buyer_barrio, s_city, buyer_city)
-                qty = next(x["qty"] for x in products if x["post"].id == p.id)
-                final_shipping_cost += (cost * qty)
-            
-            if combinables:
-                base = max((p.shipping_cost or 0 for p in combinables), default=0)
-                cost_group = calculate_dynamic_shipping(base, s_barrio, buyer_barrio, s_city, buyer_city)
-                final_shipping_cost += cost_group
-
-    total_price = subtotal_con_iva + final_shipping_cost
-    status = PurchaseStatus.PENDING_PAYMENT if req.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
+@router.post("/addresses/{user_id}")
+async def create_address(user_id: int, req: CreateAddressRequest, session: Session = Depends(get_session)):
+    get_user_info(session, user_id) # Valida usuario
     
-    new_purchase = PurchaseModel(
-        userinfo_id=user_info.id, total_price=total_price, shipping_applied=final_shipping_cost, 
-        status=status, payment_method=req.payment_method, shipping_name=address.name, 
-        shipping_city=address.city, shipping_neighborhood=address.neighborhood, 
-        shipping_address=address.address, shipping_phone=address.phone, purchase_date=datetime.now(timezone.utc)
+    # Validamos que el barrio exista en la ciudad (Opcional)
+    if req.city in COLOMBIA_LOCATIONS:
+        valid_hoods = COLOMBIA_LOCATIONS[req.city]
+        if not any(req.neighborhood.lower() == h.lower() for h in valid_hoods):
+             pass # Aceptamos para flexibilidad
+
+    count = session.exec(select(func.count()).select_from(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).one()
+    is_def = req.is_default or (count == 0)
+    
+    if is_def:
+        existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).all()
+        for addr in existing:
+            addr.is_default = False
+            session.add(addr)
+            
+    new_addr = ShippingAddressModel(
+        userinfo_id=user_id, name=req.name, phone=req.phone, 
+        city=req.city, neighborhood=req.neighborhood, address=req.address, 
+        is_default=is_def
     )
-    session.add(new_purchase)
+    session.add(new_addr)
     session.commit()
-    session.refresh(new_purchase)
+    return {"message": "Dirección guardada"}
 
-    for item in items_to_create:
-        db_item = PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=item["blog_post_id"], quantity=item["quantity"], price_at_purchase=item["price_at_purchase"], selected_variant=item["selected_variant"])
-        session.add(db_item)
-    session.commit()
+@router.put("/addresses/{user_id}/set_default/{address_id}")
+async def set_default_address(user_id: int, address_id: int, session: Session = Depends(get_session)):
+    existing = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == user_id)).all()
+    for addr in existing: 
+        addr.is_default = False
+        session.add(addr)
+    target = session.get(ShippingAddressModel, address_id)
+    if target and target.userinfo_id == user_id:
+        target.is_default = True
+        session.add(target)
+        session.commit()
+        return {"message": "Dirección actualizada"}
+    raise HTTPException(404, "Dirección no encontrada")
 
-    payment_url = None
-    # Lógica de pago online simplificada (debes integrar wompi_service si lo tienes)
-    if req.payment_method == "Online":
-         # Aquí llamarías a create_wompi_payment_link
-         pass
-
-    return CheckoutResponse(success=True, message="OK", payment_url=payment_url, purchase_id=new_purchase.id)
+# --- CARRITO Y CHECKOUT ---
 
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
 async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Session = Depends(get_session)):
@@ -997,6 +969,180 @@ async def calculate_cart(user_id: int, req: CartCalculationRequest, session: Ses
     grand_total = subtotal_con_iva + final_shipping_cost
     return CartSummaryResponse(subtotal=subtotal_con_iva, subtotal_formatted=fmt_price(subtotal_con_iva), shipping=final_shipping_cost, shipping_formatted=fmt_price(final_shipping_cost), total=grand_total, total_formatted=fmt_price(grand_total), address_id=default_addr.id if default_addr else None, items=cart_items_response)
 
+@router.post("/cart/checkout/{user_id}", response_model=CheckoutResponse)
+async def checkout(user_id: int, req: CheckoutRequest, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    address = session.get(ShippingAddressModel, req.address_id)
+    if not address or address.userinfo_id != user_id: raise HTTPException(400, "Dirección no válida")
+
+    product_ids = [item.product_id for item in req.items]
+    db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
+    post_map = {p.id: p for p in db_posts}
+
+    subtotal_base = 0.0
+    items_to_create = []
+    seller_groups = defaultdict(list)
+    buyer_city = address.city
+    buyer_barrio = address.neighborhood
+
+    for item in req.items:
+        post = post_map.get(item.product_id)
+        if not post: continue
+        price = post.price
+        if not post.price_includes_iva: price = price * 1.19
+        subtotal_base += price * item.quantity
+        seller_groups[post.userinfo_id].append({"post": post, "qty": item.quantity})
+        
+        # Encontrar atributos
+        selected_variant = {}
+        if item.variant_id:
+             target = next((v for v in post.variants if v.get("variant_uuid") == item.variant_id or v.get("id") == item.variant_id), None)
+             if target: selected_variant = target.get("attributes", {})
+
+        items_to_create.append({"blog_post_id": post.id, "quantity": item.quantity, "price_at_purchase": price, "selected_variant": selected_variant})
+
+    subtotal_con_iva = subtotal_base
+    free_shipping = False
+    moda_items = [p["post"] for uid in seller_groups for p in seller_groups[uid] if p["post"].is_moda_completa_eligible]
+    if moda_items:
+        thresholds = [p.free_shipping_threshold for p in moda_items if p.free_shipping_threshold]
+        if thresholds and subtotal_con_iva >= max(thresholds): free_shipping = True
+
+    final_shipping_cost = 0.0
+    if not free_shipping:
+        sellers_info = session.exec(select(UserInfo).where(UserInfo.id.in_(seller_groups.keys()))).all()
+        seller_map = {u.id: u for u in sellers_info}
+        for uid, products in seller_groups.items():
+            seller = seller_map.get(uid)
+            s_city = seller.seller_city if seller else None
+            s_barrio = seller.seller_barrio if seller else None
+            combinables = [x["post"] for x in products if x["post"].combines_shipping]
+            individuales = [x["post"] for x in products if not x["post"].combines_shipping]
+
+            for p in individuales:
+                cost = calculate_dynamic_shipping(p.shipping_cost or 0, s_barrio, buyer_barrio, s_city, buyer_city)
+                qty = next(x["qty"] for x in products if x["post"].id == p.id)
+                final_shipping_cost += (cost * qty)
+            
+            if combinables:
+                base = max((p.shipping_cost or 0 for p in combinables), default=0)
+                cost_group = calculate_dynamic_shipping(base, s_barrio, buyer_barrio, s_city, buyer_city)
+                final_shipping_cost += cost_group
+
+    total_price = subtotal_con_iva + final_shipping_cost
+    status = PurchaseStatus.PENDING_PAYMENT if req.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
+    
+    new_purchase = PurchaseModel(
+        userinfo_id=user_info.id, total_price=total_price, shipping_applied=final_shipping_cost, 
+        status=status, payment_method=req.payment_method, shipping_name=address.name, 
+        shipping_city=address.city, shipping_neighborhood=address.neighborhood, 
+        shipping_address=address.address, shipping_phone=address.phone, purchase_date=datetime.now(timezone.utc)
+    )
+    session.add(new_purchase)
+    session.commit()
+    session.refresh(new_purchase)
+
+    for item in items_to_create:
+        db_item = PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=item["blog_post_id"], quantity=item["quantity"], price_at_purchase=item["price_at_purchase"], selected_variant=item["selected_variant"])
+        session.add(db_item)
+    session.commit()
+
+    return CheckoutResponse(success=True, message="OK", payment_url=None, purchase_id=new_purchase.id)
+
+@router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
+async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
+    get_user_info(session, user_id)
+    purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_id).order_by(PurchaseModel.purchase_date.desc())).all()
+    history = []
+    for p in purchases:
+        try:
+            items_dto = []
+            if p.items:
+                for item in p.items:
+                    img = ""
+                    try:
+                        if item.blog_post:
+                            variant_img = ""
+                            if item.blog_post.variants and item.selected_variant:
+                                target_variant = next((v for v in item.blog_post.variants if isinstance(v, dict) and v.get("attributes") == item.selected_variant), None)
+                                if target_variant and target_variant.get("image_urls"): variant_img = target_variant["image_urls"][0]
+                            img_path = variant_img or item.blog_post.main_image_url_variant or ""
+                            if not img_path and item.blog_post.variants and isinstance(item.blog_post.variants, list):
+                                first_v = item.blog_post.variants[0]
+                                if isinstance(first_v, dict) and first_v.get("image_urls"): img_path = first_v["image_urls"][0]
+                            img = get_full_image_url(img_path)
+                    except: img = ""
+                    variant_str = ", ".join([f"{k}: {v}" for k, v in (item.selected_variant or {}).items()])
+                    items_dto.append(PurchaseItemDTO(product_id=item.blog_post_id, title=item.blog_post.title if item.blog_post else "Producto", quantity=item.quantity, price=item.price_at_purchase, image_url=img, variant_details=variant_str))
+            
+            estimated_str = None
+            can_confirm = False
+            can_return = False
+            tracking_msg = None
+            retry_url = None
+            invoice_path = None
+            return_path = None
+            
+            try:
+                if p.status == PurchaseStatus.SHIPPED:
+                    can_confirm = True
+                    if p.estimated_delivery_date:
+                        local_dt = p.estimated_delivery_date.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("America/Bogota"))
+                        estimated_str = local_dt.strftime('%d-%m-%Y %I:%M %p')
+                        tracking_msg = f"Llega aprox: {estimated_str}"
+                    else:
+                        tracking_msg = "Tu pedido llegará pronto."
+                elif p.status == PurchaseStatus.DELIVERED:
+                        can_return = True
+                        invoice_path = f"/invoice?id={p.id}"
+                        return_path = f"/returns?purchase_id={p.id}"
+                elif p.status == PurchaseStatus.PENDING_CONFIRMATION:
+                     tracking_msg = "Esperando confirmación del vendedor"
+                elif p.status == PurchaseStatus.PENDING_PAYMENT and p.payment_method == "Online":
+                    time_diff = datetime.now(timezone.utc) - p.purchase_date
+                    if time_diff > timedelta(minutes=15):
+                        p.status = PurchaseStatus.FAILED
+                        session.add(p)
+                        session.commit()
+                    elif p.wompi_payment_link_id:
+                        retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
+            except: tracking_msg = ""
+            
+            shipping_full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}" if p.shipping_address else "N/A"
+            history.append(PurchaseHistoryDTO(
+                id=p.id, date=p.purchase_date.strftime('%d-%m-%Y'), status=p.status.value, total=fmt_price(p.total_price), 
+                items=items_dto, estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, 
+                tracking_message=tracking_msg, retry_payment_url=retry_url, invoice_path=invoice_path, return_path=return_path, 
+                can_return=can_return, shipping_name=p.shipping_name, shipping_address=shipping_full_address, 
+                shipping_phone=p.shipping_phone, shipping_cost=fmt_price(p.shipping_applied or 0.0)
+            ))
+        except Exception as e:
+            continue
+    return history
+
+@router.post("/purchases/{purchase_id}/confirm-delivery/{user_id}")
+async def confirm_delivery(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    purchase = session.get(PurchaseModel, purchase_id)
+    if not purchase or purchase.userinfo_id != user_info.id: raise HTTPException(404, "Compra no encontrada")
+    purchase.status = PurchaseStatus.DELIVERED
+    purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
+    session.add(purchase)
+    note = NotificationModel(userinfo_id=user_info.id, message=f"Has confirmado la entrega del pedido #{purchase.id}. ¡Gracias!", url="/my-purchases")
+    session.add(note)
+    session.commit()
+    return {"message": "Entrega confirmada exitosamente"}
+
+@router.post("/purchases/confirm_wompi_transaction")
+async def confirm_wompi_transaction(transaction_id: str = Body(..., embed=True), session: Session = Depends(get_session)):
+    return {"message": "Endpoint stub"}
+
+@router.post("/purchases/{purchase_id}/verify_payment")
+async def verify_payment(purchase_id: int, session: Session = Depends(get_session)):
+    return {"message": "Endpoint stub"}
+
+# --- SOPORTE Y TICKET ---
+
 @router.get("/support/ticket/{purchase_id}/{user_id}", response_model=Optional[SupportTicketDTO])
 async def get_support_ticket(purchase_id: int, user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
@@ -1061,7 +1207,6 @@ async def get_invoice(purchase_id: int, user_id: int, session: Session = Depends
     purchase = session.exec(select(PurchaseModel).options(joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.id == purchase_id)).unique().first()
     if not purchase: raise HTTPException(404, "Factura no disponible")
     
-    # Validar permisos
     is_buyer = purchase.userinfo_id == user_info.id
     is_seller = False
     if purchase.items:
@@ -1100,3 +1245,26 @@ async def get_invoice(purchase_id: int, user_id: int, session: Session = Depends
         total=fmt_price(purchase.total_price), 
         items=items_dto
     )
+
+# --- NOTIFICACIONES ---
+@router.get("/notifications/{user_id}", response_model=List[NotificationResponse])
+async def get_notifications(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id).order_by(NotificationModel.created_at.desc()).limit(30)).all()
+    return [NotificationResponse(id=n.id, message=n.message, url=n.url, is_read=n.is_read, created_at=n.created_at_formatted) for n in notifs]
+
+@router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: int, session: Session = Depends(get_session)):
+    notif = session.get(NotificationModel, notification_id)
+    if notif:
+        notif.is_read = True
+        session.add(notif)
+        session.commit()
+    return {"message": "Leída"}
+
+@router.delete("/notifications/{user_id}/clear")
+async def clear_all_notifications(user_id: int, session: Session = Depends(get_session)):
+    user_info = get_user_info(session, user_id)
+    session.exec(sqlalchemy.delete(NotificationModel).where(NotificationModel.userinfo_id == user_info.id))
+    session.commit()
+    return {"message": "Notificaciones borradas"}
