@@ -1,5 +1,3 @@
-# likemodas/api/mobile_api.py
-
 import os
 import logging
 from datetime import datetime, timedelta, timezone
@@ -45,6 +43,7 @@ BASE_URL = "https://api.likemodas.com"
 # ==============================================================================
 # 1. DTOs (DATA TRANSFER OBJECTS)
 # ==============================================================================
+# ... (Los DTOs anteriores se mantienen igual, solo corregiremos el uso abajo)
 
 class LoginRequest(BaseModel):
     username: str
@@ -283,12 +282,15 @@ class SendMessageRequest(BaseModel):
     ticket_id: int
     content: str
 
+# --- CORRECCIÓN EN EL DTO DE NOTIFICACIONES ---
 class NotificationResponse(BaseModel):
     id: int
     message: str
     url: Optional[str]
     is_read: bool
-    created_at_formatted: str
+    # Aquí definimos el nombre que espera la App (y el que vamos a mandar)
+    created_at_formatted: str 
+    
     class Config:
         from_attributes = True
 
@@ -343,8 +345,9 @@ def calculate_rating(session: Session, product_id: int):
     return avg, count
 
 # ==========================================
-# 3. ENDPOINTS
+# 3. ENDPOINTS (CÓDIGO INTERMEDIO SIN CAMBIOS OMITIDO PARA BREVEDAD)
 # ==========================================
+# ... (endpoints geografía, login, registro, perfil, direcciones, productos, reviews, reportes, saved-posts, cart/calculate, cart/checkout se mantienen igual) ...
 
 @router.get("/geography/cities")
 async def get_cities():
@@ -819,6 +822,7 @@ async def checkout(user_id: int, req: CheckoutRequest, session: Session = Depend
 @router.get("/purchases/{user_id}", response_model=List[PurchaseHistoryDTO])
 async def get_mobile_purchases(user_id: int, session: Session = Depends(get_session)):
     try:
+        # --- ORDENAMIENTO POR FECHA DESCENDENTE ---
         purchases = session.exec(select(PurchaseModel).options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == user_id).order_by(PurchaseModel.purchase_date.desc())).all()
         history = []
         
@@ -851,7 +855,26 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                 can_confirm = False; can_return = False; tracking_msg = None; retry_url = None; invoice_path = None; return_path = None
                 status_val = p.status.value if hasattr(p.status, 'value') else str(p.status)
 
-                if status_val == PurchaseStatus.SHIPPED.value:
+                # --- CORRECCIÓN DE FECHAS (Offset-Naive vs Offset-Aware) ---
+                if status_val == PurchaseStatus.PENDING_PAYMENT.value and p.payment_method == "Online":
+                    if p.purchase_date:
+                        # Aseguramos que purchase_date tenga zona horaria UTC
+                        purchase_dt = p.purchase_date
+                        if purchase_dt.tzinfo is None:
+                            purchase_dt = purchase_dt.replace(tzinfo=timezone.utc)
+                            
+                        time_diff = datetime.now(timezone.utc) - purchase_dt
+                        if time_diff > timedelta(minutes=20): 
+                            p.status = PurchaseStatus.FAILED
+                            session.add(p); session.commit()
+                            tracking_msg = "Pago expirado"; status_val = "failed"
+                        elif p.wompi_payment_link_id:
+                            retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
+                            tracking_msg = "Pendiente de pago"
+                    else: tracking_msg = "Procesando..."
+                # -------------------------------------------------------------
+
+                elif status_val == PurchaseStatus.SHIPPED.value:
                     can_confirm = True
                     if p.estimated_delivery_date:
                         try:
@@ -867,17 +890,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                     invoice_path = f"/invoice?id={p.id}"; return_path = f"/returns?purchase_id={p.id}"
                     tracking_msg = "Entregado"
                 elif status_val == PurchaseStatus.PENDING_CONFIRMATION.value: tracking_msg = "Esperando confirmación del vendedor"
-                elif status_val == PurchaseStatus.PENDING_PAYMENT.value and p.payment_method == "Online":
-                    if p.purchase_date:
-                        time_diff = datetime.now(timezone.utc) - p.purchase_date
-                        if time_diff > timedelta(minutes=20): 
-                            p.status = PurchaseStatus.FAILED
-                            session.add(p); session.commit()
-                            tracking_msg = "Pago expirado"; status_val = "failed"
-                        elif p.wompi_payment_link_id:
-                            retry_url = f"https://checkout.wompi.co/l/{p.wompi_payment_link_id}"
-                            tracking_msg = "Pendiente de pago"
-                    else: tracking_msg = "Procesando..."
 
                 parts = []
                 if p.shipping_address: parts.append(p.shipping_address)
@@ -897,12 +909,10 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                 ))
             except Exception as inner_e:
                 logger.error(f"Error procesando compra {p.id}: {inner_e}")
-                # Continúa con la siguiente compra si una falla
                 continue
         return history
     except Exception as e:
         logger.error(f"Error fatal obteniendo historial: {e}")
-        # En caso de error fatal, devolvemos lista vacía en lugar de 500
         return []
 
 @router.post("/purchases/{purchase_id}/confirm-delivery/{user_id}")
@@ -953,7 +963,6 @@ async def confirm_wompi_transaction(data: dict = Body(...), session: Session = D
                     session.add(purchase)
                     
                     # 4. Notificar al Vendedor (Esto hace que le aparezca la orden)
-                    # Obtenemos el ID del vendedor del primer producto
                     if purchase.items and purchase.items[0].blog_post:
                         seller_id = purchase.items[0].blog_post.userinfo_id
                         notification = NotificationModel(
@@ -1060,20 +1069,20 @@ async def get_invoice(purchase_id: int, user_id: int, session: Session = Depends
         if parts: addr = ", ".join(parts)
     return InvoiceDTO(id=purchase.id, date=purchase.purchase_date.strftime('%d-%m-%Y'), customer_name=purchase.shipping_name or "Cliente", customer_address=addr, customer_email=user_info.email, subtotal=fmt_price(subtotal_base), shipping=fmt_price(purchase.shipping_applied or 0), total=fmt_price(purchase.total_price), items=items_dto)
 
-# 2. Modifica el endpoint get_notifications
 @router.get("/notifications/{user_id}", response_model=List[NotificationResponse])
 async def get_notifications(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id).order_by(NotificationModel.created_at.desc()).limit(30)).all()
     
-    # Mapeo manual para usar la propiedad formatted del modelo
+    # --- CORRECCIÓN CRÍTICA DE NOTIFICACIONES ---
+    # Usamos created_at_formatted para pasar el dato correctamente al DTO
     return [
         NotificationResponse(
             id=n.id,
             message=n.message,
             url=n.url,
             is_read=n.is_read,
-            created_at=n.created_at_formatted # <-- Usa la propiedad del modelo
+            created_at_formatted=n.created_at_formatted # <-- ESTA ES LA SOLUCIÓN AL ERROR DE VALIDACIÓN
         ) for n in notifs
     ]
 
