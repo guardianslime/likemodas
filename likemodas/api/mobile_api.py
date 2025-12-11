@@ -39,9 +39,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/mobile", tags=["Mobile App"])
 BASE_URL = os.getenv("APP_BASE_URL", "https://www.likemodas.com")
 
-# ==========================================
-# 1. DTOs (DATA TRANSFER OBJECTS)
-# ==========================================
+# ==============================================================================
+# 1. DTOs (DATA TRANSFER OBJECTS) - DEFINICIÓN AL PRINCIPIO
+# ==============================================================================
 
 # --- Autenticación ---
 class LoginRequest(BaseModel):
@@ -290,7 +290,7 @@ class SendMessageRequest(BaseModel):
     content: str
 
 # --- Notificaciones ---
-class NotificationDTO(BaseModel):
+class NotificationResponse(BaseModel): # <--- AQUI ESTABA EL PROBLEMA (Ahora está arriba)
     id: int
     message: str
     url: Optional[str]
@@ -298,7 +298,7 @@ class NotificationDTO(BaseModel):
     created_at: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True # Corregido para Pydantic V2
 
 class GenericResponse(BaseModel):
     message: str
@@ -363,7 +363,9 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
         
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
-        # En producción: if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
+        
+        # En producción, descomentar esto si quieres forzar verificación de email
+        # if not user_info.is_verified: raise HTTPException(403, detail="Cuenta no verificada")
         
         secure_token = secrets.token_urlsafe(48)
         new_session = LocalAuthSession(
@@ -1080,7 +1082,6 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
     history = []
     
     for p in purchases:
-        # Se elimina el try/except global para no ocultar pedidos, pero se manejan errores individuales
         items_dto = []
         if p.items:
             for item in p.items:
@@ -1204,9 +1205,6 @@ async def confirm_wompi_transaction(data: dict = Body(...), session: Session = D
     """Endpoint para que la App fuerce una verificación de transacción."""
     transaction_id = data.get("transaction_id")
     if not transaction_id: return {"message": "ID no proporcionado"}
-    
-    # Aquí podríamos llamar a wompi_service.get_transaction_details para validar
-    # Por ahora devolvemos OK para que la app refresque
     return {"message": "Verificación en proceso"}
 
 @router.post("/purchases/{purchase_id}/verify_payment")
@@ -1324,7 +1322,7 @@ async def get_invoice(purchase_id: int, user_id: int, session: Session = Depends
 async def get_notifications(user_id: int, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     notifs = session.exec(select(NotificationModel).where(NotificationModel.userinfo_id == user_info.id).order_by(NotificationModel.created_at.desc()).limit(30)).all()
-    return [NotificationResponse(id=n.id, message=n.message, url=n.url, is_read=n.is_read, created_at=n.created_at_formatted) for n in notifs]
+    return [NotificationResponse.model_validate(n) for n in notifs]
 
 @router.put("/notifications/{notification_id}/read")
 async def mark_notification_read(notification_id: int, session: Session = Depends(get_session)):
