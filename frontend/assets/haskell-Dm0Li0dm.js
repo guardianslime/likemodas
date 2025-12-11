@@ -1,0 +1,1 @@
+import{b as e}from"./haskell-DM87oSyw.js";export default e();
