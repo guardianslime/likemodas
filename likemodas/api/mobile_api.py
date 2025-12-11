@@ -1,3 +1,5 @@
+# likemodas/api/mobile_api.py
+
 import os
 import logging
 from datetime import datetime, timedelta, timezone
@@ -43,7 +45,6 @@ BASE_URL = "https://api.likemodas.com"
 # ==============================================================================
 # 1. DTOs (DATA TRANSFER OBJECTS)
 # ==============================================================================
-# ... (Los DTOs anteriores se mantienen igual, solo corregiremos el uso abajo)
 
 class LoginRequest(BaseModel):
     username: str
@@ -288,8 +289,8 @@ class NotificationResponse(BaseModel):
     message: str
     url: Optional[str]
     is_read: bool
-    # Aquí definimos el nombre que espera la App (y el que vamos a mandar)
-    created_at_formatted: str 
+    # CAMBIO: Usamos 'created_at' porque Android lo espera así (@SerializedName("created_at"))
+    created_at: str 
     
     class Config:
         from_attributes = True
@@ -345,9 +346,8 @@ def calculate_rating(session: Session, product_id: int):
     return avg, count
 
 # ==========================================
-# 3. ENDPOINTS (CÓDIGO INTERMEDIO SIN CAMBIOS OMITIDO PARA BREVEDAD)
+# 3. ENDPOINTS
 # ==========================================
-# ... (endpoints geografía, login, registro, perfil, direcciones, productos, reviews, reportes, saved-posts, cart/calculate, cart/checkout se mantienen igual) ...
 
 @router.get("/geography/cities")
 async def get_cities():
@@ -1082,7 +1082,7 @@ async def get_notifications(user_id: int, session: Session = Depends(get_session
             message=n.message,
             url=n.url,
             is_read=n.is_read,
-            created_at_formatted=n.created_at_formatted # <-- ESTA ES LA SOLUCIÓN AL ERROR DE VALIDACIÓN
+            created_at=n.created_at_formatted # <-- ESTA ES LA SOLUCIÓN AL ERROR DE VALIDACIÓN
         ) for n in notifs
     ]
 
