@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body, Query
 import sqlalchemy
 from sqlalchemy.orm import joinedload
 from sqlmodel import select, Session, func
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Importaciones de Base de Datos y Modelos
 from likemodas.db.session import get_session
@@ -87,8 +87,6 @@ class ProductListDTO(BaseModel):
     combines_shipping: bool
     average_rating: float = 0.0
     rating_count: int = 0
-    
-    # --- CAMPO CLAVE PARA LA ETIQUETA DE ENVÍO ---
     shipping_display_text: str = "Envío a convenir"
     
     use_default_style: bool = True
@@ -134,6 +132,11 @@ class ProductDetailDTO(BaseModel):
     is_moda_completa: bool
     combines_shipping: bool
     free_shipping_threshold: Optional[float] = None
+    
+    # --- 🛠️ CORRECCIÓN CRÍTICA: AGREGADO CAMPO FALTANTE 🛠️ ---
+    shipping_combination_limit: Optional[int] = None
+    # -----------------------------------------------------------
+    
     shipping_display_text: Optional[str] = None
     is_saved: bool = False
     is_imported: bool
@@ -360,16 +363,12 @@ async def get_neighborhoods(data: dict = Body(...)):
     city = data.get("city", "")
     return sorted(COLOMBIA_LOCATIONS.get(city, []))
 
-# --- CORRECCIÓN 1: LOGIN SEGURO (CON .strip()) ---
 @router.post("/login", response_model=UserResponse)
 async def mobile_login(creds: LoginRequest, session: Session = Depends(get_session)):
-    # Limpiamos espacios
-    login_input = creds.username.strip() # Puede ser usuario O email
+    login_input = creds.username.strip()
     password_clean = creds.password.strip()
 
     try:
-        # --- ✨ LÓGICA DE LOGIN DUAL (USUARIO O EMAIL) ✨ ---
-        # Buscamos un LocalUser uniendo con UserInfo para chequear el email
         user = session.exec(
             select(LocalUser)
             .join(UserInfo)
@@ -380,14 +379,11 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
         ).first()
 
         if not user: 
-            # Mensaje genérico por seguridad, o específico si prefieres
             raise HTTPException(404, detail="Usuario o correo no registrado")
         
-        # Verificamos contraseña
         if not bcrypt.checkpw(password_clean.encode('utf-8'), user.password_hash): 
             raise HTTPException(400, detail="Contraseña incorrecta")
         
-        # ... (Resto del código de token y sesión igual que antes) ...
         user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
         if not user_info: raise HTTPException(400, detail="Perfil no encontrado")
         
@@ -401,10 +397,8 @@ async def mobile_login(creds: LoginRequest, session: Session = Depends(get_sessi
     except HTTPException as he: raise he
     except Exception as e: raise HTTPException(400, detail=str(e))
 
-# --- CORRECCIÓN 2: REGISTRO SEGURO (CON .strip()) ---
 @router.post("/register", response_model=UserResponse)
 async def mobile_register(creds: RegisterRequest, session: Session = Depends(get_session)):
-    # Limpiamos espacios al registrar para que se guarde limpio
     username_clean = creds.username.strip()
     email_clean = creds.email.strip().lower()
     password_clean = creds.password.strip()
@@ -413,9 +407,7 @@ async def mobile_register(creds: RegisterRequest, session: Session = Depends(get
         raise HTTPException(400, detail="Usuario ya existe")
     
     try:
-        # Guardamos la contraseña limpia
         hashed_pw = bcrypt.hashpw(password_clean.encode('utf-8'), bcrypt.gensalt())
-        
         new_user = LocalUser(username=username_clean, password_hash=hashed_pw, enabled=True)
         session.add(new_user); session.commit(); session.refresh(new_user)
         
@@ -469,7 +461,6 @@ async def update_mobile_profile(user_id: int, phone: str = Query(...), session: 
 async def change_password(user_id: int, req: ChangePasswordRequest, session: Session = Depends(get_session)):
     user_info = get_user_info(session, user_id)
     local_user = session.get(LocalUser, user_info.user_id)
-    # Limpiamos inputs aquí también
     current_clean = req.current_password.strip()
     new_clean = req.new_password.strip()
 
@@ -556,13 +547,11 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
         return {"message": "Dirección actualizada"}
     raise HTTPException(404, "Dirección no encontrada")
 
-# --- CORRECCIÓN 3: CÁLCULO DE ENVÍO Y user_id OPCIONAL ---
 async def get_products_for_mobile(
     category: Optional[str] = None, 
     user_id: Optional[int] = Query(None), 
     session: Session = Depends(get_session)
 ):
-    # 1. Obtener ciudad del comprador
     buyer_city = None
     if user_id:
         default_addr = session.exec(
@@ -573,7 +562,6 @@ async def get_products_for_mobile(
             buyer_city = default_addr.city
             buyer_barrio = default_addr.neighborhood
 
-    # 2. Consultar Productos (Incluyendo datos del Vendedor)
     query = select(BlogPostModel).options(joinedload(BlogPostModel.userinfo)).where(BlogPostModel.publish_active == True)
     if category and category != "todos": query = query.where(BlogPostModel.category == category)
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
@@ -592,19 +580,16 @@ async def get_products_for_mobile(
         
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- ✨ LÓGICA DE MODA COMPLETA GEOGRÁFICA ✨ ---
+        # --- 🛠️ CORRECCIÓN: USAR getattr PARA EVITAR CRASH CON CAMPOS NUEVOS 🛠️ ---
         is_moda_eligible = p.is_moda_completa_eligible
         
-        # Si el producto es elegible, verificamos la restricción de ciudad del vendedor
-        if is_moda_eligible and p.userinfo and p.userinfo.moda_completa_cities:
-            # Si el vendedor tiene restricciones Y sabemos la ciudad del comprador
+        moda_cities = getattr(p.userinfo, 'moda_completa_cities', None)
+        if is_moda_eligible and p.userinfo and moda_cities:
             if buyer_city:
-                # Si la ciudad del comprador NO está en la lista permitida, desactivamos la etiqueta
-                if buyer_city not in p.userinfo.moda_completa_cities:
+                if buyer_city not in moda_cities:
                     is_moda_eligible = False
-        # --------------------------------------------------
+        # ------------------------------------------------------------------------
 
-        # Textos dinámicos para los Tooltips
         moda_tooltip = ""
         if is_moda_eligible and p.free_shipping_threshold:
              moda_tooltip = f"Envío gratis en compras superiores a {fmt_price(p.free_shipping_threshold)} de este vendedor."
@@ -613,7 +598,6 @@ async def get_products_for_mobile(
         if p.combines_shipping:
              combo_tooltip = f"Puedes combinar hasta {p.shipping_combination_limit} productos de este vendedor en un solo envío."
         
-        # --- CÁLCULO DINÁMICO DE ENVÍO ---
         seller_city = p.userinfo.seller_city if p.userinfo else None
         seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
         
@@ -631,7 +615,6 @@ async def get_products_for_mobile(
             shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
         else:
             shipping_txt = "Envío a convenir"
-        # --------------------------------
 
         result.append(ProductListDTO(
             id=p.id, 
@@ -641,16 +624,10 @@ async def get_products_for_mobile(
             image_url=image_url, 
             category=p.category, 
             description=p.content,
-            
-            # --- CORRECCIÓN: Solo una asignación ---
-            is_moda_completa=is_moda_eligible,  # Usamos la variable calculada (NO p.is_moda_completa_eligible)
-            # ---------------------------------------
-            
+            is_moda_completa=is_moda_eligible,
             combines_shipping=p.combines_shipping,
             average_rating=avg_rating, 
             rating_count=rating_count,
-            
-            # (El resto sigue igual)
             shipping_display_text=shipping_txt,
             use_default_style=p.use_default_style, 
             light_mode_appearance=p.light_mode_appearance,
@@ -666,11 +643,9 @@ async def get_products_for_mobile(
         ))
     return result
 
-# 2. Función get_product_detail Actualizada
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Cargar producto con la info del vendedor (necesario para las ciudades)
         p = session.exec(
             select(BlogPostModel)
             .options(joinedload(BlogPostModel.userinfo))
@@ -680,7 +655,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
 
-        # 2. Determinar ciudad del comprador
         buyer_city = None
         if user_id:
             default_addr = session.exec(
@@ -690,36 +664,31 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if default_addr:
                 buyer_city = default_addr.city
 
-        # 3. Validar Moda Completa (Lógica de Ciudad)
+        # --- 🛠️ BLINDAJE DE MODA COMPLETA 🛠️ ---
         is_moda_eligible = p.is_moda_completa_eligible
+        moda_cities = getattr(p.userinfo, 'moda_completa_cities', None)
         
-        # Si el producto es elegible, pero el vendedor restringió ciudades
-        if is_moda_eligible and p.userinfo and p.userinfo.moda_completa_cities:
-            # Si sabemos la ciudad del comprador
+        if is_moda_eligible and p.userinfo and moda_cities:
             if buyer_city:
-                # Si la ciudad del comprador NO está en la lista permitida -> FALSE
-                if buyer_city not in p.userinfo.moda_completa_cities:
+                if buyer_city not in moda_cities:
                     is_moda_eligible = False
 
-        # 4. Validar Envío Combinado (Lógica de Ciudad - NUEVO)
+        # --- 🛠️ BLINDAJE DE ENVÍO COMBINADO 🛠️ ---
         is_combined_eligible = p.combines_shipping 
-        # Verificamos si el atributo existe en el modelo y si tiene datos
-        if is_combined_eligible and p.userinfo and getattr(p.userinfo, 'combined_shipping_cities', None):
-             if buyer_city and buyer_city not in p.userinfo.combined_shipping_cities:
+        combined_cities = getattr(p.userinfo, 'combined_shipping_cities', None)
+
+        if is_combined_eligible and p.userinfo and combined_cities:
+             if buyer_city and buyer_city not in combined_cities:
                 is_combined_eligible = False
 
-        # 5. Lógica de Imágenes
         main_image_final = extract_display_image(p)
         all_images_set = set([main_image_final]) if main_image_final else set()
         
-        # Configuración de Lightbox (por defecto dark)
         lightbox_light = "dark"
         lightbox_dark = "dark"
         
-        # 6. Procesar Variantes
         variants_dto = []
         if p.variants:
-            # Intentar obtener configuración de lightbox de la primera variante
             if isinstance(p.variants, list) and len(p.variants) > 0 and isinstance(p.variants[0], dict):
                  lightbox_light = p.variants[0].get("lightbox_bg_light", "dark")
                  lightbox_dark = p.variants[0].get("lightbox_bg_dark", "dark")
@@ -731,11 +700,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         for u in urls:
                             if u: all_images_set.update([get_full_image_url(u)])
                     
-                    # Imagen de la variante
                     v_img_raw = urls[0] if (urls and len(urls) > 0) else main_image_final
                     v_img = get_full_image_url(v_img_raw) if not v_img_raw.startswith("http") else v_img_raw
                     
-                    # Construir título de variante
                     attrs = v.get("attributes", {})
                     title_parts = []
                     if attrs.get("Color"): title_parts.append(str(attrs.get("Color")))
@@ -755,10 +722,8 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         
         final_images = list(all_images_set)
 
-        # 7. Reviews y Rating
         avg_rating, rating_count = calculate_rating(session, p.id)
         
-        # Lista de Reviews completa
         reviews_list = []
         db_parent_reviews = session.exec(
             select(CommentModel)
@@ -790,14 +755,12 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 updates=updates_dtos
             ))
 
-        # 8. Envío Texto
         shipping_text = "Envío a convenir"
         if p.shipping_cost == 0: 
             shipping_text = "Envío Gratis"
         elif p.shipping_cost and p.shipping_cost > 0: 
             shipping_text = f"Envío: {fmt_price(p.shipping_cost)}"
 
-        # 9. Autores y Metadatos
         author_name = "Likemodas"
         seller_info_id = 0
         if p.userinfo:
@@ -821,7 +784,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if p.created_at: date_created_str = p.created_at.strftime("%d de %B del %Y")
         except: pass
 
-        # 10. Retorno del DTO (Sin duplicados y con toda la data)
         return ProductDetailDTO(
             id=p.id, 
             title=p.title, 
@@ -833,16 +795,15 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             images=final_images, 
             variants=variants_dto, 
             shipping_cost=p.shipping_cost, 
-            
-            # --- CAMPOS DINÁMICOS CALCULADOS ---
             is_moda_completa=is_moda_eligible, 
             combines_shipping=is_combined_eligible,
-            
             free_shipping_threshold=p.free_shipping_threshold,
+            
+            # --- 🛠️ CORRECCIÓN: YA NO FALLARÁ AQUÍ 🛠️ ---
             shipping_combination_limit=p.shipping_combination_limit,
+            # ----------------------------------------------
+            
             shipping_display_text=shipping_text, 
-            # -----------------------------------
-
             is_saved=is_saved, 
             is_imported=p.is_imported, 
             average_rating=avg_rating, 
@@ -852,8 +813,6 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             author=author_name,
             author_id=seller_info_id,
             created_at=date_created_str,
-            
-            # Estilos
             lightbox_bg_light=lightbox_light,
             lightbox_bg_dark=lightbox_dark,
             light_mode_appearance=p.light_mode_appearance,
@@ -869,7 +828,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         logger.error(f"Error 500 product_detail id={product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# ... (resto de endpoints: toggle-save, seller products, reviews, reports, saved-posts, cart, checkout, purchases, confirm-delivery, wompi, verify, support, invoice, notifications - todo igual que antes) ...
+# ... (El resto de funciones siguen igual) ...
 
 @router.post("/products/{product_id}/toggle-save/{user_id}", response_model=ToggleSaveResponse)
 async def toggle_save_product(product_id: int, user_id: int, session: Session = Depends(get_session)):
@@ -1210,8 +1169,6 @@ async def confirm_wompi_transaction(data: dict = Body(...), session: Session = D
     except Exception as e:
         logger.error(f"Error verificando Wompi desde App: {e}")
         return {"message": "Error verificando el pago."}
-
-    return {"message": f"Estado del pago: {status}"}
 
 @router.post("/purchases/{purchase_id}/verify_payment")
 async def verify_payment(purchase_id: int, session: Session = Depends(get_session)):
