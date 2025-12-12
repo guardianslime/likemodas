@@ -553,6 +553,8 @@ async def get_products_for_mobile(
     session: Session = Depends(get_session)
 ):
     buyer_city = None
+    buyer_barrio = None  # <--- ¡AGREGA ESTA LÍNEA! (Inicialización segura)
+
     if user_id:
         default_addr = session.exec(
             select(ShippingAddressModel)
