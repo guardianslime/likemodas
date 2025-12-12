@@ -50,11 +50,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
 # --- searchable_select (SIN CAMBIOS) ---
 # 1. Modificar searchable_select para aceptar 'columns'
 # likemodas/ui/components.py
-
-# likemodas/ui/components.py
-
-# likemodas/ui/components.py
-
+# 1. Componente searchable_select ACTUALIZADO
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
@@ -64,12 +60,13 @@ def searchable_select(
     on_change_search: Any,
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
-    columns: str = "1",
+    columns: str = "1", # ✨ Nuevo parámetro para columnas
     use_mapping: bool = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
+        # Lógica para mostrar etiqueta correcta
         label = rx.cond(use_mapping, option[0], option)
         value = rx.cond(use_mapping, option[1], option)
 
@@ -106,45 +103,45 @@ def searchable_select(
             is_open,
             rx.vstack(
                 rx.input(
-                    placeholder="Buscar...", 
+                    placeholder="Escribe para filtrar...", 
                     value=search_value, 
                     on_change=on_change_search,
                     width="100%",
                     autofocus=True
                 ),
                 rx.scroll_area(
+                    # --- ✨ GRID PARA COLUMNAS MÚLTIPLES ✨ ---
                     rx.grid(
                         rx.foreach(options, render_option),
-                        columns=columns, 
+                        columns=columns, # Usamos el parámetro dinámico
                         spacing="2", 
                         width="100%",
                     ),
-                    # --- ✨ CAMBIO 1: Aumentamos la altura máxima visible ✨ ---
-                    max_height="400px",  # Más espacio vertical para la lista
+                    # ------------------------------------------
+                    max_height="350px", # Altura suficiente para ver la lista
                     width="100%", 
                     type="auto", 
                     scrollbars="vertical",
-                    style={"padding-right": "10px"} # Evitar que el scroll tape contenido
                 ),
                 spacing="3", 
                 padding="1em", 
-                bg=rx.color("gray", 2), # Un fondo ligeramente distinto para contraste
+                bg=rx.color("gray", 2),
                 border="1px solid", 
                 border_color=rx.color("gray", 6),
                 border_radius="md", 
                 position="absolute", 
-                top="110%", # Un poco más separado del botón
+                top="110%", 
                 width="100%", 
-                # --- ✨ CAMBIO 2: Z-Index muy alto para asegurar que flote encima de todo ✨ ---
+                # --- ✨ Z-INDEX MUY ALTO para flotar sobre todo ✨ ---
                 z_index="9999", 
-                box_shadow="0px 10px 25px -5px rgba(0,0,0,0.3)" # Sombra más pronunciada
+                box_shadow="0px 10px 25px -5px rgba(0,0,0,0.3)"
             )
         ),
         position="relative", 
         width="100%",
     )
 
-# 2. Modificar multi_select_component para aceptar 'columns'
+# 2. Componente multi_select_component ACTUALIZADO
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -155,10 +152,9 @@ def multi_select_component(
     search_value: rx.Var[str],
     on_change_search: Any,
     filter_name: str,
-    columns: str = "1" # ✨ NUEVO PARÁMETRO
+    columns: str = "1" # ✨ Nuevo parámetro para pasar al select
 ) -> rx.Component:
     return rx.vstack(
-        # Área de etiquetas seleccionadas
         rx.cond(
             selected_items.length() > 0,
             rx.flex(
@@ -187,16 +183,15 @@ def multi_select_component(
                 width="100%"
             )
         ),
-        # El selector buscador
         searchable_select(
             placeholder=placeholder,
             options=options,
             on_change_select=lambda val: add_handler(prop_name, val),
-            value_select="", # Siempre vacío porque es multi-select
+            value_select="", 
             search_value=search_value,
             on_change_search=on_change_search,
             filter_name=filter_name,
-            columns=columns # ✨ Pasamos el parámetro al select interno
+            columns=columns # ✨ Pasamos el número de columnas
         ),
         spacing="2", 
         align_items="stretch", 
