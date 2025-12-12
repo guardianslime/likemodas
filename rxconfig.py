@@ -12,11 +12,13 @@ config = rx.Config(
     deploy_url=os.getenv("DEPLOY_URL", "https://www.likemodas.com"),
     
     # --- CAMBIO DE SEGURIDAD: CORS RESTRICTIVO ---
+    # --- CAMBIO DE SEGURIDAD: CORS RESTRICTIVO (CORREGIDO) ---
     cors_allowed_origins=[
-        "http://localhost:3000",        # Desarrollo local
-        "https://www.likemodas.com",    # Producción
-        "https://likemodas.com",        # Producción sin www
-        # La App móvil no usa CORS, así que no necesita estar aquí.
+        "http://localhost:3000",
+        "https://www.likemodas.com",
+        "https://likemodas.com",
+        # NECESARIO: Permitir todo (*) temporalmente para que la App y WebViews conecten
+        "*", 
     ],
     
     theme=rx.theme(
