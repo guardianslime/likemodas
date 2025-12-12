@@ -1,0 +1,1 @@
+import{b as e}from"./t4-templating-DTYnhuLs.js";export default e();
