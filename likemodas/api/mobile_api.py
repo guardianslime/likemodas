@@ -705,23 +705,11 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         # --- 🛠️ BLINDAJE DE ENVÍO COMBINADO 🛠️ ---
         is_combined_eligible = p.combines_shipping 
-        # Usamos getattr para seguridad, pero con el modelo arreglado ya no fallará
         combined_cities = getattr(p.userinfo, 'combined_shipping_cities', None)
 
         if is_combined_eligible and p.userinfo and combined_cities:
-            # Validación estricta: Si hay ciudades restringidas, verificamos al comprador
-            if buyer_city:
-                # Normalizamos todo a minúsculas y sin espacios extra
-                normalized_buyer = buyer_city.strip().lower()
-                normalized_cities = [c.strip().lower() for c in combined_cities]
-                
-                if normalized_buyer not in normalized_cities:
-                    is_combined_eligible = False
-            else:
-                # Opcional: Si el comprador no tiene ciudad definida (visitante), 
-                # podrías decidir ocultar la etiqueta por defecto.
-                # is_combined_eligible = False 
-                pass
+             if buyer_city and buyer_city not in combined_cities:
+                is_combined_eligible = False
 
         main_image_final = extract_display_image(p)
         all_images_set = set([main_image_final]) if main_image_final else set()
