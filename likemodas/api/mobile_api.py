@@ -670,17 +670,17 @@ async def get_products_for_mobile(
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # Cargar producto junto con la info del vendedor
+        # 1. Cargar producto con la info del vendedor (necesario para las ciudades)
         p = session.exec(
             select(BlogPostModel)
-            .options(joinedload(BlogPostModel.userinfo)) 
+            .options(joinedload(BlogPostModel.userinfo))
             .where(BlogPostModel.id == product_id)
         ).first()
 
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
 
-        # 1. Determinar ciudad del comprador
+        # 2. Determinar ciudad del comprador
         buyer_city = None
         if user_id:
             default_addr = session.exec(
@@ -690,7 +690,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if default_addr:
                 buyer_city = default_addr.city
 
-        # 2. Validar Moda Completa (Lógica de Ciudad)
+        # 3. Validar Moda Completa (Lógica de Ciudad)
         is_moda_eligible = p.is_moda_completa_eligible
         
         # Si el producto es elegible, pero el vendedor restringió ciudades
@@ -701,14 +701,23 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 if buyer_city not in p.userinfo.moda_completa_cities:
                     is_moda_eligible = False
 
-        # Lógica de imágenes (existente)
+        # 4. Validar Envío Combinado (Lógica de Ciudad - NUEVO)
+        is_combined_eligible = p.combines_shipping
+        # Verificamos si el atributo existe en el modelo y si tiene datos
+        if is_combined_eligible and p.userinfo and getattr(p.userinfo, 'combined_shipping_cities', None):
+             if buyer_city and buyer_city not in p.userinfo.combined_shipping_cities:
+                is_combined_eligible = False
+
+        # 5. Lógica de Imágenes
         main_image_final = extract_display_image(p)
         all_images_set = set([main_image_final]) if main_image_final else set()
         
-        # Lógica de variantes 
-        variants_dto = []
-        lightbox_light = "dark"; lightbox_dark = "dark" # Defaults
+        # Configuración de Lightbox (por defecto dark)
+        lightbox_light = "dark"
+        lightbox_dark = "dark"
         
+        # 6. Procesar Variantes
+        variants_dto = []
         if p.variants:
             # Intentar obtener configuración de lightbox de la primera variante
             if isinstance(p.variants, list) and len(p.variants) > 0 and isinstance(p.variants[0], dict):
@@ -718,10 +727,13 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             for v in p.variants:
                 if isinstance(v, dict):
                     urls = v.get("image_urls", [])
-                    if urls: all_images_set.update([get_full_image_url(u) for u in urls])
+                    if urls: 
+                        for u in urls:
+                            if u: all_images_set.update([get_full_image_url(u)])
                     
-                    v_img_raw = urls[0] if urls else main_image_final
-                    v_img = get_full_image_url(v_img_raw)
+                    # Imagen de la variante
+                    v_img_raw = urls[0] if (urls and len(urls) > 0) else main_image_final
+                    v_img = get_full_image_url(v_img_raw) if not v_img_raw.startswith("http") else v_img_raw
                     
                     # Construir título de variante
                     attrs = v.get("attributes", {})
@@ -735,37 +747,81 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         id=str(v.get("variant_uuid") or v.get("id") or ""),
                         title=v_title,
                         image_url=v_img,
-                        price=float(v.get("price") or p.price),
+                        price=float(v.get("price") or p.price or 0.0),
                         available_quantity=int(v.get("stock") or 0),
-                        images=[get_full_image_url(u) for u in urls],
+                        images=[get_full_image_url(u) for u in urls if u],
                         attributes=attrs
                     ))
         
         final_images = list(all_images_set)
 
-        # Reviews y Rating
+        # 7. Reviews y Rating
         avg_rating, rating_count = calculate_rating(session, p.id)
         
-        # Envío Texto
-        shipping_text = "Envío a convenir"
-        if p.shipping_cost == 0: shipping_text = "Envío Gratis"
-        elif p.shipping_cost and p.shipping_cost > 0: shipping_text = f"Envío: {fmt_price(p.shipping_cost)}"
+        # Lista de Reviews completa
+        reviews_list = []
+        db_parent_reviews = session.exec(
+            select(CommentModel)
+            .where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None)
+            .order_by(CommentModel.created_at.desc())
+            .options(joinedload(CommentModel.updates))
+        ).unique().all()
 
-        # Autores
+        for parent in db_parent_reviews:
+            updates_dtos = []
+            if parent.updates:
+                sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
+                for up in sorted_updates: 
+                    updates_dtos.append(ReviewDTO(
+                        id=up.id, 
+                        username=up.author_username, 
+                        rating=up.rating, 
+                        comment=up.content, 
+                        date=up.created_at.strftime("%d/%m/%Y"), 
+                        updates=[]
+                    ))
+            
+            reviews_list.append(ReviewDTO(
+                id=parent.id, 
+                username=parent.author_username or "Usuario", 
+                rating=parent.rating, 
+                comment=parent.content, 
+                date=parent.created_at.strftime("%d/%m/%Y"), 
+                updates=updates_dtos
+            ))
+
+        # 8. Envío Texto
+        shipping_text = "Envío a convenir"
+        if p.shipping_cost == 0: 
+            shipping_text = "Envío Gratis"
+        elif p.shipping_cost and p.shipping_cost > 0: 
+            shipping_text = f"Envío: {fmt_price(p.shipping_cost)}"
+
+        # 9. Autores y Metadatos
         author_name = "Likemodas"
         seller_info_id = 0
         if p.userinfo:
              seller_info_id = p.userinfo.id
              if p.userinfo.user:
                  author_name = p.userinfo.user.username
+        
+        is_saved = False
+        can_review = False
+        if user_id and user_id > 0:
+            try:
+                saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_id, SavedPostLink.blogpostmodel_id == p.id)).first()
+                is_saved = saved is not None
+                has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_id, PurchaseItemModel.blog_post_id == p.id, PurchaseModel.status == PurchaseStatus.DELIVERED)).first()
+                can_review = has_bought is not None
+            except Exception: 
+                pass
 
-        # Reviews (Simplificado para el retorno)
-        # Nota: Tu código original tenía lógica compleja de reviews aquí, asegurate de mantenerla si la necesitas
-        # Para este ejemplo asumo que 'reviews_list' se genera antes o se pasa vacío si no es crítico para este fix
-        reviews_list = [] 
-        # ... (Tu bloque de reviews original iría aquí) ...
+        date_created_str = ""
+        try:
+            if p.created_at: date_created_str = p.created_at.strftime("%d de %B del %Y")
+        except: pass
 
-        # --- RETORNO CORREGIDO (Sin duplicados) ---
+        # 10. Retorno del DTO (Sin duplicados y con toda la data)
         return ProductDetailDTO(
             id=p.id, 
             title=p.title, 
@@ -778,27 +834,26 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             variants=variants_dto, 
             shipping_cost=p.shipping_cost, 
             
-            # ✨ AQUÍ ESTABA EL ERROR: Solo debe haber UNA asignación
+            # --- CAMPOS DINÁMICOS CALCULADOS ---
             is_moda_completa=is_moda_eligible, 
+            combines_shipping=is_combined_eligible,
             
-            combines_shipping=p.combines_shipping, 
-            
-            # Nuevos campos para Android
             free_shipping_threshold=p.free_shipping_threshold,
             shipping_combination_limit=p.shipping_combination_limit,
-            
             shipping_display_text=shipping_text, 
-            is_saved=False, 
+            # -----------------------------------
+
+            is_saved=is_saved, 
             is_imported=p.is_imported, 
             average_rating=avg_rating, 
             rating_count=rating_count, 
             reviews=reviews_list,
-            can_review=False, 
+            can_review=can_review,
             author=author_name,
             author_id=seller_info_id,
-            created_at=p.created_at.strftime("%d/%m/%Y") if p.created_at else "",
+            created_at=date_created_str,
             
-            # Campos de estilo
+            # Estilos
             lightbox_bg_light=lightbox_light,
             lightbox_bg_dark=lightbox_dark,
             light_mode_appearance=p.light_mode_appearance,

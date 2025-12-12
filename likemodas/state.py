@@ -219,9 +219,11 @@ class ProductCardData(rx.Base):
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
-    
-    # --- ✨ AGREGAR ESTE CAMPO ✨ ---
     allowed_moda_cities: list[str] = []
+    
+    # ✨ NUEVOS CAMPOS
+    combines_shipping: bool = False
+    allowed_combined_cities: list[str] = []
     free_shipping_threshold: Optional[float] = None
     combines_shipping: bool = False
     shipping_combination_limit: Optional[int] = None
@@ -4004,6 +4006,63 @@ class AppState(reflex_local_auth.LocalAuthState):
     seller_moda_completa_cities: list[str] = []
     search_moda_city: str = ""
 
+    # ✨ NUEVAS VARIABLES PARA ENVÍO COMBINADO
+    seller_combined_shipping_cities: list[str] = []
+    search_combined_city: str = ""
+
+    def set_search_combined_city(self, val: str): self.search_combined_city = val
+
+    # Handlers para Moda Completa (Existentes)
+    def add_moda_city(self, prop: str, val: str):
+        if val not in self.seller_moda_completa_cities:
+            self.seller_moda_completa_cities.append(val)
+            
+    def remove_moda_city(self, prop: str, val: str):
+        if val in self.seller_moda_completa_cities:
+            self.seller_moda_completa_cities.remove(val)
+
+    # ✨ HANDLERS PARA ENVÍO COMBINADO (NUEVOS)
+    def add_combined_city(self, prop: str, val: str):
+        if val not in self.seller_combined_shipping_cities:
+            self.seller_combined_shipping_cities.append(val)
+
+    def remove_combined_city(self, prop: str, val: str):
+        if val in self.seller_combined_shipping_cities:
+            self.seller_combined_shipping_cities.remove(val)
+
+    @rx.var
+    def all_cities_list_combined(self) -> list[str]:
+        # Filtro para el buscador de ciudades de envío combinado
+        if not self.search_combined_city: return ALL_CITIES
+        return [c for c in ALL_CITIES if self.search_combined_city.lower() in c.lower()]
+
+    @rx.event
+    def on_load_seller_profile(self):
+        """Carga ciudades de origen y DESTINOS."""
+        if self.is_admin and self.authenticated_user_info:
+            with rx.session() as session:
+                user_info = session.get(UserInfo, self.authenticated_user_info.id)
+                if user_info:
+                    self.seller_profile_city = user_info.seller_city or ""
+                    self.seller_profile_barrio = user_info.seller_barrio or ""
+                    self.seller_profile_address = user_info.seller_address or ""
+                    # Cargar listas
+                    self.seller_moda_completa_cities = user_info.moda_completa_cities or []
+                    self.seller_combined_shipping_cities = user_info.combined_shipping_cities or []
+
+    @rx.event
+    def save_seller_destinations(self):
+        if not self.authenticated_user_info: return
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                user_info.moda_completa_cities = self.seller_moda_completa_cities
+                # ✨ Guardar la nueva lista
+                user_info.combined_shipping_cities = self.seller_combined_shipping_cities
+                session.add(user_info)
+                session.commit()
+        yield rx.toast.success("Destinos actualizados correctamente.")
+
     def set_search_moda_city(self, val: str): self.search_moda_city = val
 
     def add_moda_city(self, prop: str, val: str):
@@ -4104,6 +4163,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 moda_text = f"Envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combo_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
 
+                # ✨ EXTRAER CIUDADES (AMBAS LISTAS)
+                seller_moda_cities = p.userinfo.moda_completa_cities or []
+                seller_combined_cities = p.userinfo.combined_shipping_cities or []
+
                 card_data = ProductCardData(
                     id=p.id,
                     userinfo_id=p.userinfo_id,
@@ -4122,9 +4185,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_combination_limit=p.shipping_combination_limit,
                     shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     is_imported=p.is_imported,
+                    # ✨ NUEVO CAMPO
+                    allowed_combined_cities=seller_combined_cities,
                     # ✨ ASIGNAR LISTA DE CIUDADES AL DTO
                     allowed_moda_cities=seller_cities, 
-                    
                     moda_completa_tooltip_text=moda_text,
                     envio_combinado_tooltip_text=combo_text,
                     use_default_style=p.use_default_style,
@@ -8096,13 +8160,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def recalculate_all_shipping_costs(self):
         """
-        Recalcula costos y elegibilidad de etiquetas basado en la dirección del comprador.
+        Recalcula costos, elegibilidad de etiquetas (Moda Completa / Envío Combinado)
+        y actualiza los tooltips basándose en la dirección del comprador.
         """
+        # 1. Validaciones iniciales
         if not self._raw_posts:
             self.posts = []
             return
 
-        # Si no hay dirección, asumimos vista general (mostrar etiquetas por defecto)
+        # Si no hay dirección predeterminada, mostramos los posts tal cual vienen de la BD
+        # (Se asume que las etiquetas son visibles por defecto si no se sabe la ubicación)
         if not self.default_shipping_address:
             self.posts = self._raw_posts
             return
@@ -8111,49 +8178,90 @@ class AppState(reflex_local_auth.LocalAuthState):
         buyer_barrio = self.default_shipping_address.neighborhood
         
         with rx.session() as session:
-            # Obtener datos de ubicación de los vendedores
+            # 2. Obtener datos de ubicación y configuración de los vendedores en lote
             seller_ids = {p.userinfo_id for p in self._raw_posts}
-            sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))).all()
-            seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
+            
+            # Consultamos los objetos UserInfo completos para acceder a las listas JSON
+            sellers_info = session.exec(
+                sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
+            ).all()
+            
+            # Mapeamos ID -> Objeto Vendedor
+            seller_map = {u.id: u for u in sellers_info}
 
             recalculated_posts = []
+            
             for post in self._raw_posts:
+                # Creamos una copia del DTO para no mutar la lista original _raw_posts
                 updated_post = post.copy()
-
-                # --- ✨ LÓGICA DE FILTRADO GEOGRÁFICO DE ETIQUETA ✨ ---
-                is_eligible = post.is_moda_completa_eligible
                 
-                # Si el producto tiene restricciones de ciudad (lista no vacía)
-                if is_eligible and post.allowed_moda_cities:
+                # Obtenemos datos del vendedor de este post
+                seller = seller_map.get(post.userinfo_id)
+                
+                # Valores por defecto si falla la carga del vendedor
+                s_city = seller.seller_city if seller else None
+                s_barrio = seller.seller_barrio if seller else None
+                
+                # Listas de ciudades permitidas (pueden ser None o vacías)
+                moda_cities = seller.moda_completa_cities if seller and seller.moda_completa_cities else []
+                combined_cities = seller.combined_shipping_cities if seller and seller.combined_shipping_cities else []
+
+                # --- 🏷️ LÓGICA 1: MODA COMPLETA ---
+                is_moda = post.is_moda_completa_eligible
+                
+                # Si el producto es elegible, pero el vendedor restringió ciudades (lista no vacía)
+                if is_moda and moda_cities:
                     # Si la ciudad del comprador NO está en la lista -> Desactivar
-                    if buyer_city not in post.allowed_moda_cities:
-                        is_eligible = False
+                    if buyer_city not in moda_cities:
+                        is_moda = False
                 
-                updated_post.is_moda_completa_eligible = is_eligible
+                updated_post.is_moda_completa_eligible = is_moda
 
-                # Generar mensaje del Tooltip
-                if is_eligible:
+                # Actualizar Tooltip de Moda Completa
+                if is_moda:
                     threshold_val = post.free_shipping_threshold or 0
-                    # ✨ MENSAJE DINÁMICO QUE SALE DE LA ETIQUETA
                     updated_post.moda_completa_tooltip_text = f"Envío gratis en compras superiores a {format_to_cop(threshold_val)} de este vendedor."
                 else:
                     updated_post.moda_completa_tooltip_text = ""
-                # -----------------------------------------------------
 
-                # Lógica existente de cálculo de costo de envío
-                seller_data = seller_data_map.get(post.userinfo_id)
-                s_city = seller_data.get("city") if seller_data else None
-                s_barrio = seller_data.get("barrio") if seller_data else None
+                # --- 📦 LÓGICA 2: ENVÍO COMBINADO ---
+                is_combined = post.combines_shipping
                 
+                # Si el producto es combinable, pero el vendedor restringió ciudades (lista no vacía)
+                if is_combined and combined_cities:
+                    # Si la ciudad del comprador NO está en la lista -> Desactivar
+                    if buyer_city not in combined_cities:
+                        is_combined = False
+                
+                updated_post.combines_shipping = is_combined
+                
+                # Actualizar Tooltip de Envío Combinado
+                if is_combined:
+                    limit_val = post.shipping_combination_limit or 1
+                    updated_post.envio_combinado_tooltip_text = f"Combina hasta {limit_val} productos de este vendedor en un solo envío."
+                else:
+                    updated_post.envio_combinado_tooltip_text = ""
+
+                # --- 🚚 LÓGICA 3: CÁLCULO DE COSTO DE ENVÍO ---
                 final_cost = calculate_dynamic_shipping(
                     base_cost=post.shipping_cost or 0.0,
-                    seller_barrio=s_barrio, buyer_barrio=buyer_barrio,
-                    seller_city=s_city, buyer_city=buyer_city
+                    seller_barrio=s_barrio,
+                    buyer_barrio=buyer_barrio,
+                    seller_city=s_city,
+                    buyer_city=buyer_city
                 )
-                updated_post.shipping_display_text = f"Envío: {format_to_cop(final_cost)}" if final_cost > 0 else "Envío Gratis"
                 
+                if final_cost == 0:
+                    updated_post.shipping_display_text = "Envío Gratis"
+                elif final_cost > 0:
+                    updated_post.shipping_display_text = f"Envío: {format_to_cop(final_cost)}"
+                else:
+                    updated_post.shipping_display_text = "Envío a convenir"
+                
+                # Añadir a la lista final
                 recalculated_posts.append(updated_post)
 
+        # Actualizar la variable de estado que ve el usuario
         self.posts = recalculated_posts
 
     # --- ✨ INICIO: NUEVA PROPIEDAD COMPUTADA PARA VALIDAR CONTRA ENTREGA ✨ ---

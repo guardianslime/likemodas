@@ -114,7 +114,38 @@ def my_location_page_content() -> rx.Component:
             ),
             width="100%"
         ),
-        # ---------------------------------------------------------------
+        # --- ✨ NUEVA TARJETA: DESTINOS ENVÍO COMBINADO ✨ ---
+        rx.card(
+            rx.vstack(
+                rx.heading("Ubicaciones de Destino (Envío Combinado)", size="6"),
+                rx.text(
+                    "Selecciona las ciudades donde permites combinar varios productos en un solo envío. "
+                    "Si lo dejas vacío, aplicará a TODAS las ciudades.",
+                    color_scheme="gray", size="2"
+                ),
+                rx.divider(margin_y="1em"),
+                
+                multi_select_component(
+                    placeholder="Buscar ciudades...",
+                    options=AppState.all_cities_list_combined, # Variable filtrada nueva
+                    selected_items=AppState.seller_combined_shipping_cities,
+                    add_handler=AppState.add_combined_city,
+                    remove_handler=AppState.remove_combined_city,
+                    prop_name="seller_combined_shipping_cities",
+                    search_value=AppState.search_combined_city,
+                    on_change_search=AppState.set_search_combined_city,
+                    filter_name="combined_city_filter"
+                ),
+                
+                rx.hstack(
+                    rx.spacer(),
+                    # Usamos el mismo botón de guardar para todo
+                    rx.button("Guardar Todos los Destinos", on_click=AppState.save_seller_destinations, color_scheme="violet"),
+                    width="100%", margin_top="1em"
+                )
+            ),
+            width="100%"
+        ),
 
         align="center",
         spacing="5",
