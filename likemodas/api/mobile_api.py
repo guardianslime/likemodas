@@ -553,12 +553,11 @@ async def get_products_for_mobile(
     user_id: Optional[int] = Query(None), 
     session: Session = Depends(get_session)
 ):
-    # 1. Inicialización segura de variables
+    # 1. INICIALIZACIÓN SEGURA DE VARIABLES (Esto faltaba y causaba el crash)
     buyer_city = None
     buyer_barrio = None 
-    normalized_buyer_city = ""
 
-    # 2. Obtener dirección del comprador (si existe)
+    # 2. Obtener dirección solo si hay usuario
     if user_id:
         default_addr = session.exec(
             select(ShippingAddressModel)
@@ -568,16 +567,13 @@ async def get_products_for_mobile(
         if default_addr:
             buyer_city = default_addr.city
             buyer_barrio = default_addr.neighborhood
-            # Normalizamos la ciudad del comprador una sola vez
-            if buyer_city:
-                normalized_buyer_city = buyer_city.strip().lower()
 
     # 3. Consulta de Productos
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
     if category and category != "todos": 
         query = query.where(BlogPostModel.category == category)
     
-    # Cargar relaciones
+    # Cargar relaciones necesarias para evitar consultas extra
     query = query.options(joinedload(BlogPostModel.userinfo))
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
     
@@ -585,10 +581,10 @@ async def get_products_for_mobile(
     result = []
     
     for p in products:
-        # Lógica de Imagen y Rating (sin cambios)
+        # Extracción de imagen segura
         image_url = extract_display_image(p)
-        avg_rating, rating_count = calculate_rating(session, p.id)
         
+        # Extracción de estilo segura
         lightbox_light = "dark"
         lightbox_dark = "dark"
         if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
@@ -596,44 +592,52 @@ async def get_products_for_mobile(
             if isinstance(first_var, dict):
                  lightbox_light = first_var.get("lightbox_bg_light", "dark")
                  lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+        
+        avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- LÓGICA CORREGIDA DE MODA COMPLETA (Normalizada) ---
+        # --- LÓGICA BLINDADA DE MODA COMPLETA ---
         is_moda_eligible = p.is_moda_completa_eligible
         
-        if p.userinfo and is_moda_eligible:
+        # Verificamos si userinfo existe antes de acceder a sus campos
+        if p.userinfo:
             seller_moda_cities = p.userinfo.moda_completa_cities or []
-            # Solo filtramos si el vendedor definió una lista (Vacío = Todo el país)
-            if seller_moda_cities and normalized_buyer_city:
-                # Normalizamos la lista del vendedor para comparar
-                normalized_seller_cities = [c.strip().lower() for c in seller_moda_cities]
-                if normalized_buyer_city not in normalized_seller_cities:
+            
+            if is_moda_eligible and seller_moda_cities and buyer_city:
+                if buyer_city not in seller_moda_cities:
                     is_moda_eligible = False
 
-        # --- LÓGICA CORREGIDA DE ENVÍO COMBINADO (Normalizada) ---
-        is_combined_eligible = p.combines_shipping # Valor base de la BD
+        # --- [NUEVO] LÓGICA BLINDADA DE ENVÍO COMBINADO (FALTABA ESTO) ---
+        is_combined_eligible = p.combines_shipping
 
-        if p.userinfo and is_combined_eligible:
+        if p.userinfo:
+            # Recuperamos la lista de ciudades de envío combinado
             seller_combined_cities = p.userinfo.combined_shipping_cities or []
             
-            # Solo filtramos si el vendedor restringió ciudades (Vacío = Todo el país)
-            # Y si tenemos la ciudad del comprador
-            if seller_combined_cities and normalized_buyer_city:
-                normalized_combined_cities = [c.strip().lower() for c in seller_combined_cities]
-                
+            # Si el beneficio está activo, el vendedor puso restricciones y sabemos la ciudad del comprador
+            if is_combined_eligible and seller_combined_cities and buyer_city:
                 # Si la ciudad del comprador NO está en la lista permitida -> SE OCULTA
-                if normalized_buyer_city not in normalized_combined_cities:
+                if buyer_city not in seller_combined_cities:
                     is_combined_eligible = False
-        # ---------------------------------------------------------
+        # ------------------------------------------------------------------
 
         # Textos dinámicos
-        shipping_txt = "Envío a convenir"
+        moda_tooltip = ""
+        if is_moda_eligible and p.free_shipping_threshold:
+             moda_tooltip = f"Envío gratis > {fmt_price(p.free_shipping_threshold)}"
+
+        combo_tooltip = ""
+        if p.combines_shipping:
+             combo_tooltip = f"Combina hasta {p.shipping_combination_limit} items"
+        
+        # --- CÁLCULO DE ENVÍO SEGURO ---
+        # Usamos .get o verificación de None para evitar errores
         seller_city = p.userinfo.seller_city if p.userinfo else None
         seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
         
         final_shipping_cost = calculate_dynamic_shipping(
             base_cost=p.shipping_cost or 0.0,
             seller_barrio=seller_barrio,
-            buyer_barrio=buyer_barrio,
+            buyer_barrio=buyer_barrio, # Ahora esta variable SIEMPRE existe (es None o string)
             seller_city=seller_city,
             buyer_city=buyer_city
         )
@@ -642,6 +646,8 @@ async def get_products_for_mobile(
             shipping_txt = "Envío Gratis"
         elif final_shipping_cost > 0:
             shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
+        else:
+            shipping_txt = "Envío a convenir"
 
         result.append(ProductListDTO(
             id=p.id, 
@@ -651,14 +657,13 @@ async def get_products_for_mobile(
             image_url=image_url, 
             category=p.category, 
             description=p.content,
-            
-            # USAMOS LAS VARIABLES CALCULADAS:
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible, # <--- Aquí estaba el fallo potencial
-            
+            combines_shipping=is_combined_eligible,
             average_rating=avg_rating, 
             rating_count=rating_count,
-            shipping_display_text=shipping_txt,
+            shipping_display_text=shipping_txt, # Campo nuevo crítico
+            
+            # Estilos
             use_default_style=p.use_default_style, 
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance, 
