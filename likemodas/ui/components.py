@@ -60,13 +60,12 @@ def searchable_select(
     on_change_search: Any,
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
-    columns: str = "1", # ✨ Nuevo parámetro para columnas
+    columns: str = "1",
     use_mapping: bool = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        # Lógica para mostrar etiqueta correcta
         label = rx.cond(use_mapping, option[0], option)
         value = rx.cond(use_mapping, option[1], option)
 
@@ -81,7 +80,8 @@ def searchable_select(
             size="2"
         )
 
-    return rx.box(
+    # El contenedor principal es un VStack para que la lista empuje contenido si es necesario
+    return rx.vstack(
         rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
@@ -93,55 +93,59 @@ def searchable_select(
             size="3", 
             is_disabled=is_disabled,
             height="auto", 
-            min_height="40px",
+            min_height="45px", # Un poco más alto para mejor clic
             white_space="normal", 
             text_align="left",
             padding="0.5em 0.75em", 
             type="button",
         ),
+        
+        # La lista desplegable
         rx.cond(
             is_open,
-            rx.vstack(
-                rx.input(
-                    placeholder="Escribe para filtrar...", 
-                    value=search_value, 
-                    on_change=on_change_search,
-                    width="100%",
-                    autofocus=True
-                ),
-                rx.scroll_area(
-                    # --- ✨ GRID PARA COLUMNAS MÚLTIPLES ✨ ---
-                    rx.grid(
-                        rx.foreach(options, render_option),
-                        columns=columns, # Usamos el parámetro dinámico
-                        spacing="2", 
+            rx.box(
+                rx.vstack(
+                    rx.input(
+                        placeholder="Escribe para buscar...", 
+                        value=search_value, 
+                        on_change=on_change_search,
                         width="100%",
+                        autofocus=True
                     ),
-                    # ------------------------------------------
-                    max_height="350px", # Altura suficiente para ver la lista
-                    width="100%", 
-                    type="auto", 
-                    scrollbars="vertical",
+                    rx.scroll_area(
+                        rx.grid(
+                            rx.foreach(options, render_option),
+                            columns=columns, 
+                            spacing="2", 
+                            width="100%",
+                        ),
+                        max_height="350px", # Altura generosa para ver muchas opciones
+                        width="100%", 
+                        type="auto", 
+                        scrollbars="vertical",
+                    ),
+                    spacing="3", 
+                    padding="1em", 
+                    bg=rx.color("gray", 2),
+                    border="1px solid", 
+                    border_color=rx.color("gray", 6),
+                    border_radius="md", 
+                    width="100%",
+                    box_shadow="lg"
                 ),
-                spacing="3", 
-                padding="1em", 
-                bg=rx.color("gray", 2),
-                border="1px solid", 
-                border_color=rx.color("gray", 6),
-                border_radius="md", 
-                position="absolute", 
-                top="110%", 
-                width="100%", 
-                # --- ✨ Z-INDEX MUY ALTO para flotar sobre todo ✨ ---
-                z_index="9999", 
-                box_shadow="0px 10px 25px -5px rgba(0,0,0,0.3)"
+                # --- CAMBIO CRÍTICO: Posición relativa ---
+                # Al quitar 'absolute', la lista ocupará espacio físico en la página,
+                # empujando el contenido de abajo. Esto garantiza que siempre se vea.
+                width="100%",
+                margin_top="0.5em",
+                z_index="50" 
             )
         ),
-        position="relative", 
         width="100%",
+        spacing="0", # Sin espacio extra si está cerrado
+        align_items="stretch"
     )
 
-# 2. Componente multi_select_component ACTUALIZADO
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -152,7 +156,7 @@ def multi_select_component(
     search_value: rx.Var[str],
     on_change_search: Any,
     filter_name: str,
-    columns: str = "1" # ✨ Nuevo parámetro para pasar al select
+    columns: str = "1" 
 ) -> rx.Component:
     return rx.vstack(
         rx.cond(
@@ -180,7 +184,8 @@ def multi_select_component(
                 padding="0.5em",
                 border="1px dashed var(--gray-a7)", 
                 border_radius="md",
-                width="100%"
+                width="100%",
+                margin_bottom="0.5em"
             )
         ),
         searchable_select(
@@ -191,9 +196,9 @@ def multi_select_component(
             search_value=search_value,
             on_change_search=on_change_search,
             filter_name=filter_name,
-            columns=columns # ✨ Pasamos el número de columnas
+            columns=columns
         ),
-        spacing="2", 
+        spacing="0", 
         align_items="stretch", 
         width="100%",
     )
