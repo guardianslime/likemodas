@@ -51,6 +51,8 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
 # 1. Modificar searchable_select para aceptar 'columns'
 # likemodas/ui/components.py
 
+# likemodas/ui/components.py
+
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
@@ -61,50 +63,25 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
     columns: str = "1",
+    use_mapping: bool = False, # ✨ NUEVO PARÁMETRO
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        # --- CORRECCIÓN CRÍTICA ---
-        # En lugar de comprobar el tipo dinámicamente con .type() que falla,
-        # usamos la indexación directa y asumimos que si es una lista/tupla,
-        # podemos acceder a sus elementos. Si es un string, el acceso [0] 
-        # también funciona (dando el primer carácter), pero eso no es lo que queremos.
-        
-        # El truco en Reflex para soportar ambos (lista de strings y lista de tuplas)
-        # es estandarizar la entrada. Pero si no podemos cambiar todos los usos,
-        # intentamos esto:
-        
-        # Reflex maneja rx.cond de forma diferida. No podemos usar isinstance pythonico aquí.
-        # La solución más segura es convertir el option a string y usarlo como valor y label
-        # si es un tipo simple, o extraer si es complejo.
-        
-        # Sin embargo, dado el error específico, la mejor apuesta es 
-        # tratar 'option' como si fuera una lista [label, value].
-        # Si tus opciones son solo strings ["A", "B"], cámbialas en el origen a [["A", "A"], ["B", "B"]]
-        # O usa esta lógica que intenta detectar si es un objeto iterable:
-        
-        # Una forma segura en Reflex sin .type() es usar rx.cond con isinstance en tiempo de compilación
-        # pero 'option' es una Var de iteración.
-        
-        # SOLUCIÓN PRÁCTICA: Asumimos que si tiene longitud 2 es un par label/value,
-        # si no, es un valor simple. (Esto puede fallar si un string tiene longitud 2).
-        
-        # MEJOR APROXIMACIÓN:
-        # Usamos el propio option como valor por defecto.
+        # Si use_mapping es True, asumimos que option es [label, value]
+        # Si es False, asumimos que option es un string directo.
         
         label = rx.cond(
-            option.is_instance(list) | option.is_instance(tuple),
-            option[0],
+            use_mapping, 
+            option[0], 
             option
         )
         
         value = rx.cond(
-            option.is_instance(list) | option.is_instance(tuple),
-            option[1],
+            use_mapping, 
+            option[1], 
             option
         )
-        # --------------------------
 
         return rx.button(
             label,

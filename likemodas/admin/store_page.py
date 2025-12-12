@@ -82,6 +82,7 @@ def sliding_direct_sale_cart() -> rx.Component:
                 search_value=AppState.search_query_all_buyers,
                 on_change_search=AppState.set_search_query_all_buyers,
                 filter_name="buyer_filter",
+                use_mapping=True # ✨ AÑADE ESTO AQUÍ
             ),
             align_items="start", width="100%"
         ),
