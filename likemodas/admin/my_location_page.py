@@ -16,13 +16,12 @@ def my_location_page_content() -> rx.Component:
             color_scheme="gray", size="4", text_align="center"
         ),
         
-        # --- 1. TARJETA ORIGEN ---
+        # 1. ORIGEN
         rx.card(
             rx.form(
                 rx.vstack(
                     rx.heading("1. Mi Ubicación de Origen", size="6"),
                     rx.grid(
-                        # Ciudad y Barrio en 2 columnas
                         rx.vstack(
                             rx.text("Mi Ciudad*"),
                             searchable_select(
@@ -33,7 +32,7 @@ def my_location_page_content() -> rx.Component:
                                 search_value=AppState.search_seller_city,
                                 on_change_search=AppState.set_search_seller_city,
                                 filter_name="seller_city_filter",
-                                columns="2" # ✨ Lista en 2 columnas
+                                columns="2" 
                             ),
                             width="100%"
                         ),
@@ -48,7 +47,7 @@ def my_location_page_content() -> rx.Component:
                                 on_change_search=AppState.set_search_seller_barrio,
                                 filter_name="seller_barrio_filter",
                                 is_disabled=~AppState.seller_profile_city,
-                                columns="2" # ✨ Lista en 2 columnas
+                                columns="2" 
                             ),
                             width="100%"
                         ),
@@ -73,11 +72,11 @@ def my_location_page_content() -> rx.Component:
                 on_submit=AppState.save_seller_profile,
             ),
             width="100%",
-            # ✨ TRUCO CLAVE: overflow visible y z-index alto
-            style={"overflow": "visible", "z-index": "30"} 
+            # Altura mínima para asegurar que las listas de ciudad/barrio tengan espacio
+            min_height="400px" 
         ),
 
-        # --- 2. TARJETA MODA COMPLETA ---
+        # 2. DESTINO MODA COMPLETA
         rx.card(
             rx.vstack(
                 rx.heading("2. Destinos: Moda Completa", size="6"),
@@ -97,16 +96,16 @@ def my_location_page_content() -> rx.Component:
                     search_value=AppState.search_moda_city,
                     on_change_search=AppState.set_search_moda_city,
                     filter_name="moda_city_filter",
-                    columns="4" # ✨ Lista amplia en 4 columnas
+                    columns="4" 
                 ),
                 rx.button("Guardar Moda Completa", on_click=AppState.save_seller_destinations, color_scheme="violet", width="100%")
             ),
             width="100%",
-            # ✨ TRUCO CLAVE: z-index medio (menor que el de arriba, mayor que el de abajo)
-            style={"overflow": "visible", "z-index": "20"}
+            # Damos MUCHO espacio vertical mínimo a esta tarjeta para la lista grande
+            min_height="500px" 
         ),
 
-        # --- 3. TARJETA ENVÍO COMBINADO ---
+        # 3. DESTINO ENVÍO COMBINADO
         rx.card(
             rx.vstack(
                 rx.heading("3. Destinos: Envío Combinado", size="6"),
@@ -126,22 +125,22 @@ def my_location_page_content() -> rx.Component:
                     search_value=AppState.search_combined_city,
                     on_change_search=AppState.set_search_combined_city,
                     filter_name="combined_city_filter",
-                    columns="4" # ✨ Lista amplia en 4 columnas
+                    columns="4"
                 ),
                 rx.button("Guardar Envío Combinado", on_click=AppState.save_seller_destinations, color_scheme="violet", width="100%")
             ),
             width="100%",
-            # ✨ TRUCO CLAVE: z-index bajo
-            style={"overflow": "visible", "z-index": "10"}
+            # Damos MUCHO espacio vertical mínimo a esta tarjeta también
+            min_height="500px"
         ),
 
         align="center",
-        spacing="5",
+        spacing="8", # Aumentamos el espacio entre tarjetas
         width="100%",
-        max_width="1000px", # Un poco más ancho para que quepan las 4 columnas
+        max_width="1000px", 
         
-        # ✨ ESPACIO FINAL EXTRA: Para que la última lista no se corte abajo de la página
-        padding_bottom="450px" 
+        # Espacio final generoso para el scroll de la página
+        padding_bottom="600px" 
     )
     
     return base_page(rx.center(page_content, min_height="85vh"))
