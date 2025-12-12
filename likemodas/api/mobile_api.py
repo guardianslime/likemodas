@@ -547,33 +547,46 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
         return {"message": "Dirección actualizada"}
     raise HTTPException(404, "Dirección no encontrada")
 
+@router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(
     category: Optional[str] = None, 
     user_id: Optional[int] = Query(None), 
     session: Session = Depends(get_session)
 ):
+    # 1. INICIALIZACIÓN SEGURA DE VARIABLES (Esto faltaba y causaba el crash)
     buyer_city = None
-    buyer_barrio = None  # <--- ¡AGREGA ESTA LÍNEA! (Inicialización segura)
+    buyer_barrio = None 
 
+    # 2. Obtener dirección solo si hay usuario
     if user_id:
         default_addr = session.exec(
             select(ShippingAddressModel)
             .where(ShippingAddressModel.userinfo_id == user_id, ShippingAddressModel.is_default == True)
         ).first()
+        
         if default_addr:
             buyer_city = default_addr.city
             buyer_barrio = default_addr.neighborhood
 
-    query = select(BlogPostModel).options(joinedload(BlogPostModel.userinfo)).where(BlogPostModel.publish_active == True)
-    if category and category != "todos": query = query.where(BlogPostModel.category == category)
+    # 3. Consulta de Productos
+    query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
+    if category and category != "todos": 
+        query = query.where(BlogPostModel.category == category)
+    
+    # Cargar relaciones necesarias para evitar consultas extra
+    query = query.options(joinedload(BlogPostModel.userinfo))
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
     
     products = session.exec(query).unique().all()
     result = []
     
     for p in products:
+        # Extracción de imagen segura
         image_url = extract_display_image(p)
-        lightbox_light = "dark"; lightbox_dark = "dark"
+        
+        # Extracción de estilo segura
+        lightbox_light = "dark"
+        lightbox_dark = "dark"
         if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
             first_var = p.variants[0]
             if isinstance(first_var, dict):
@@ -582,31 +595,38 @@ async def get_products_for_mobile(
         
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- 🛠️ CORRECCIÓN: USAR getattr PARA EVITAR CRASH CON CAMPOS NUEVOS 🛠️ ---
+        # --- LÓGICA BLINDADA DE MODA COMPLETA ---
         is_moda_eligible = p.is_moda_completa_eligible
         
-        moda_cities = getattr(p.userinfo, 'moda_completa_cities', None)
-        if is_moda_eligible and p.userinfo and moda_cities:
-            if buyer_city:
-                if buyer_city not in moda_cities:
+        # Verificamos si userinfo existe antes de acceder a sus campos
+        if p.userinfo:
+            # Recuperamos la lista de forma segura (si es None, usamos lista vacía)
+            seller_moda_cities = p.userinfo.moda_completa_cities or []
+            
+            # Si hay restricciones y tenemos ciudad del comprador
+            if is_moda_eligible and seller_moda_cities and buyer_city:
+                if buyer_city not in seller_moda_cities:
                     is_moda_eligible = False
-        # ------------------------------------------------------------------------
+        # ----------------------------------------
 
+        # Textos dinámicos
         moda_tooltip = ""
         if is_moda_eligible and p.free_shipping_threshold:
-             moda_tooltip = f"Envío gratis en compras superiores a {fmt_price(p.free_shipping_threshold)} de este vendedor."
+             moda_tooltip = f"Envío gratis > {fmt_price(p.free_shipping_threshold)}"
 
         combo_tooltip = ""
         if p.combines_shipping:
-             combo_tooltip = f"Puedes combinar hasta {p.shipping_combination_limit} productos de este vendedor en un solo envío."
+             combo_tooltip = f"Combina hasta {p.shipping_combination_limit} items"
         
+        # --- CÁLCULO DE ENVÍO SEGURO ---
+        # Usamos .get o verificación de None para evitar errores
         seller_city = p.userinfo.seller_city if p.userinfo else None
         seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
         
         final_shipping_cost = calculate_dynamic_shipping(
             base_cost=p.shipping_cost or 0.0,
             seller_barrio=seller_barrio,
-            buyer_barrio=buyer_barrio,
+            buyer_barrio=buyer_barrio, # Ahora esta variable SIEMPRE existe (es None o string)
             seller_city=seller_city,
             buyer_city=buyer_city
         )
@@ -626,11 +646,13 @@ async def get_products_for_mobile(
             image_url=image_url, 
             category=p.category, 
             description=p.content,
-            is_moda_completa=is_moda_eligible,
+            is_moda_completa=is_moda_eligible, 
             combines_shipping=p.combines_shipping,
             average_rating=avg_rating, 
             rating_count=rating_count,
-            shipping_display_text=shipping_txt,
+            shipping_display_text=shipping_txt, # Campo nuevo crítico
+            
+            # Estilos
             use_default_style=p.use_default_style, 
             light_mode_appearance=p.light_mode_appearance,
             dark_mode_appearance=p.dark_mode_appearance, 
