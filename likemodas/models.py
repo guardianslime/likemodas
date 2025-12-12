@@ -189,11 +189,10 @@ class UserInfo(rx.Model, table=True):
     seller_city: Optional[str] = Field(default=None) 
     seller_address: Optional[str] = Field(default=None)
     # --- ✨ NUEVO CAMPO: Ciudades donde aplica Moda Completa ✨ ---
-    # Si es NULL o lista vacía [], aplica a TODAS las ciudades.
-    moda_completa_cities: List[str] = Field(default_factory=list, sa_column=Column(JSON))
-    
-    # --- ✨ NUEVO CAMPO PARA ENVÍO COMBINADO ✨ ---
-    combined_shipping_cities: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # ASEGÚRATE DE QUE ESTAS DOS ESTÉN AQUÍ Y SEAN JSON:
+
+    moda_completa_cities: List[str] = Field(default=[], sa_column=Column(JSON))
+    combined_shipping_cities: List[str] = Field(default=[], sa_column=Column(JSON)) 
     # ---------------------------------------------
     tfa_secret: Optional[str] = Field(default=None)
     tfa_enabled: bool = Field(default=False, nullable=False)
