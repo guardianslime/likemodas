@@ -1,5 +1,6 @@
 # En: likemodas/ui/components.py (COMPLETO Y CORREGIDO)
 
+from typing import Any
 import reflex as rx
 import math
 from likemodas.utils.formatting import format_to_cop
@@ -47,27 +48,50 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
     )
 
 # --- searchable_select (SIN CAMBIOS) ---
+# 1. Modificar searchable_select para aceptar 'columns'
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
-    on_change_select: EventSpec,
+    on_change_select: Any,
     value_select: rx.Var[str],
     search_value: rx.Var[str],
-    on_change_search: EventSpec,
+    on_change_search: Any,
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
+    columns: str = "1", # ✨ NUEVO PARÁMETRO: Por defecto 1 columna
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
-        value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
+        # Lógica para manejar si la opción es string o tupla
+        label = rx.cond(
+            rx.cond(
+                option.type() == list, 
+                True, 
+                False
+            ), 
+            option[0], # Si es lista/tupla, el label es el primero
+            option     # Si es string, es el valor directo
+        )
+        value = rx.cond(
+            rx.cond(
+                option.type() == list, 
+                True, 
+                False
+            ), 
+            option[1], 
+            option
+        )
 
         return rx.button(
             label,
             on_click=[on_change_select(value), AppState.toggle_filter_dropdown(filter_name)],
-            width="100%", variant="soft", color_scheme="gray",
-            justify_content="start", type="button",
+            width="100%", 
+            variant="soft", 
+            color_scheme="gray",
+            justify_content="start", 
+            type="button",
+            size="2"
         )
 
     return rx.box(
@@ -75,70 +99,117 @@ def searchable_select(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
             on_click=AppState.toggle_filter_dropdown(filter_name),
-            variant="outline", width="100%", justify_content="space-between",
-            color_scheme="gray", size="2", is_disabled=is_disabled,
-            height="auto", white_space="normal", text_align="left",
-            padding="0.5em 0.75em", type="button",
+            variant="outline", 
+            width="100%", 
+            justify_content="space-between",
+            color_scheme="gray", 
+            size="3", # Botón un poco más grande
+            is_disabled=is_disabled,
+            height="auto", 
+            min_height="40px",
+            white_space="normal", 
+            text_align="left",
+            padding="0.5em 0.75em", 
+            type="button",
         ),
         rx.cond(
             is_open,
             rx.vstack(
-                rx.input(placeholder="Buscar...", value=search_value, on_change=on_change_search),
-                rx.scroll_area(
-                    rx.vstack(
-                        rx.foreach(options, render_option),
-                        spacing="1", width="100%",
-                    ),
-                    max_height="200px", width="100%", type="auto", scrollbars="vertical",
+                rx.input(
+                    placeholder="Buscar...", 
+                    value=search_value, 
+                    on_change=on_change_search,
+                    width="100%",
+                    autofocus=True
                 ),
-                spacing="2", padding="0.75em", bg=rx.color("gray", 3),
-                border="1px solid", border_color=rx.color("gray", 7),
-                border_radius="md", position="absolute", top="105%",
-                width="100%", z_index=10,
+                rx.scroll_area(
+                    # --- ✨ AQUÍ ESTÁ EL CAMBIO DE DISEÑO ✨ ---
+                    rx.grid(
+                        rx.foreach(options, render_option),
+                        columns=columns, # Usamos el parámetro columns
+                        spacing="2", 
+                        width="100%",
+                    ),
+                    # -------------------------------------------
+                    max_height="300px", # Más altura para ver mejor
+                    width="100%", 
+                    type="auto", 
+                    scrollbars="vertical",
+                ),
+                spacing="3", 
+                padding="1em", 
+                bg=rx.color("gray", 3),
+                border="1px solid", 
+                border_color=rx.color("gray", 7),
+                border_radius="md", 
+                position="absolute", 
+                top="105%",
+                width="100%", 
+                z_index="50",
+                box_shadow="0px 10px 15px -3px rgba(0,0,0,0.1)"
             )
         ),
-        position="relative", width="100%",
+        position="relative", 
+        width="100%",
     )
 
-# --- multi_select_component (SIN CAMBIOS) ---
+# 2. Modificar multi_select_component para aceptar 'columns'
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
     selected_items: rx.Var[list[str]],
-    add_handler: rx.event.EventHandler,
-    remove_handler: rx.event.EventHandler,
+    add_handler: Any,
+    remove_handler: Any,
     prop_name: str,
     search_value: rx.Var[str],
-    on_change_search: rx.event.EventSpec,
+    on_change_search: Any,
     filter_name: str,
+    columns: str = "1" # ✨ NUEVO PARÁMETRO
 ) -> rx.Component:
     return rx.vstack(
-        rx.flex(
-            rx.foreach(
-                selected_items,
-                lambda item: rx.badge(
-                    item,
-                    rx.icon(
-                        "x", size=12, cursor="pointer",
-                        on_click=lambda: remove_handler(prop_name, item),
-                        margin_left="0.25em"
+        # Área de etiquetas seleccionadas
+        rx.cond(
+            selected_items.length() > 0,
+            rx.flex(
+                rx.foreach(
+                    selected_items,
+                    lambda item: rx.badge(
+                        item,
+                        rx.icon(
+                            "x", 
+                            size=14, 
+                            cursor="pointer",
+                            on_click=lambda: remove_handler(prop_name, item),
+                            margin_left="0.25em"
+                        ),
+                        variant="soft", 
+                        color_scheme="violet", 
+                        size="2",
+                        padding="0.4em 0.8em"
                     ),
-                    variant="soft", color_scheme="gray", size="2",
                 ),
-            ),
-            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
-            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
+                wrap="wrap", 
+                spacing="2", 
+                padding="0.5em",
+                border="1px dashed var(--gray-a7)", 
+                border_radius="md",
+                width="100%"
+            )
         ),
+        # El selector buscador
         searchable_select(
             placeholder=placeholder,
             options=options,
             on_change_select=lambda val: add_handler(prop_name, val),
-            value_select="",
+            value_select="", # Siempre vacío porque es multi-select
             search_value=search_value,
             on_change_search=on_change_search,
             filter_name=filter_name,
+            columns=columns # ✨ Pasamos el parámetro al select interno
         ),
-        spacing="2", align_items="stretch", width="100%",
+        spacing="2", 
+        align_items="stretch", 
+        width="100%",
     )
 
 # --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE APARIENCIA CORREGIDA) ---

@@ -2,27 +2,25 @@
 
 import reflex as rx
 from ..state import AppState
-from ..auth.admin_auth import require_panel_access  # <-- 1. Importa el decorador correcto
-from ..ui.components import multi_select_component # Usamos el componente multi-select existente
-from ..ui.components import searchable_select
+from ..auth.admin_auth import require_panel_access
+from ..ui.components import searchable_select, multi_select_component
 from ..ui.base import base_page
 
-@require_panel_access # <-- 2. Usa el nuevo decorador
+@require_panel_access
 def my_location_page_content() -> rx.Component:
-    """Página para que el vendedor (admin) configure su ubicación de origen."""
     
     page_content = rx.vstack(
-        rx.heading("Mi Ubicación de Origen", size="8"),
+        rx.heading("Configuración de Envíos", size="8"),
         rx.text(
-            "Establece la ciudad, barrio y dirección desde donde envías tus productos. El costo de envío se calculará a partir de esta ubicación.",
-            color_scheme="gray", 
-            size="4",
-            text_align="center"
+            "Gestiona tu origen de envío y las zonas donde ofreces beneficios especiales.",
+            color_scheme="gray", size="4", text_align="center"
         ),
+        
+        # 1. ORIGEN (2 COLUMNAS para Ciudad y Barrio)
         rx.card(
             rx.form(
                 rx.vstack(
-                    rx.heading("Ubicación de Envío", size="6", width="100%"),
+                    rx.heading("1. Mi Ubicación de Origen", size="6"),
                     rx.grid(
                         rx.vstack(
                             rx.text("Mi Ciudad*"),
@@ -34,9 +32,9 @@ def my_location_page_content() -> rx.Component:
                                 search_value=AppState.search_seller_city,
                                 on_change_search=AppState.set_search_seller_city,
                                 filter_name="seller_city_filter",
+                                columns="2" # ✨ 2 COLUMNAS PARA CIUDADES
                             ),
-                            align_items="stretch",
-                            spacing="1",
+                            width="100%"
                         ),
                         rx.vstack(
                             rx.text("Mi Barrio*"),
@@ -49,12 +47,12 @@ def my_location_page_content() -> rx.Component:
                                 on_change_search=AppState.set_search_seller_barrio,
                                 filter_name="seller_barrio_filter",
                                 is_disabled=~AppState.seller_profile_city,
+                                columns="2" # ✨ 2 COLUMNAS PARA BARRIOS
                             ),
-                            align_items="stretch",
-                            spacing="1",
+                            width="100%"
                         ),
                         rx.vstack(
-                            rx.text("Mi Dirección* (Calle, Carrera, Apto, etc.)"),
+                            rx.text("Dirección Exacta*"),
                             rx.input(
                                 name="seller_address",
                                 placeholder="Ej: Calle 5 # 10-20",
@@ -62,87 +60,70 @@ def my_location_page_content() -> rx.Component:
                                 on_change=AppState.set_seller_profile_address,
                                 required=True
                             ),
-                            align_items="stretch",
-                            spacing="1",
-                            grid_column={"initial": "1", "md": "span 2"},
+                            width="100%",
+                            grid_column="span 2"
                         ),
-                        columns={"initial": "1", "md": "2"},
-                        spacing="4",
-                        width="100%",
+                        columns="2", 
+                        spacing="4", 
+                        width="100%"
                     ),
-                    rx.hstack(
-                        rx.spacer(),
-                        rx.button("Guardar Mi Ubicación", type="submit", color_scheme="violet"),
-                        width="100%", 
-                        margin_top="1.5em"
-                    ),
-                    spacing="5",
-                    width="100%",
+                    rx.button("Guardar Origen", type="submit", color_scheme="violet", width="100%", margin_top="1em"),
                 ),
                 on_submit=AppState.save_seller_profile,
             ),
             width="100%"
         ),
-        # --- ✨ NUEVA SECCIÓN: UBICACIONES DE DESTINO (MODA COMPLETA) ✨ ---
+
+        # 2. DESTINO MODA COMPLETA (4 COLUMNAS)
         rx.card(
             rx.vstack(
-                rx.heading("Ubicaciones de Destino (Moda Completa)", size="6"),
+                rx.heading("2. Destinos: Moda Completa", size="6"),
                 rx.text(
-                    "Selecciona las ciudades donde aplicará el beneficio de 'Moda Completa' (Envío Gratis por monto). "
-                    "Si lo dejas vacío, aplicará a TODAS las ciudades.",
+                    "Ciudades con envío gratis por monto mínimo. Vacío = Todo el país.",
                     color_scheme="gray", size="2"
                 ),
-                rx.divider(margin_y="1em"),
-                
-                multi_select_component(
-                    placeholder="Escribe para buscar ciudades...",
-                    options=AppState.all_cities_list, # Necesitas exponer ALL_CITIES en AppState
-                    selected_items=AppState.seller_moda_completa_cities, # Nueva variable en State
-                    add_handler=AppState.add_moda_city,      # Nuevo handler
-                    remove_handler=AppState.remove_moda_city, # Nuevo handler
-                    prop_name="seller_moda_completa_cities",
-                    search_value=AppState.search_moda_city,
-                    on_change_search=AppState.set_search_moda_city,
-                    filter_name="moda_city_filter"
-                ),
-                
-                rx.hstack(
-                    rx.spacer(),
-                    rx.button("Guardar Destinos", on_click=AppState.save_seller_destinations, color_scheme="violet"),
-                    width="100%", margin_top="1em"
-                )
-            ),
-            width="100%"
-        ),
-        # --- ✨ NUEVA TARJETA: DESTINOS ENVÍO COMBINADO ✨ ---
-        rx.card(
-            rx.vstack(
-                rx.heading("Ubicaciones de Destino (Envío Combinado)", size="6"),
-                rx.text(
-                    "Selecciona las ciudades donde permites combinar varios productos en un solo envío. "
-                    "Si lo dejas vacío, aplicará a TODAS las ciudades.",
-                    color_scheme="gray", size="2"
-                ),
-                rx.divider(margin_y="1em"),
+                rx.divider(),
                 
                 multi_select_component(
                     placeholder="Buscar ciudades...",
-                    options=AppState.all_cities_list_combined, # Variable filtrada nueva
+                    options=AppState.all_cities_list,
+                    selected_items=AppState.seller_moda_completa_cities,
+                    add_handler=AppState.add_moda_city,
+                    remove_handler=AppState.remove_moda_city,
+                    prop_name="seller_moda_completa_cities",
+                    search_value=AppState.search_moda_city,
+                    on_change_search=AppState.set_search_moda_city,
+                    filter_name="moda_city_filter",
+                    columns="4" # ✨ 4 COLUMNAS (MÁS AMPLIO)
+                ),
+                rx.button("Guardar Moda Completa", on_click=AppState.save_seller_destinations, color_scheme="violet", width="100%")
+            ),
+            width="100%"
+        ),
+
+        # 3. DESTINO ENVÍO COMBINADO (4 COLUMNAS) - NUEVO
+        rx.card(
+            rx.vstack(
+                rx.heading("3. Destinos: Envío Combinado", size="6"),
+                rx.text(
+                    "Ciudades donde permites combinar productos. Vacío = Todo el país.",
+                    color_scheme="gray", size="2"
+                ),
+                rx.divider(),
+                
+                multi_select_component(
+                    placeholder="Buscar ciudades...",
+                    options=AppState.all_cities_list_combined, # Usamos la nueva variable filtrada
                     selected_items=AppState.seller_combined_shipping_cities,
                     add_handler=AppState.add_combined_city,
                     remove_handler=AppState.remove_combined_city,
                     prop_name="seller_combined_shipping_cities",
                     search_value=AppState.search_combined_city,
                     on_change_search=AppState.set_search_combined_city,
-                    filter_name="combined_city_filter"
+                    filter_name="combined_city_filter",
+                    columns="4" # ✨ 4 COLUMNAS (MÁS AMPLIO)
                 ),
-                
-                rx.hstack(
-                    rx.spacer(),
-                    # Usamos el mismo botón de guardar para todo
-                    rx.button("Guardar Todos los Destinos", on_click=AppState.save_seller_destinations, color_scheme="violet"),
-                    width="100%", margin_top="1em"
-                )
+                rx.button("Guardar Envío Combinado", on_click=AppState.save_seller_destinations, color_scheme="violet", width="100%")
             ),
             width="100%"
         ),
@@ -150,6 +131,8 @@ def my_location_page_content() -> rx.Component:
         align="center",
         spacing="5",
         width="100%",
-        max_width="960px",
+        max_width="1000px", # Un poco más ancho para las 4 columnas
+        padding_bottom="3em"
     )
-    return base_page(rx.center(page_content, min_height="85vh"))
+    
+    return base_page(rx.center(page_content))
