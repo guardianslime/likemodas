@@ -634,22 +634,35 @@ async def get_products_for_mobile(
         # --------------------------------
 
         result.append(ProductListDTO(
-            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price),
-            image_url=image_url, category=p.category, description=p.content,
-            is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
-            average_rating=avg_rating, rating_count=rating_count,
-            is_moda_completa=is_moda_eligible, # Usamos la variable calculada
-            # Estos campos no existen en el DTO original, asegúrate de añadirlos si no están, 
-            # o úsalos en el frontend web/app mediante lógica local si prefieres. 
-            # Para la app Android, ya tienes 'is_moda_completa'.
-            # --- ASIGNAMOS EL TEXTO CALCULADO ---
-            shipping_display_text=shipping_txt,
+            id=p.id, 
+            title=p.title, 
+            price=p.price, 
+            price_formatted=fmt_price(p.price),
+            image_url=image_url, 
+            category=p.category, 
+            description=p.content,
             
-            use_default_style=p.use_default_style, light_mode_appearance=p.light_mode_appearance,
-            dark_mode_appearance=p.dark_mode_appearance, light_card_bg_color=p.light_card_bg_color,
-            light_title_color=p.light_title_color, light_price_color=p.light_price_color,
-            dark_card_bg_color=p.dark_card_bg_color, dark_title_color=p.dark_title_color,
-            dark_price_color=p.dark_price_color, lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark
+            # --- CORRECCIÓN: Solo una asignación ---
+            is_moda_completa=is_moda_eligible,  # Usamos la variable calculada (NO p.is_moda_completa_eligible)
+            # ---------------------------------------
+            
+            combines_shipping=p.combines_shipping,
+            average_rating=avg_rating, 
+            rating_count=rating_count,
+            
+            # (El resto sigue igual)
+            shipping_display_text=shipping_txt,
+            use_default_style=p.use_default_style, 
+            light_mode_appearance=p.light_mode_appearance,
+            dark_mode_appearance=p.dark_mode_appearance, 
+            light_card_bg_color=p.light_card_bg_color,
+            light_title_color=p.light_title_color, 
+            light_price_color=p.light_price_color,
+            dark_card_bg_color=p.dark_card_bg_color, 
+            dark_title_color=p.dark_title_color,
+            dark_price_color=p.dark_price_color, 
+            lightbox_bg_light=lightbox_light, 
+            lightbox_bg_dark=lightbox_dark
         ))
     return result
 
