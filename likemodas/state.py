@@ -4006,8 +4006,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     seller_moda_completa_cities: list[str] = []
     search_moda_city: str = ""
 
-    # ✨ NUEVAS VARIABLES PARA ENVÍO COMBINADO
-    seller_combined_shipping_cities: list[str] = []
+    # 🔴 AGREGA ESTA NUEVA VARIABLE (FALTA ESTO):
+    seller_combined_shipping_cities: List[str] = []
     search_combined_city: str = ""
 
     def set_search_combined_city(self, val: str): self.search_combined_city = val
@@ -4052,16 +4052,24 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def save_seller_destinations(self):
-        if not self.authenticated_user_info: return
+        """Guardar las configuraciones de ciudades restringidas."""
         with rx.session() as session:
-            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            user_info = session.exec(
+                select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)
+            ).first()
+            
             if user_info:
+                # ✅ ESTO SÍ FUNCIONA (Moda Completa)
                 user_info.moda_completa_cities = self.seller_moda_completa_cities
-                # ✨ Guardar la nueva lista
-                user_info.combined_shipping_cities = self.seller_combined_shipping_cities
+                
+                # 🔴 AGREGA ESTO PARA ARREGLAR "ENVÍO COMBINADO":
+                # Sin esto, el API siempre recibe una lista vacía.
+                user_info.combined_shipping_cities = self.seller_combined_shipping_cities 
+                
                 session.add(user_info)
                 session.commit()
-        yield rx.toast.success("Destinos actualizados correctamente.")
+                
+        return rx.toast.success("Destinos de envío actualizados correctamente.")
 
     def set_search_moda_city(self, val: str): self.search_moda_city = val
 
