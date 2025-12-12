@@ -16,14 +16,13 @@ def my_location_page_content() -> rx.Component:
             color_scheme="gray", size="4", text_align="center"
         ),
         
-        # 1. ORIGEN
+        # --- 1. TARJETA ORIGEN ---
         rx.card(
-            # ... (El código interno del formulario se mantiene igual, ya tiene columns="2") ...
             rx.form(
                 rx.vstack(
                     rx.heading("1. Mi Ubicación de Origen", size="6"),
                     rx.grid(
-                        # ... (inputs de ciudad, barrio, dirección) ...
+                        # Ciudad y Barrio en 2 columnas
                         rx.vstack(
                             rx.text("Mi Ciudad*"),
                             searchable_select(
@@ -34,7 +33,7 @@ def my_location_page_content() -> rx.Component:
                                 search_value=AppState.search_seller_city,
                                 on_change_search=AppState.set_search_seller_city,
                                 filter_name="seller_city_filter",
-                                columns="2" 
+                                columns="2" # ✨ Lista en 2 columnas
                             ),
                             width="100%"
                         ),
@@ -49,11 +48,10 @@ def my_location_page_content() -> rx.Component:
                                 on_change_search=AppState.set_search_seller_barrio,
                                 filter_name="seller_barrio_filter",
                                 is_disabled=~AppState.seller_profile_city,
-                                columns="2" 
+                                columns="2" # ✨ Lista en 2 columnas
                             ),
                             width="100%"
                         ),
-                        # ... (resto de inputs) ...
                         rx.vstack(
                             rx.text("Dirección Exacta*"),
                             rx.input(
@@ -75,12 +73,11 @@ def my_location_page_content() -> rx.Component:
                 on_submit=AppState.save_seller_profile,
             ),
             width="100%",
-            # Añadimos z-index relativo para manejar el apilamiento si fuera necesario, 
-            # aunque el z-index del componente debería ser suficiente.
-            style={"z-index": "30"} 
+            # ✨ TRUCO CLAVE: overflow visible y z-index alto
+            style={"overflow": "visible", "z-index": "30"} 
         ),
 
-        # 2. DESTINO MODA COMPLETA
+        # --- 2. TARJETA MODA COMPLETA ---
         rx.card(
             rx.vstack(
                 rx.heading("2. Destinos: Moda Completa", size="6"),
@@ -100,15 +97,16 @@ def my_location_page_content() -> rx.Component:
                     search_value=AppState.search_moda_city,
                     on_change_search=AppState.set_search_moda_city,
                     filter_name="moda_city_filter",
-                    columns="4" 
+                    columns="4" # ✨ Lista amplia en 4 columnas
                 ),
                 rx.button("Guardar Moda Completa", on_click=AppState.save_seller_destinations, color_scheme="violet", width="100%")
             ),
             width="100%",
-            style={"z-index": "20"} # Menor que el de arriba por si se solapan desplegables
+            # ✨ TRUCO CLAVE: z-index medio (menor que el de arriba, mayor que el de abajo)
+            style={"overflow": "visible", "z-index": "20"}
         ),
 
-        # 3. DESTINO ENVÍO COMBINADO
+        # --- 3. TARJETA ENVÍO COMBINADO ---
         rx.card(
             rx.vstack(
                 rx.heading("3. Destinos: Envío Combinado", size="6"),
@@ -128,24 +126,22 @@ def my_location_page_content() -> rx.Component:
                     search_value=AppState.search_combined_city,
                     on_change_search=AppState.set_search_combined_city,
                     filter_name="combined_city_filter",
-                    columns="4"
+                    columns="4" # ✨ Lista amplia en 4 columnas
                 ),
                 rx.button("Guardar Envío Combinado", on_click=AppState.save_seller_destinations, color_scheme="violet", width="100%")
             ),
             width="100%",
-            style={"z-index": "10"}
+            # ✨ TRUCO CLAVE: z-index bajo
+            style={"overflow": "visible", "z-index": "10"}
         ),
 
         align="center",
         spacing="5",
         width="100%",
-        max_width="1000px", 
+        max_width="1000px", # Un poco más ancho para que quepan las 4 columnas
         
-        # --- ✨ CAMBIO CRÍTICO: MÁS ESPACIO INFERIOR ✨ ---
-        # Aumentamos el padding inferior a 400px (o más) para asegurar 
-        # que cuando la última lista se despliegue, haya espacio en la página
-        # y no se corte o requiera un scroll incómodo.
-        padding_bottom="400px" 
+        # ✨ ESPACIO FINAL EXTRA: Para que la última lista no se corte abajo de la página
+        padding_bottom="450px" 
     )
     
     return base_page(rx.center(page_content, min_height="85vh"))
