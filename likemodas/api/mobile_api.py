@@ -658,7 +658,7 @@ async def get_products_for_mobile(
             category=p.category, 
             description=p.content,
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=p.combines_shipping,
+            combines_shipping=is_combined_eligible,
             average_rating=avg_rating, 
             rating_count=rating_count,
             shipping_display_text=shipping_txt, # Campo nuevo crítico
