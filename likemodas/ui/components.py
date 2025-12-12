@@ -53,6 +53,8 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
 
 # likemodas/ui/components.py
 
+# likemodas/ui/components.py
+
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
@@ -63,25 +65,13 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
     columns: str = "1",
-    use_mapping: bool = False, # ✨ NUEVO PARÁMETRO
+    use_mapping: bool = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        # Si use_mapping es True, asumimos que option es [label, value]
-        # Si es False, asumimos que option es un string directo.
-        
-        label = rx.cond(
-            use_mapping, 
-            option[0], 
-            option
-        )
-        
-        value = rx.cond(
-            use_mapping, 
-            option[1], 
-            option
-        )
+        label = rx.cond(use_mapping, option[0], option)
+        value = rx.cond(use_mapping, option[1], option)
 
         return rx.button(
             label,
@@ -129,22 +119,25 @@ def searchable_select(
                         spacing="2", 
                         width="100%",
                     ),
-                    max_height="300px", 
+                    # --- ✨ CAMBIO 1: Aumentamos la altura máxima visible ✨ ---
+                    max_height="400px",  # Más espacio vertical para la lista
                     width="100%", 
                     type="auto", 
                     scrollbars="vertical",
+                    style={"padding-right": "10px"} # Evitar que el scroll tape contenido
                 ),
                 spacing="3", 
                 padding="1em", 
-                bg=rx.color("gray", 3),
+                bg=rx.color("gray", 2), # Un fondo ligeramente distinto para contraste
                 border="1px solid", 
-                border_color=rx.color("gray", 7),
+                border_color=rx.color("gray", 6),
                 border_radius="md", 
                 position="absolute", 
-                top="105%",
+                top="110%", # Un poco más separado del botón
                 width="100%", 
-                z_index="50",
-                box_shadow="0px 10px 15px -3px rgba(0,0,0,0.1)"
+                # --- ✨ CAMBIO 2: Z-Index muy alto para asegurar que flote encima de todo ✨ ---
+                z_index="9999", 
+                box_shadow="0px 10px 25px -5px rgba(0,0,0,0.3)" # Sombra más pronunciada
             )
         ),
         position="relative", 
