@@ -702,7 +702,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     is_moda_eligible = False
 
         # 4. Validar Envío Combinado (Lógica de Ciudad - NUEVO)
-        is_combined_eligible = p.combines_shipping
+        is_combined_eligible = p.combines_shipping 
         # Verificamos si el atributo existe en el modelo y si tiene datos
         if is_combined_eligible and p.userinfo and getattr(p.userinfo, 'combined_shipping_cities', None):
              if buyer_city and buyer_city not in p.userinfo.combined_shipping_cities:

@@ -49,6 +49,8 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
 
 # --- searchable_select (SIN CAMBIOS) ---
 # 1. Modificar searchable_select para aceptar 'columns'
+# likemodas/ui/components.py
+
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
@@ -58,30 +60,51 @@ def searchable_select(
     on_change_search: Any,
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
-    columns: str = "1", # ✨ NUEVO PARÁMETRO: Por defecto 1 columna
+    columns: str = "1",
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        # Lógica para manejar si la opción es string o tupla
+        # --- CORRECCIÓN CRÍTICA ---
+        # En lugar de comprobar el tipo dinámicamente con .type() que falla,
+        # usamos la indexación directa y asumimos que si es una lista/tupla,
+        # podemos acceder a sus elementos. Si es un string, el acceso [0] 
+        # también funciona (dando el primer carácter), pero eso no es lo que queremos.
+        
+        # El truco en Reflex para soportar ambos (lista de strings y lista de tuplas)
+        # es estandarizar la entrada. Pero si no podemos cambiar todos los usos,
+        # intentamos esto:
+        
+        # Reflex maneja rx.cond de forma diferida. No podemos usar isinstance pythonico aquí.
+        # La solución más segura es convertir el option a string y usarlo como valor y label
+        # si es un tipo simple, o extraer si es complejo.
+        
+        # Sin embargo, dado el error específico, la mejor apuesta es 
+        # tratar 'option' como si fuera una lista [label, value].
+        # Si tus opciones son solo strings ["A", "B"], cámbialas en el origen a [["A", "A"], ["B", "B"]]
+        # O usa esta lógica que intenta detectar si es un objeto iterable:
+        
+        # Una forma segura en Reflex sin .type() es usar rx.cond con isinstance en tiempo de compilación
+        # pero 'option' es una Var de iteración.
+        
+        # SOLUCIÓN PRÁCTICA: Asumimos que si tiene longitud 2 es un par label/value,
+        # si no, es un valor simple. (Esto puede fallar si un string tiene longitud 2).
+        
+        # MEJOR APROXIMACIÓN:
+        # Usamos el propio option como valor por defecto.
+        
         label = rx.cond(
-            rx.cond(
-                option.type() == list, 
-                True, 
-                False
-            ), 
-            option[0], # Si es lista/tupla, el label es el primero
-            option     # Si es string, es el valor directo
-        )
-        value = rx.cond(
-            rx.cond(
-                option.type() == list, 
-                True, 
-                False
-            ), 
-            option[1], 
+            option.is_instance(list) | option.is_instance(tuple),
+            option[0],
             option
         )
+        
+        value = rx.cond(
+            option.is_instance(list) | option.is_instance(tuple),
+            option[1],
+            option
+        )
+        # --------------------------
 
         return rx.button(
             label,
@@ -103,7 +126,7 @@ def searchable_select(
             width="100%", 
             justify_content="space-between",
             color_scheme="gray", 
-            size="3", # Botón un poco más grande
+            size="3", 
             is_disabled=is_disabled,
             height="auto", 
             min_height="40px",
@@ -123,15 +146,13 @@ def searchable_select(
                     autofocus=True
                 ),
                 rx.scroll_area(
-                    # --- ✨ AQUÍ ESTÁ EL CAMBIO DE DISEÑO ✨ ---
                     rx.grid(
                         rx.foreach(options, render_option),
-                        columns=columns, # Usamos el parámetro columns
+                        columns=columns, 
                         spacing="2", 
                         width="100%",
                     ),
-                    # -------------------------------------------
-                    max_height="300px", # Más altura para ver mejor
+                    max_height="300px", 
                     width="100%", 
                     type="auto", 
                     scrollbars="vertical",
