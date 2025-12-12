@@ -600,14 +600,25 @@ async def get_products_for_mobile(
         
         # Verificamos si userinfo existe antes de acceder a sus campos
         if p.userinfo:
-            # Recuperamos la lista de forma segura (si es None, usamos lista vacía)
             seller_moda_cities = p.userinfo.moda_completa_cities or []
             
-            # Si hay restricciones y tenemos ciudad del comprador
             if is_moda_eligible and seller_moda_cities and buyer_city:
                 if buyer_city not in seller_moda_cities:
                     is_moda_eligible = False
-        # ----------------------------------------
+
+        # --- [NUEVO] LÓGICA BLINDADA DE ENVÍO COMBINADO (FALTABA ESTO) ---
+        is_combined_eligible = p.combines_shipping
+
+        if p.userinfo:
+            # Recuperamos la lista de ciudades de envío combinado
+            seller_combined_cities = p.userinfo.combined_shipping_cities or []
+            
+            # Si el beneficio está activo, el vendedor puso restricciones y sabemos la ciudad del comprador
+            if is_combined_eligible and seller_combined_cities and buyer_city:
+                # Si la ciudad del comprador NO está en la lista permitida -> SE OCULTA
+                if buyer_city not in seller_combined_cities:
+                    is_combined_eligible = False
+        # ------------------------------------------------------------------
 
         # Textos dinámicos
         moda_tooltip = ""
