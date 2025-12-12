@@ -3,6 +3,7 @@
 import reflex as rx
 from ..state import AppState
 from ..auth.admin_auth import require_panel_access  # <-- 1. Importa el decorador correcto
+from ..ui.components import multi_select_component # Usamos el componente multi-select existente
 from ..ui.components import searchable_select
 from ..ui.base import base_page
 
@@ -82,15 +83,42 @@ def my_location_page_content() -> rx.Component:
             ),
             width="100%"
         ),
+        # --- ✨ NUEVA SECCIÓN: UBICACIONES DE DESTINO (MODA COMPLETA) ✨ ---
+        rx.card(
+            rx.vstack(
+                rx.heading("Ubicaciones de Destino (Moda Completa)", size="6"),
+                rx.text(
+                    "Selecciona las ciudades donde aplicará el beneficio de 'Moda Completa' (Envío Gratis por monto). "
+                    "Si lo dejas vacío, aplicará a TODAS las ciudades.",
+                    color_scheme="gray", size="2"
+                ),
+                rx.divider(margin_y="1em"),
+                
+                multi_select_component(
+                    placeholder="Escribe para buscar ciudades...",
+                    options=AppState.all_cities_list, # Necesitas exponer ALL_CITIES en AppState
+                    selected_items=AppState.seller_moda_completa_cities, # Nueva variable en State
+                    add_handler=AppState.add_moda_city,      # Nuevo handler
+                    remove_handler=AppState.remove_moda_city, # Nuevo handler
+                    prop_name="seller_moda_completa_cities",
+                    search_value=AppState.search_moda_city,
+                    on_change_search=AppState.set_search_moda_city,
+                    filter_name="moda_city_filter"
+                ),
+                
+                rx.hstack(
+                    rx.spacer(),
+                    rx.button("Guardar Destinos", on_click=AppState.save_seller_destinations, color_scheme="violet"),
+                    width="100%", margin_top="1em"
+                )
+            ),
+            width="100%"
+        ),
+        # ---------------------------------------------------------------
+
         align="center",
         spacing="5",
         width="100%",
         max_width="960px",
     )
-    
-    return base_page(
-        rx.center(
-            page_content,
-            min_height="85vh"
-        )
-    )
+    return base_page(rx.center(page_content, min_height="85vh"))

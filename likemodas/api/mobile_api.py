@@ -557,16 +557,13 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
     raise HTTPException(404, "Dirección no encontrada")
 
 # --- CORRECCIÓN 3: CÁLCULO DE ENVÍO Y user_id OPCIONAL ---
-@router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(
     category: Optional[str] = None, 
-    user_id: Optional[int] = Query(None), # <-- Aceptamos el user_id
+    user_id: Optional[int] = Query(None), 
     session: Session = Depends(get_session)
 ):
-    # 1. Preparar datos del comprador (si existe)
+    # 1. Obtener ciudad del comprador
     buyer_city = None
-    buyer_barrio = None
-    
     if user_id:
         default_addr = session.exec(
             select(ShippingAddressModel)
@@ -594,6 +591,27 @@ async def get_products_for_mobile(
                  lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
         
         avg_rating, rating_count = calculate_rating(session, p.id)
+
+        # --- ✨ LÓGICA DE MODA COMPLETA GEOGRÁFICA ✨ ---
+        is_moda_eligible = p.is_moda_completa_eligible
+        
+        # Si el producto es elegible, verificamos la restricción de ciudad del vendedor
+        if is_moda_eligible and p.userinfo and p.userinfo.moda_completa_cities:
+            # Si el vendedor tiene restricciones Y sabemos la ciudad del comprador
+            if buyer_city:
+                # Si la ciudad del comprador NO está en la lista permitida, desactivamos la etiqueta
+                if buyer_city not in p.userinfo.moda_completa_cities:
+                    is_moda_eligible = False
+        # --------------------------------------------------
+
+        # Textos dinámicos para los Tooltips
+        moda_tooltip = ""
+        if is_moda_eligible and p.free_shipping_threshold:
+             moda_tooltip = f"Envío gratis en compras superiores a {fmt_price(p.free_shipping_threshold)} de este vendedor."
+
+        combo_tooltip = ""
+        if p.combines_shipping:
+             combo_tooltip = f"Puedes combinar hasta {p.shipping_combination_limit} productos de este vendedor en un solo envío."
         
         # --- CÁLCULO DINÁMICO DE ENVÍO ---
         seller_city = p.userinfo.seller_city if p.userinfo else None
@@ -620,7 +638,10 @@ async def get_products_for_mobile(
             image_url=image_url, category=p.category, description=p.content,
             is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping,
             average_rating=avg_rating, rating_count=rating_count,
-            
+            is_moda_completa=is_moda_eligible, # Usamos la variable calculada
+            # Estos campos no existen en el DTO original, asegúrate de añadirlos si no están, 
+            # o úsalos en el frontend web/app mediante lógica local si prefieres. 
+            # Para la app Android, ya tienes 'is_moda_completa'.
             # --- ASIGNAMOS EL TEXTO CALCULADO ---
             shipping_display_text=shipping_txt,
             
@@ -632,11 +653,43 @@ async def get_products_for_mobile(
         ))
     return result
 
+# 2. Función get_product_detail Actualizada
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        p = session.get(BlogPostModel, product_id)
-        if not p or not p.publish_active: raise HTTPException(404, "Producto no encontrado")
+        # Cargar producto junto con la info del vendedor para leer sus ciudades
+        p = session.exec(
+            select(BlogPostModel)
+            .options(joinedload(BlogPostModel.userinfo)) 
+            .where(BlogPostModel.id == product_id)
+        ).first()
+
+        if not p or not p.publish_active: 
+            raise HTTPException(404, "Producto no encontrado")
+
+        # --- 📍 LÓGICA DE CIUDAD DEL COMPRADOR ---
+        buyer_city = None
+        if user_id:
+            default_addr = session.exec(
+                select(ShippingAddressModel)
+                .where(ShippingAddressModel.userinfo_id == user_id, ShippingAddressModel.is_default == True)
+            ).first()
+            if default_addr:
+                buyer_city = default_addr.city
+        # -----------------------------------------
+
+        # --- 🏷️ LÓGICA DE VISIBILIDAD DE ETIQUETA ---
+        is_moda_eligible = p.is_moda_completa_eligible
+        
+        # Si el producto es elegible, pero el vendedor restringió ciudades
+        if is_moda_eligible and p.userinfo and p.userinfo.moda_completa_cities:
+            # Si sabemos la ciudad del comprador
+            if buyer_city:
+                # Si la ciudad del comprador NO está en la lista permitida -> FALSE
+                if buyer_city not in p.userinfo.moda_completa_cities:
+                    is_moda_eligible = False
+            # (Si no hay buyer_city, se mantiene True por defecto para incentivar registro)
+        # --------------------------------------------
         author_name = "Likemodas"; seller_info_id = p.userinfo_id if p.userinfo_id else 0
         if p.userinfo_id:
             try:

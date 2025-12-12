@@ -219,6 +219,9 @@ class ProductCardData(rx.Base):
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
+    
+    # --- ✨ AGREGAR ESTE CAMPO ✨ ---
+    allowed_moda_cities: list[str] = []
     free_shipping_threshold: Optional[float] = None
     combines_shipping: bool = False
     shipping_combination_limit: Optional[int] = None
@@ -3716,11 +3719,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            # --- USO DEL ALGORITMO DE RANKING ---
             results = session.exec(
-                query.order_by(get_ranking_query_sort(BlogPostModel).desc()).limit(20) 
-            ).all()
-            # ------------------------------------
+                query
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)) # ✨ Cargar UserInfo
+                .order_by(get_ranking_query_sort(BlogPostModel).desc())
+                .limit(20) 
+            ).unique().all() # Añadir .unique() por seguridad con joins
 
             temp_posts = []
             for p in results:
@@ -3730,13 +3734,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
                 
-                # ... (resto de la lógica de creación de ProductCardData) ...
-                # (Para no hacer la respuesta gigante, asumo que mantienes el bloque for)
+                # ✨ EXTRAER CIUDADES
+                seller_cities = p.userinfo.moda_completa_cities if p.userinfo and p.userinfo.moda_completa_cities else []
                 
-                # (Solo asegúrate de pegar esto dentro del for)
-                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
-                combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
-                
+                moda_text = f"Envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                combo_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
+
                 card_data = ProductCardData(
                     id=p.id,
                     userinfo_id=p.userinfo_id,
@@ -3755,8 +3758,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_combination_limit=p.shipping_combination_limit,
                     shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     is_imported=p.is_imported,
-                    moda_completa_tooltip_text=moda_completa_text,
-                    envio_combinado_tooltip_text=combinado_text,
+                    # ✨ ASIGNAR LISTA DE CIUDADES
+                    allowed_moda_cities=seller_cities,
+                    
+                    moda_completa_tooltip_text=moda_text,
+                    envio_combinado_tooltip_text=combo_text,
                     use_default_style=p.use_default_style,
                     light_mode_appearance=p.light_mode_appearance,
                     dark_mode_appearance=p.dark_mode_appearance,
@@ -3993,6 +3999,36 @@ class AppState(reflex_local_auth.LocalAuthState):
     def toggle_color_picker(self):
         """Muestra u oculta la paleta de colores."""
         self.show_color_picker = not self.show_color_picker
+
+    # En AppState:
+    seller_moda_completa_cities: list[str] = []
+    search_moda_city: str = ""
+
+    def set_search_moda_city(self, val: str): self.search_moda_city = val
+
+    def add_moda_city(self, prop: str, val: str):
+        if val not in self.seller_moda_completa_cities:
+            self.seller_moda_completa_cities.append(val)
+            
+    def remove_moda_city(self, prop: str, val: str):
+        if val in self.seller_moda_completa_cities:
+            self.seller_moda_completa_cities.remove(val)
+    
+    @rx.var
+    def all_cities_list(self) -> list[str]:
+        if not self.search_moda_city: return ALL_CITIES
+        return [c for c in ALL_CITIES if self.search_moda_city.lower() in c.lower()]
+
+    @rx.event
+    def save_seller_destinations(self):
+        if not self.authenticated_user_info: return
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                user_info.moda_completa_cities = self.seller_moda_completa_cities
+                session.add(user_info)
+                session.commit()
+        yield rx.toast.success("Destinos de Moda Completa actualizados.")
     
     @rx.event
     def load_main_page_data(self):
@@ -4048,8 +4084,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             # En lugar de .all(), usamos limit().
             # Esto carga solo los 20 más recientes.
             results = session.exec(
-                query.order_by(BlogPostModel.created_at.desc()).limit(20) 
-            ).all()
+                query
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)) # ✨ IMPORTANTE: Cargar UserInfo
+                .order_by(BlogPostModel.created_at.desc())
+                .limit(20)
+            ).unique().all()
 
             temp_posts = []
             for p in results:
@@ -4058,8 +4097,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
 
-                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
-                combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
+                # ✨ EXTRAER CIUDADES PERMITIDAS DEL VENDEDOR
+                seller_cities = p.userinfo.moda_completa_cities if p.userinfo and p.userinfo.moda_completa_cities else []
+                
+                # Texto por defecto (se recalculará en el cliente si cambia la ciudad)
+                moda_text = f"Envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                combo_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
 
                 card_data = ProductCardData(
                     id=p.id,
@@ -4079,8 +4122,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_combination_limit=p.shipping_combination_limit,
                     shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     is_imported=p.is_imported,
-                    moda_completa_tooltip_text=moda_completa_text,
-                    envio_combinado_tooltip_text=combinado_text,
+                    # ✨ ASIGNAR LISTA DE CIUDADES AL DTO
+                    allowed_moda_cities=seller_cities, 
+                    
+                    moda_completa_tooltip_text=moda_text,
+                    envio_combinado_tooltip_text=combo_text,
                     use_default_style=p.use_default_style,
                     light_mode_appearance=p.light_mode_appearance,
                     dark_mode_appearance=p.dark_mode_appearance,
@@ -8050,52 +8096,61 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def recalculate_all_shipping_costs(self):
         """
-        Recalcula el costo de envío para cada producto basado en la dirección
-        del comprador y la ciudad/barrio del vendedor.
+        Recalcula costos y elegibilidad de etiquetas basado en la dirección del comprador.
         """
         if not self._raw_posts:
             self.posts = []
             return
 
-        # Si no hay dirección, los costos vuelven a ser los base
+        # Si no hay dirección, asumimos vista general (mostrar etiquetas por defecto)
         if not self.default_shipping_address:
             self.posts = self._raw_posts
             return
 
-        # --- INICIO DE LA MODIFICACIÓN ---
         buyer_city = self.default_shipping_address.city
         buyer_barrio = self.default_shipping_address.neighborhood
-        # --- FIN DE LA MODIFICACIÓN ---
         
         with rx.session() as session:
+            # Obtener datos de ubicación de los vendedores
             seller_ids = {p.userinfo_id for p in self._raw_posts}
-            sellers_info = session.exec(
-                sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
-            ).all()
-            # --- INICIO DE LA MODIFICACIÓN ---
-            # Obtenemos un mapa con la ciudad y el barrio de cada vendedor
+            sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))).all()
             seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-            # --- FIN DE LA MODIFICACIÓN ---
 
             recalculated_posts = []
             for post in self._raw_posts:
-                # --- INICIO DE LA MODIFICACIÓN ---
-                seller_data = seller_data_map.get(post.userinfo_id)
-                seller_city = seller_data.get("city") if seller_data else None
-                seller_barrio = seller_data.get("barrio") if seller_data else None
-                
-                final_shipping_cost = calculate_dynamic_shipping(
-                    base_cost=post.shipping_cost or 0.0,
-                    seller_barrio=seller_barrio,
-                    buyer_barrio=buyer_barrio,
-                    # Pasamos los nuevos argumentos a la llamada
-                    seller_city=seller_city,
-                    buyer_city=buyer_city
-                )
-                # --- FIN DE LA MODIFICACIÓN ---
-
                 updated_post = post.copy()
-                updated_post.shipping_display_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
+
+                # --- ✨ LÓGICA DE FILTRADO GEOGRÁFICO DE ETIQUETA ✨ ---
+                is_eligible = post.is_moda_completa_eligible
+                
+                # Si el producto tiene restricciones de ciudad (lista no vacía)
+                if is_eligible and post.allowed_moda_cities:
+                    # Si la ciudad del comprador NO está en la lista -> Desactivar
+                    if buyer_city not in post.allowed_moda_cities:
+                        is_eligible = False
+                
+                updated_post.is_moda_completa_eligible = is_eligible
+
+                # Generar mensaje del Tooltip
+                if is_eligible:
+                    threshold_val = post.free_shipping_threshold or 0
+                    # ✨ MENSAJE DINÁMICO QUE SALE DE LA ETIQUETA
+                    updated_post.moda_completa_tooltip_text = f"Envío gratis en compras superiores a {format_to_cop(threshold_val)} de este vendedor."
+                else:
+                    updated_post.moda_completa_tooltip_text = ""
+                # -----------------------------------------------------
+
+                # Lógica existente de cálculo de costo de envío
+                seller_data = seller_data_map.get(post.userinfo_id)
+                s_city = seller_data.get("city") if seller_data else None
+                s_barrio = seller_data.get("barrio") if seller_data else None
+                
+                final_cost = calculate_dynamic_shipping(
+                    base_cost=post.shipping_cost or 0.0,
+                    seller_barrio=s_barrio, buyer_barrio=buyer_barrio,
+                    seller_city=s_city, buyer_city=buyer_city
+                )
+                updated_post.shipping_display_text = f"Envío: {format_to_cop(final_cost)}" if final_cost > 0 else "Envío Gratis"
                 
                 recalculated_posts.append(updated_post)
 
