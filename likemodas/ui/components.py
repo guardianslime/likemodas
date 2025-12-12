@@ -61,13 +61,25 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
     columns: str = "1",
-    use_mapping: bool = False,
+    use_mapping: bool = False, # ✨ Usamos esto para evitar el error de tipos
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        label = rx.cond(use_mapping, option[0], option)
-        value = rx.cond(use_mapping, option[1], option)
+        # Si use_mapping es True, asumimos que option es una lista [label, value]
+        # Si es False, asumimos que option es un string directo.
+        
+        label = rx.cond(
+            use_mapping, 
+            option[0],  # Si es mapping, el texto es el primer elemento
+            option      # Si no, el texto es el string completo
+        )
+        
+        value = rx.cond(
+            use_mapping, 
+            option[1],  # Si es mapping, el valor es el segundo elemento
+            option      # Si no, el valor es el string completo
+        )
 
         return rx.button(
             label,
@@ -80,7 +92,6 @@ def searchable_select(
             size="2"
         )
 
-    # El contenedor principal es un VStack para que la lista empuje contenido si es necesario
     return rx.vstack(
         rx.button(
             rx.cond(value_select, value_select, placeholder),
@@ -93,20 +104,19 @@ def searchable_select(
             size="3", 
             is_disabled=is_disabled,
             height="auto", 
-            min_height="45px", # Un poco más alto para mejor clic
+            min_height="45px",
             white_space="normal", 
             text_align="left",
             padding="0.5em 0.75em", 
             type="button",
         ),
         
-        # La lista desplegable
         rx.cond(
             is_open,
             rx.box(
                 rx.vstack(
                     rx.input(
-                        placeholder="Escribe para buscar...", 
+                        placeholder="Buscar...", 
                         value=search_value, 
                         on_change=on_change_search,
                         width="100%",
@@ -119,7 +129,7 @@ def searchable_select(
                             spacing="2", 
                             width="100%",
                         ),
-                        max_height="350px", # Altura generosa para ver muchas opciones
+                        max_height="350px", 
                         width="100%", 
                         type="auto", 
                         scrollbars="vertical",
@@ -133,16 +143,13 @@ def searchable_select(
                     width="100%",
                     box_shadow="lg"
                 ),
-                # --- CAMBIO CRÍTICO: Posición relativa ---
-                # Al quitar 'absolute', la lista ocupará espacio físico en la página,
-                # empujando el contenido de abajo. Esto garantiza que siempre se vea.
                 width="100%",
                 margin_top="0.5em",
                 z_index="50" 
             )
         ),
         width="100%",
-        spacing="0", # Sin espacio extra si está cerrado
+        spacing="0", 
         align_items="stretch"
     )
 
@@ -156,7 +163,7 @@ def multi_select_component(
     search_value: rx.Var[str],
     on_change_search: Any,
     filter_name: str,
-    columns: str = "1" 
+    columns: str = "1"
 ) -> rx.Component:
     return rx.vstack(
         rx.cond(
@@ -196,7 +203,8 @@ def multi_select_component(
             search_value=search_value,
             on_change_search=on_change_search,
             filter_name=filter_name,
-            columns=columns
+            columns=columns,
+            use_mapping=False # Por defecto False para multi-select
         ),
         spacing="0", 
         align_items="stretch", 
