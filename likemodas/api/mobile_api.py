@@ -610,21 +610,30 @@ async def get_products_for_mobile(
                 if normalized_buyer_city not in normalized_seller_cities:
                     is_moda_eligible = False
 
-        # --- LÓGICA CORREGIDA DE ENVÍO COMBINADO (Normalizada) ---
-        is_combined_eligible = p.combines_shipping # Valor base de la BD
-
-        if p.userinfo and is_combined_eligible:
-            seller_combined_cities = p.userinfo.combined_shipping_cities or []
+        # --- LÓGICA CORREGIDA DE ENVÍO COMBINADO ---
+        # 1. Empezamos en False (Restrictivo por defecto para que no se muestre a todos)
+        is_combined_eligible = False
+        
+        # 2. Solo evaluamos si el producto tiene el beneficio activo en base de datos
+        if p.combines_shipping and p.userinfo:
+            seller_cities = p.userinfo.combined_shipping_cities or []
             
-            # Solo filtramos si el vendedor restringió ciudades (Vacío = Todo el país)
-            # Y si tenemos la ciudad del comprador
-            if seller_combined_cities and normalized_buyer_city:
-                normalized_combined_cities = [c.strip().lower() for c in seller_combined_cities]
-                
-                # Si la ciudad del comprador NO está en la lista permitida -> SE OCULTA
-                if normalized_buyer_city not in normalized_combined_cities:
-                    is_combined_eligible = False
-        # ---------------------------------------------------------
+            # 3. CORRECCIÓN CRÍTICA: Si el vendedor NO seleccionó ciudades (lista vacía),
+            # asumimos que el beneficio SOLO aplica en SU ciudad de origen.
+            if not seller_cities:
+                if p.userinfo.seller_city:
+                    seller_cities = [p.userinfo.seller_city]
+            
+            # 4. Normalizamos listas para comparar (ignorando mayúsculas/espacios)
+            # Usamos la función normalize_text_api si está disponible, o .strip().lower()
+            seller_cities_norm = [c.strip().lower() for c in seller_cities]
+            
+            # 5. Verificación Final:
+            # Solo mostramos la etiqueta si:
+            # A) Tenemos la ciudad del comprador (normalized_buyer_city no está vacía)
+            # B) La ciudad del comprador está en la lista permitida
+            if normalized_buyer_city and normalized_buyer_city in seller_cities_norm:
+                is_combined_eligible = True
 
         # Textos dinámicos
         shipping_txt = "Envío a convenir"
@@ -677,6 +686,7 @@ async def get_products_for_mobile(
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
+        # 1. Obtener el producto con sus relaciones
         p = session.exec(
             select(BlogPostModel)
             .options(joinedload(BlogPostModel.userinfo))
@@ -686,44 +696,53 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
 
+        # 2. Obtener la ciudad del comprador (si está logueado)
         buyer_city = None
+        normalized_buyer_city = ""
+        
         if user_id:
             default_addr = session.exec(
                 select(ShippingAddressModel)
                 .where(ShippingAddressModel.userinfo_id == user_id, ShippingAddressModel.is_default == True)
             ).first()
-            if default_addr:
+            if default_addr and default_addr.city:
                 buyer_city = default_addr.city
+                normalized_buyer_city = buyer_city.strip().lower()
 
-        # --- 🛠️ BLINDAJE DE MODA COMPLETA 🛠️ ---
+        # --- 🛠️ LÓGICA BLINDADA DE MODA COMPLETA 🛠️ ---
         is_moda_eligible = p.is_moda_completa_eligible
-        moda_cities = getattr(p.userinfo, 'moda_completa_cities', None)
         
-        if is_moda_eligible and p.userinfo and moda_cities:
-            if buyer_city:
-                if buyer_city not in moda_cities:
+        if is_moda_eligible and p.userinfo:
+            moda_cities = getattr(p.userinfo, 'moda_completa_cities', []) or []
+            # Si el vendedor definió ciudades específicas, validamos
+            if moda_cities and normalized_buyer_city:
+                normalized_moda_cities = [c.strip().lower() for c in moda_cities]
+                if normalized_buyer_city not in normalized_moda_cities:
                     is_moda_eligible = False
 
-        # --- 🛠️ BLINDAJE DE ENVÍO COMBINADO 🛠️ ---
-        is_combined_eligible = p.combines_shipping 
-        # Usamos getattr para seguridad, pero con el modelo arreglado ya no fallará
-        combined_cities = getattr(p.userinfo, 'combined_shipping_cities', None)
+        # --- 🛠️ LÓGICA CORREGIDA DE ENVÍO COMBINADO 🛠️ ---
+        # 1. Empezamos en False (Restrictivo por defecto)
+        is_combined_eligible = False 
 
-        if is_combined_eligible and p.userinfo and combined_cities:
-            # Validación estricta: Si hay ciudades restringidas, verificamos al comprador
-            if buyer_city:
-                # Normalizamos todo a minúsculas y sin espacios extra
-                normalized_buyer = buyer_city.strip().lower()
-                normalized_cities = [c.strip().lower() for c in combined_cities]
-                
-                if normalized_buyer not in normalized_cities:
-                    is_combined_eligible = False
-            else:
-                # Opcional: Si el comprador no tiene ciudad definida (visitante), 
-                # podrías decidir ocultar la etiqueta por defecto.
-                # is_combined_eligible = False 
-                pass
+        if p.combines_shipping and p.userinfo:
+            # Obtenemos la configuración del vendedor (si es None, usamos lista vacía)
+            combined_cities = getattr(p.userinfo, 'combined_shipping_cities', []) or []
 
+            # 2. REGLA CRÍTICA: Si la lista está vacía, asumimos SOLO la ciudad del vendedor
+            if not combined_cities:
+                if p.userinfo.seller_city:
+                    combined_cities = [p.userinfo.seller_city]
+            
+            # 3. Normalizamos la lista de ciudades permitidas
+            normalized_cities = [c.strip().lower() for c in combined_cities]
+
+            # 4. Verificación Final:
+            # Solo es True si el comprador TIENE ciudad Y esa ciudad coincide
+            if normalized_buyer_city and normalized_buyer_city in normalized_cities:
+                is_combined_eligible = True
+        # ----------------------------------------------------
+
+        # 3. Procesamiento de Imágenes
         main_image_final = extract_display_image(p)
         all_images_set = set([main_image_final]) if main_image_final else set()
         
@@ -732,6 +751,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         
         variants_dto = []
         if p.variants:
+            # Extraer configuración de lightbox de la primera variante si existe
             if isinstance(p.variants, list) and len(p.variants) > 0 and isinstance(p.variants[0], dict):
                  lightbox_light = p.variants[0].get("lightbox_bg_light", "dark")
                  lightbox_dark = p.variants[0].get("lightbox_bg_dark", "dark")
@@ -765,6 +785,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         
         final_images = list(all_images_set)
 
+        # 4. Opiniones y Rating
         avg_rating, rating_count = calculate_rating(session, p.id)
         
         reviews_list = []
@@ -798,6 +819,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 updates=updates_dtos
             ))
 
+        # 5. Información de Envío y Vendedor
         shipping_text = "Envío a convenir"
         if p.shipping_cost == 0: 
             shipping_text = "Envío Gratis"
@@ -811,6 +833,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
              if p.userinfo.user:
                  author_name = p.userinfo.user.username
         
+        # 6. Estado del Usuario (Guardado, Comprado)
         is_saved = False
         can_review = False
         if user_id and user_id > 0:
@@ -838,14 +861,14 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             images=final_images, 
             variants=variants_dto, 
             shipping_cost=p.shipping_cost, 
+            
+            # --- VALORES BOOLEANOS CALCULADOS ---
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible,
+            combines_shipping=is_combined_eligible, # <--- ¡Aquí está la corrección aplicada!
+            # ------------------------------------
+            
             free_shipping_threshold=p.free_shipping_threshold,
-            
-            # --- 🛠️ CORRECCIÓN: YA NO FALLARÁ AQUÍ 🛠️ ---
             shipping_combination_limit=p.shipping_combination_limit,
-            # ----------------------------------------------
-            
             shipping_display_text=shipping_text, 
             is_saved=is_saved, 
             is_imported=p.is_imported, 
