@@ -720,10 +720,9 @@ async def fix_shipping_logic(
         }
     }
 
-@router.get("/products/{product_id}", response_model=ProductDetailDTO)
+@router.get("/products/{product_id}", response_model=ProductDetailDTO)@router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
-        # 1. Obtener el producto
         p = session.exec(
             select(BlogPostModel)
             .options(joinedload(BlogPostModel.userinfo))
@@ -733,9 +732,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
 
-        # 2. Obtener la ciudad del comprador
         normalized_buyer_city = ""
         buyer_city = None
+        buyer_barrio = None # ✨ Variable necesaria para el cálculo
         
         if user_id:
             default_addr = session.exec(
@@ -744,61 +743,51 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             ).first()
             if default_addr and default_addr.city:
                 buyer_city = default_addr.city
+                buyer_barrio = default_addr.neighborhood # ✨ Obtenemos el barrio
                 normalized_buyer_city = normalize_text_api(default_addr.city)
 
-        # --- LÓGICA MODA COMPLETA (OPTIMISTA) ---
+        # --- LÓGICA MODA COMPLETA ---
         is_moda_eligible = p.is_moda_completa_eligible
         moda_cities = getattr(p.userinfo, 'moda_completa_cities', []) or []
-        
-        if is_moda_eligible and p.userinfo:
-            if moda_cities and normalized_buyer_city:
+        if is_moda_eligible and p.userinfo and moda_cities:
+            if normalized_buyer_city:
                 normalized_moda = [normalize_text_api(c) for c in moda_cities]
                 if normalized_buyer_city not in normalized_moda:
                     is_moda_eligible = False
 
-        # --- LÓGICA ENVÍO COMBINADO (OPTIMISTA - ARREGLADO) ---
+        # --- LÓGICA ENVÍO COMBINADO ---
         is_combined_eligible = p.combines_shipping
         combined_cities = getattr(p.userinfo, 'combined_shipping_cities', []) or []
-
         if is_combined_eligible and p.userinfo:
-            # REGLA: Si hay lista de ciudades Y sabemos la ciudad del comprador -> Filtramos.
-            # Si la lista está vacía O el usuario no tiene ciudad -> Se mantiene TRUE.
             if combined_cities and normalized_buyer_city:
                 normalized_combined = [normalize_text_api(c) for c in combined_cities]
                 if normalized_buyer_city not in normalized_combined:
                     is_combined_eligible = False
-        # -----------------------------------------------------------
 
-        # --- Procesamiento de Imágenes ---
+        # --- IMÁGENES ---
         main_image_final = extract_display_image(p)
         all_images_set = set([main_image_final]) if main_image_final else set()
         
-        lightbox_light = "dark"
-        lightbox_dark = "dark"
-        
+        lightbox_light = "dark"; lightbox_dark = "dark"
         variants_dto = []
         if p.variants:
             if isinstance(p.variants, list) and len(p.variants) > 0 and isinstance(p.variants[0], dict):
                  lightbox_light = p.variants[0].get("lightbox_bg_light", "dark")
                  lightbox_dark = p.variants[0].get("lightbox_bg_dark", "dark")
-
             for v in p.variants:
                 if isinstance(v, dict):
                     urls = v.get("image_urls", [])
                     if urls: 
                         for u in urls:
                             if u: all_images_set.update([get_full_image_url(u)])
-                    
                     v_img_raw = urls[0] if (urls and len(urls) > 0) else main_image_final
                     v_img = get_full_image_url(v_img_raw) if not v_img_raw.startswith("http") else v_img_raw
-                    
                     attrs = v.get("attributes", {})
                     title_parts = []
                     if attrs.get("Color"): title_parts.append(str(attrs.get("Color")))
                     if attrs.get("Talla"): title_parts.append(str(attrs.get("Talla")))
                     if attrs.get("Número"): title_parts.append(str(attrs.get("Número")))
                     v_title = " ".join(title_parts) if title_parts else "Estándar"
-
                     variants_dto.append(VariantDTO(
                         id=str(v.get("variant_uuid") or v.get("id") or ""),
                         title=v_title,
@@ -808,65 +797,55 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                         images=[get_full_image_url(u) for u in urls if u],
                         attributes=attrs
                     ))
-        
         final_images = list(all_images_set)
 
-        # --- Opiniones ---
+        # --- OPINIONES ---
         avg_rating, rating_count = calculate_rating(session, p.id)
-        
         reviews_list = []
-        db_parent_reviews = session.exec(
-            select(CommentModel)
-            .where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None)
-            .order_by(CommentModel.created_at.desc())
-            .options(joinedload(CommentModel.updates))
-        ).unique().all()
-
+        db_parent_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None).order_by(CommentModel.created_at.desc()).options(joinedload(CommentModel.updates))).unique().all()
         for parent in db_parent_reviews:
             updates_dtos = []
             if parent.updates:
                 sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
                 for up in sorted_updates: 
-                    updates_dtos.append(ReviewDTO(
-                        id=up.id, 
-                        username=up.author_username, 
-                        rating=up.rating, 
-                        comment=up.content, 
-                        date=up.created_at.strftime("%d/%m/%Y"), 
-                        updates=[]
-                    ))
-            reviews_list.append(ReviewDTO(
-                id=parent.id, 
-                username=parent.author_username or "Usuario", 
-                rating=parent.rating, 
-                comment=parent.content, 
-                date=parent.created_at.strftime("%d/%m/%Y"), 
-                updates=updates_dtos
-            ))
+                    updates_dtos.append(ReviewDTO(id=up.id, username=up.author_username, rating=up.rating, comment=up.content, date=up.created_at.strftime("%d/%m/%Y"), updates=[]))
+            reviews_list.append(ReviewDTO(id=parent.id, username=parent.author_username or "Usuario", rating=parent.rating, comment=parent.content, date=parent.created_at.strftime("%d/%m/%Y"), updates=updates_dtos))
 
+        # --- ✨ CÁLCULO DE ENVÍO DINÁMICO (CORRECCIÓN) ✨ ---
         shipping_text = "Envío a convenir"
-        if p.shipping_cost == 0: 
+        
+        seller_city = p.userinfo.seller_city if p.userinfo else None
+        seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
+        
+        # Calculamos el costo real usando la lógica de barrios
+        final_shipping_cost = calculate_dynamic_shipping(
+            base_cost=p.shipping_cost or 0.0,
+            seller_barrio=seller_barrio,
+            buyer_barrio=buyer_barrio,
+            seller_city=seller_city,
+            buyer_city=buyer_city
+        )
+
+        if final_shipping_cost == 0: 
             shipping_text = "Envío Gratis"
-        elif p.shipping_cost and p.shipping_cost > 0: 
-            shipping_text = f"Envío: {fmt_price(p.shipping_cost)}"
+        elif final_shipping_cost > 0: 
+            shipping_text = f"Envío: {fmt_price(final_shipping_cost)}"
+        # --------------------------------------------------------
 
         author_name = "Likemodas"
         seller_info_id = 0
         if p.userinfo:
              seller_info_id = p.userinfo.id
-             if p.userinfo.user:
-                 author_name = p.userinfo.user.username
+             if p.userinfo.user: author_name = p.userinfo.user.username
         
-        is_saved = False
-        can_review = False
+        is_saved = False; can_review = False
         if user_id and user_id > 0:
             try:
                 saved = session.exec(select(SavedPostLink).where(SavedPostLink.userinfo_id == user_id, SavedPostLink.blogpostmodel_id == p.id)).first()
                 is_saved = saved is not None
                 has_bought = session.exec(select(PurchaseItemModel.id).join(PurchaseModel).where(PurchaseModel.userinfo_id == user_id, PurchaseItemModel.blog_post_id == p.id, PurchaseModel.status == PurchaseStatus.DELIVERED)).first()
                 can_review = has_bought is not None
-            except Exception: 
-                pass
+            except Exception: pass
 
         date_created_str = ""
         try:
@@ -874,40 +853,23 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         except: pass
 
         return ProductDetailDTO(
-            id=p.id, 
-            title=p.title, 
-            price=p.price, 
-            price_formatted=fmt_price(p.price), 
-            description=p.content, 
-            category=p.category, 
-            main_image_url=main_image_final, 
-            images=final_images, 
-            variants=variants_dto, 
+            id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), 
+            description=p.content, category=p.category, main_image_url=main_image_final, 
+            images=final_images, variants=variants_dto, 
             shipping_cost=p.shipping_cost, 
             is_moda_completa=is_moda_eligible, 
             combines_shipping=is_combined_eligible,
             free_shipping_threshold=p.free_shipping_threshold,
             shipping_combination_limit=p.shipping_combination_limit,
-            shipping_display_text=shipping_text, 
-            is_saved=is_saved, 
-            is_imported=p.is_imported, 
-            average_rating=avg_rating, 
-            rating_count=rating_count, 
-            reviews=reviews_list,
-            can_review=can_review,
-            author=author_name,
-            author_id=seller_info_id,
-            created_at=date_created_str,
-            lightbox_bg_light=lightbox_light,
-            lightbox_bg_dark=lightbox_dark,
-            light_mode_appearance=p.light_mode_appearance,
-            dark_mode_appearance=p.dark_mode_appearance,
-            light_card_bg_color=p.light_card_bg_color,
-            light_title_color=p.light_title_color,
-            light_price_color=p.light_price_color,
-            dark_card_bg_color=p.dark_card_bg_color,
-            dark_title_color=p.dark_title_color,
-            dark_price_color=p.dark_price_color
+            shipping_display_text=shipping_text, # ✨ Texto actualizado
+            is_saved=is_saved, is_imported=p.is_imported, 
+            average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
+            can_review=can_review, author=author_name, author_id=seller_info_id,
+            created_at=date_created_str, lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark,
+            light_mode_appearance=p.light_mode_appearance, dark_mode_appearance=p.dark_mode_appearance,
+            light_card_bg_color=p.light_card_bg_color, light_title_color=p.light_title_color,
+            light_price_color=p.light_price_color, dark_card_bg_color=p.dark_card_bg_color,
+            dark_title_color=p.dark_title_color, dark_price_color=p.dark_price_color
         )
     except Exception as e:
         logger.error(f"Error 500 product_detail id={product_id}: {str(e)}")

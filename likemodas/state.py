@@ -10498,9 +10498,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Abre el modal de detalle. Se renombró el argumento a 'post_id' para
-        coincidir con la llamada del frontend y evitar el TypeError.
+        [VERSIÓN FINAL CORREGIDA CON FILTRO DE CIUDAD]
+        Abre el modal de detalle y aplica la lógica de georreferenciación 
+        para ocultar/mostrar etiquetas según la ciudad del comprador.
         """
         self.modal_carousel_key += 1  # Fuerza re-renderizado del carrusel
 
@@ -10519,7 +10519,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # --- 2. Consulta a Base de Datos ---
         with rx.session() as session:
-            # Usamos post_id aquí
             db_post = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
@@ -10534,11 +10533,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
 
-            # Cambia el título de la pestaña del navegador
             js_title = json.dumps(db_post.title)
             yield rx.call_script(f"document.title = {js_title}")
 
-            # --- 3. Lógica de Envío Dinámico ---
+            # --- 3. Lógica de Envío Dinámico (Cálculo de Costo) ---
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
@@ -10550,20 +10548,45 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_city=seller_city, buyer_city=buyer_city
             )
             
-            shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
+            shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío Gratis" if final_shipping_cost == 0 else "Envío a convenir"
             
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             seller_city_info = db_post.userinfo.seller_city if db_post.userinfo else None
-            
-            moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
-            combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
 
-            # --- 4. Lógica del Lightbox (Fondo Dinámico) ---
+            # --- ✨ 4. LÓGICA DE FILTRADO DE ETIQUETAS (NUEVA) ✨ ---
+            # Obtenemos la ciudad normalizada del comprador (si existe)
+            buyer_city_norm = ""
+            if self.default_shipping_address:
+                buyer_city_norm = self._normalizar_texto(self.default_shipping_address.city)
+
+            # A. MODA COMPLETA
+            is_moda_eligible = db_post.is_moda_completa_eligible
+            moda_cities = db_post.userinfo.moda_completa_cities or []
+            
+            if is_moda_eligible and moda_cities and buyer_city_norm:
+                moda_cities_norm = [self._normalizar_texto(c) for c in moda_cities]
+                if buyer_city_norm not in moda_cities_norm:
+                    is_moda_eligible = False # Ocultar si no coincide
+
+            # B. ENVÍO COMBINADO
+            is_combined_eligible = db_post.combines_shipping
+            combined_cities = db_post.userinfo.combined_shipping_cities or []
+            
+            if is_combined_eligible and combined_cities and buyer_city_norm:
+                combined_cities_norm = [self._normalizar_texto(c) for c in combined_cities]
+                if buyer_city_norm not in combined_cities_norm:
+                    is_combined_eligible = False # Ocultar si no coincide
+            
+            # Textos para tooltips
+            moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if is_moda_eligible and db_post.free_shipping_threshold else ""
+            combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if is_combined_eligible and db_post.shipping_combination_limit else ""
+            # -----------------------------------------------------------
+
+            # --- 5. Lógica del Lightbox (Fondo Dinámico) ---
             initial_bg_light = "dark"
             initial_bg_dark = "dark"
             first_variant_index_to_load = 0
-
             unique_variants_temp = []
             seen_image_groups_temp = set()
             if db_post.variants:
@@ -10572,7 +10595,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     if image_urls_tuple and image_urls_tuple not in seen_image_groups_temp:
                         seen_image_groups_temp.add(image_urls_tuple)
                         unique_variants_temp.append({"variant": variant, "index": i})
-
             if unique_variants_temp:
                 first_unique_item = unique_variants_temp[0]
                 first_variant_index_to_load = first_unique_item["index"]
@@ -10580,7 +10602,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 initial_bg_light = initial_variant_dict.get("lightbox_bg_light", "dark")
                 initial_bg_dark = initial_variant_dict.get("lightbox_bg_dark", "dark")
 
-            # --- 5. Creación del DTO del Producto ---
+            # --- 6. Creación del DTO del Producto ---
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -10594,12 +10616,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_id=seller_id,
                 attributes={},
                 shipping_cost=db_post.shipping_cost,
-                is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                free_shipping_threshold=db_post.free_shipping_threshold,
-                combines_shipping=db_post.combines_shipping,
-                shipping_combination_limit=db_post.shipping_combination_limit,
+                
+                # Usamos los valores calculados arriba
+                is_moda_completa_eligible=is_moda_eligible, 
+                combines_shipping=is_combined_eligible,
                 moda_completa_tooltip_text=moda_completa_text,
                 envio_combinado_tooltip_text=combinado_text,
+                
+                free_shipping_threshold=db_post.free_shipping_threshold,
+                shipping_combination_limit=db_post.shipping_combination_limit,
                 shipping_display_text=shipping_text,
                 is_imported=db_post.is_imported,
                 seller_score=db_post.seller_score,
@@ -10625,12 +10650,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             elif self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # --- 6. Carga y Ordenamiento de Comentarios ---
+            # --- 7. Carga y Ordenamiento de Comentarios ---
             raw_parents = [c for c in db_post.comments if c.parent_comment_id is None]
             parent_dtos = [self._convert_comment_to_dto(c) for c in raw_parents]
             self.product_comments = sorted(parent_dtos, key=lambda c: c.created_at_timestamp, reverse=True)
 
-            # --- 7. Lógica de "Mi Opinión" ---
+            # --- 8. Lógica de "Mi Opinión" ---
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
                 purchase_count = session.exec(
@@ -10638,7 +10663,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     .join(PurchaseModel)
                     .where(
                         PurchaseModel.userinfo_id == user_info_id,
-                        # Usamos post_id aquí
                         PurchaseItemModel.blog_post_id == post_id,
                         PurchaseModel.status == PurchaseStatus.DELIVERED 
                     )
@@ -10646,7 +10670,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 if purchase_count > 0:
                     user_original_comment = next((c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None), None)
-                    
                     if not user_original_comment:
                         self.show_review_form = True 
                     else:
@@ -10660,7 +10683,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         else:
                             self.review_limit_reached = True
 
-        # --- 8. Guardados --
         yield AppState.load_saved_post_ids
 
 
