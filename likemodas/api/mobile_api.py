@@ -550,7 +550,7 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
 
 # --- EN LIKEMODAS/API/MOBILE_API.PY ---
 
-@router.get("/products", response_model=List[ProductListDTO])
+@router.get("/products", response_model=List[ProductListDTO])@router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(
     category: Optional[str] = None, 
     user_id: Optional[int] = Query(None), 
@@ -588,32 +588,37 @@ async def get_products_for_mobile(
         image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
         
-        # --- LÓGICA MODA COMPLETA (OPTIMISTA) ---
+        # --- LÓGICA MODA COMPLETA ---
         is_moda_eligible = p.is_moda_completa_eligible
         if p.userinfo and is_moda_eligible:
             seller_moda_cities = p.userinfo.moda_completa_cities or []
-            # Solo filtramos si hay restricción Y sabemos dónde está el comprador.
             if seller_moda_cities and normalized_buyer_city:
                 normalized_seller_cities = [normalize_text_api(c) for c in seller_moda_cities]
                 if normalized_buyer_city not in normalized_seller_cities:
                     is_moda_eligible = False
 
-        # --- LÓGICA ENVÍO COMBINADO (OPTIMISTA - IGUAL A MODA COMPLETA) ---
-        is_combined_eligible = p.combines_shipping 
-        
-        if p.userinfo and is_combined_eligible:
-            seller_combined_cities = p.userinfo.combined_shipping_cities or []
-            
-            # REGLA DE ORO: 
-            # 1. Si la lista está VACÍA -> Aplica a TODOS.
-            # 2. Si la lista TIENE ciudades -> Solo filtramos SI conocemos la ciudad del comprador.
-            #    Si 'normalized_buyer_city' está vacío (usuario sin dirección), NO entramos al IF 
-            #    y la variable se mantiene en True (Visible).
-            
-            if seller_combined_cities and normalized_buyer_city:
+        # --- LÓGICA ENVÍO COMBINADO (BLINDADA) ---
+        # 1. Leemos la configuración del vendedor
+        seller_combined_cities = []
+        if p.userinfo and p.userinfo.combined_shipping_cities:
+             seller_combined_cities = p.userinfo.combined_shipping_cities
+
+        # 2. Determinamos elegibilidad base
+        # Si la lista está VACÍA, forzamos True (Todo el país), ignorando posibles errores de False en la BD.
+        # Si la lista TIENE ciudades, respetamos el switch de la base de datos.
+        if not seller_combined_cities:
+            is_combined_eligible = True
+        else:
+            is_combined_eligible = p.combines_shipping
+
+        # 3. Aplicamos el filtro geográfico solo si es necesario
+        if is_combined_eligible and seller_combined_cities:
+            # Solo filtramos si CONOCEMOS la ciudad del comprador.
+            # Si normalized_buyer_city está vacío (usuario nuevo/sin dirección), ASUMIMOS TRUE (Optimista).
+            if normalized_buyer_city:
                 normalized_combined_cities = [normalize_text_api(c) for c in seller_combined_cities]
                 
-                # Solo ocultamos si tenemos certeza de que NO coincide
+                # Si tenemos ciudad y NO coincide, entonces apagamos.
                 if normalized_buyer_city not in normalized_combined_cities:
                     is_combined_eligible = False
         # -----------------------------------------------------------
@@ -634,12 +639,6 @@ async def get_products_for_mobile(
         if final_shipping_cost == 0: shipping_txt = "Envío Gratis"
         elif final_shipping_cost > 0: shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
 
-        # Lightbox settings
-        lightbox_light = "dark"; lightbox_dark = "dark"
-        if p.variants and len(p.variants) > 0 and isinstance(p.variants[0], dict):
-             lightbox_light = p.variants[0].get("lightbox_bg_light", "dark")
-             lightbox_dark = p.variants[0].get("lightbox_bg_dark", "dark")
-
         result.append(ProductListDTO(
             id=p.id, 
             title=p.title, 
@@ -649,7 +648,7 @@ async def get_products_for_mobile(
             category=p.category, 
             description=p.content,
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible, # Ahora usa lógica optimista
+            combines_shipping=is_combined_eligible, # Valor corregido
             average_rating=avg_rating, 
             rating_count=rating_count,
             shipping_display_text=shipping_txt,
@@ -662,8 +661,8 @@ async def get_products_for_mobile(
             dark_card_bg_color=p.dark_card_bg_color, 
             dark_title_color=p.dark_title_color,
             dark_price_color=p.dark_price_color, 
-            lightbox_bg_light=lightbox_light, 
-            lightbox_bg_dark=lightbox_dark
+            lightbox_bg_light="dark", 
+            lightbox_bg_dark="dark"
         ))
     return result
 
@@ -721,9 +720,10 @@ async def fix_shipping_logic(
         }
     }
 
-@router.get("/products/{product_id}", response_model=ProductDetailDTO)
+@router.get("/products/{product_id}", response_model=ProductDetailDTO)@router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
+        # 1. Obtener el producto con sus relaciones
         p = session.exec(
             select(BlogPostModel)
             .options(joinedload(BlogPostModel.userinfo))
@@ -733,6 +733,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
 
+        # 2. Obtener la ciudad del comprador (si existe y tiene dirección)
         normalized_buyer_city = ""
         buyer_city = None
         
@@ -749,25 +750,30 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
         is_moda_eligible = p.is_moda_completa_eligible
         moda_cities = getattr(p.userinfo, 'moda_completa_cities', []) or []
         
-        if is_moda_eligible and p.userinfo and moda_cities:
-            # Solo si hay restricción Y ciudad del comprador
-            if normalized_buyer_city:
+        if is_moda_eligible and p.userinfo:
+            # Solo filtramos si hay lista de ciudades Y conocemos la ciudad del comprador
+            if moda_cities and normalized_buyer_city:
                 normalized_moda = [normalize_text_api(c) for c in moda_cities]
                 if normalized_buyer_city not in normalized_moda:
                     is_moda_eligible = False
-            # Si no hay ciudad del comprador, se mantiene True
 
-        # --- LÓGICA ENVÍO COMBINADO (OPTIMISTA) ---
-        is_combined_eligible = p.combines_shipping
+        # --- LÓGICA ENVÍO COMBINADO (OPTIMISTA - IGUALADA A MODA COMPLETA) ---
+        is_combined_eligible = p.combines_shipping # Valor base de la BD
         combined_cities = getattr(p.userinfo, 'combined_shipping_cities', []) or []
 
         if is_combined_eligible and p.userinfo:
-            # Solo filtramos si hay ciudades restringidas Y conocemos la ciudad del comprador
+            # REGLA DE ORO:
+            # 1. Si 'combined_cities' está vacía -> Aplica a TODO EL PAÍS (No entramos al if).
+            # 2. Si tiene ciudades -> Solo filtramos SI 'normalized_buyer_city' tiene valor.
+            #    Si el usuario no tiene dirección (normalized_buyer_city=""), ASUMIMOS TRUE.
+            
             if combined_cities and normalized_buyer_city:
                 normalized_combined = [normalize_text_api(c) for c in combined_cities]
+                
+                # Solo ocultamos si tenemos la certeza de que NO coincide
                 if normalized_buyer_city not in normalized_combined:
                     is_combined_eligible = False
-            # En cualquier otro caso (lista vacía O usuario sin ciudad), sigue siendo True
+        # -----------------------------------------------------------
 
         # --- Procesamiento de Imágenes ---
         main_image_final = extract_display_image(p)
@@ -885,7 +891,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             variants=variants_dto, 
             shipping_cost=p.shipping_cost, 
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible, # Valor optimista
+            combines_shipping=is_combined_eligible, # <--- Valor calculado optimista
             free_shipping_threshold=p.free_shipping_threshold,
             shipping_combination_limit=p.shipping_combination_limit,
             shipping_display_text=shipping_text, 

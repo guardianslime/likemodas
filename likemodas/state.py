@@ -4200,7 +4200,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             posts = session.exec(query).unique().all() # .unique() es recomendado con joinedload
             
             # 3. FILTRAR (Pasando la session para verificar al comprador)
-            self.posts = self._filtrar_envio_combinado(session, posts)
+            self.posts = posts
             # --- OPTIMIZACIÓN: PAGINACIÓN ---
             # En lugar de .all(), usamos limit().
             # Esto carga solo los 20 más recientes.
