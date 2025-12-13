@@ -4180,7 +4180,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
-
+            posts = session.exec(query).all()
+            
+            # --- AGREGA ESTA LÍNEA MÁGICA ---
+            # Esto procesa los posts y oculta la etiqueta a quien no le corresponde
+            self.posts = self._filtrar_envio_combinado(posts)
             # --- OPTIMIZACIÓN: PAGINACIÓN ---
             # En lugar de .all(), usamos limit().
             # Esto carga solo los 20 más recientes.
@@ -10661,6 +10665,39 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # --- 8. Guardados --
         yield AppState.load_saved_post_ids
+
+
+    def _filtrar_envio_combinado(self, posts: List[BlogPostModel]) -> List[BlogPostModel]:
+        """
+        Recorre la lista de productos y APAGA la etiqueta de envío combinado
+        si el comprador no vive en la ciudad permitida.
+        """
+        # 1. Obtener la ciudad del comprador actual (si existe)
+        buyer_city = None
+        if self.authenticated_user_info and self.authenticated_user_info.shipping_addresses:
+            # Busca la predeterminada o usa la primera
+            for addr in self.authenticated_user_info.shipping_addresses:
+                if addr.is_default:
+                    buyer_city = addr.city
+                    break
+            if not buyer_city:
+                buyer_city = self.authenticated_user_info.shipping_addresses[0].city
+
+        # 2. Recorrer productos y aplicar lógica
+        for post in posts:
+            # Si el producto tiene envío combinado activado...
+            if post.combines_shipping:
+                seller_cities = post.userinfo.combined_shipping_cities
+                
+                # Si el vendedor puso restricciones (lista no vacía)
+                if seller_cities:
+                    # Y el comprador NO tiene ciudad O su ciudad NO está en la lista...
+                    if not buyer_city or buyer_city not in seller_cities:
+                        # ¡APAGAMOS LA ETIQUETA SOLO PARA VISUALIZACIÓN!
+                        # Esto no cambia la base de datos, solo lo que ve el usuario ahora.
+                        post.combines_shipping = False 
+        
+        return posts
 
 
     @rx.var
