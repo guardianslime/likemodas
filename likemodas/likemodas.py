@@ -1,21 +1,30 @@
 # likemodas/likemodas.py
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse # <--- Importante para assetlinks
 import reflex as rx
 import reflex_local_auth
 
+# Módulos internos de la aplicación
 from .api import webhooks, tasks as api_tasks
 from .api import mobile_api
 from .state import AppState
 from .ui.base import base_page
 from . import navigation
 
+# Vistas de autenticación
 from .auth import pages as auth_pages
 from .auth.tfa_verify_page import tfa_verify_page_content
+
+# Vistas de la cuenta de CLIENTE
 from .account import profile_page as user_profile_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module
+
+# Importamos la función 'display_settings_page' directamente
 from .account.display_settings_page import display_settings_page
+
+# Vistas de ADMINISTRADOR
 from .admin import page as admin_page
 from .admin import finance_page
 from .admin.profile_page import admin_profile_page_content
@@ -25,8 +34,12 @@ from .admin.tickets_page import admin_tickets_page_content
 from .admin.users_page import user_management_page
 from .admin import employees_page
 from .admin.reports_page import reports_page_content
+
+# Vistas de Blog y Productos
 from .blog import blog_admin_page, blog_post_add_content
 from .pages import landing, seller_page
+
+# Vistas del proceso de compra
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .pages import payment_status, payment_pending, processing_payment
@@ -38,7 +51,27 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
+# Configuración de FastAPI
 fastapi_app = FastAPI(title="API extendida de Likemodas")
+
+# ==================================================================
+#  SOLUCIÓN DEFINITIVA DE REDIRECCIÓN (ASSETLINKS.JSON)
+# ==================================================================
+@fastapi_app.get("/.well-known/assetlinks.json")
+async def asset_links():
+    return JSONResponse(content=[{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.likemodas.app",
+            # 👇 AQUÍ ESTÁ TU HUELLA REAL QUE ACABAS DE OBTENER 👇
+            "sha256_cert_fingerprints": [
+                "E9:BC:A9:3D:0D:95:42:00:1D:C1:EC:F1:11:1A:6E:EF:70:19:61:6F:9B:D5:DF:97:0F:89:5B:6A:CA:6B:38:F8"
+            ]
+        }
+    }])
+# ==================================================================
+
 fastapi_app.include_router(webhooks.router)
 fastapi_app.include_router(api_tasks.router)
 fastapi_app.include_router(mobile_api.router)
@@ -58,32 +91,28 @@ app = rx.App(
     api_transformer=fastapi_app
 )
 
-# =========================================================
-#  NUEVO: LÓGICA DE REDIRECCIÓN PARA ENLACES UNIVERSALES
-# =========================================================
-
+# --- LÓGICA DE REDIRECCIÓN WEB (PUENTE) ---
 class DeepLinkState(rx.State):
     @rx.var
     def product_id_from_url(self) -> str:
         return self.router.page.params.get("product_id", "")
 
     def redirect_to_modal(self):
-        # Redirige a la home activando el modal
         p_id = self.product_id_from_url
         if p_id:
+            # Redirige a la home cargando el modal
             return rx.redirect(f"/?product_id_to_load={p_id}")
         return rx.redirect("/")
 
 @rx.page(route="/product/[product_id]", on_load=DeepLinkState.redirect_to_modal)
 def product_deep_link_page():
-    # Página invisible / puente
+    # Página invisible que redirige si no se abre la App
     return rx.center(
         rx.spinner(size="3", color="violet"),
-        height="100vh",
-        width="100%"
+        height="100vh", width="100%"
     )
-# =========================================================
 
+# --- DEFINICIÓN DE PÁGINAS ---
 app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
 app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
