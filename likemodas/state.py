@@ -4419,7 +4419,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
     
     _raw_posts: list[ProductCardData] = []
-    posts: List[BlogPostModel] = []
+    posts: list[ProductCardData] = []
     is_loading: bool = True
     
 
