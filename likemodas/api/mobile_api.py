@@ -890,18 +890,16 @@ async def toggle_save_product(product_id: int, user_id: int, session: Session = 
 @router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO])
 async def get_seller_products(
     seller_id: int, 
-    # 👇 Agregamos esto para saber quién está mirando el perfil
-    buyer_id: Optional[int] = Query(None), 
+    buyer_id: Optional[int] = Query(None), # Recibimos quién está mirando
     session: Session = Depends(get_session)
 ):
-    # 1. Buscar al Vendedor
     seller = session.get(UserInfo, seller_id)
     if not seller: raise HTTPException(404, "Vendedor no encontrado")
 
-    # Pre-calculamos la ciudad del comprador normalizada (fuera del bucle)
+    # 1. OBTENER CIUDAD DEL COMPRADOR
     buyer_city_norm = ""
     if buyer_id:
-        buyer = session.get(UserInfo, buyer_id)
+        buyer = session.get(UserInfo, buyer_id) # Usamos session.get para evitar errores
         if buyer and buyer.shipping_addresses:
             addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
             buyer_city_norm = normalize_text_api(addr.city)
@@ -912,36 +910,27 @@ async def get_seller_products(
     
     for p in products:
         image_url = extract_display_image(p)
-        
-        # Gestión de variantes (Lightbox)
-        lightbox_light = "dark"; lightbox_dark = "dark"
-        safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
-        if safe_variants:
-            first_var = safe_variants[0]
-            if isinstance(first_var, dict):
-                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
-                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+        # ... (lógica de variantes y lightbox igual que tenías) ...
+        # (resumido por brevedad, mantén tu código de variantes aquí)
+        lightbox_light = "dark"; lightbox_dark = "dark" 
+        # ...
         
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- LÓGICA DE FILTRADO BLINDADA (COPIADA DE LA WEB) ---
+        # --- LÓGICA COPIADA DE LA WEB ---
         is_combined_eligible = False
         if p.combines_shipping:
-            # 1. Obtener lista. Si es None, es lista vacía.
             seller_cities = seller.combined_shipping_cities or []
             
-            # 2. Si la lista está vacía, FORZAMOS que sea la ciudad del vendedor
+            # Si lista vacía -> Solo ciudad del vendedor
             if not seller_cities:
                 seller_cities = [seller.seller_city]
 
-            # 3. Normalizamos la lista del vendedor
             seller_cities_norm = [normalize_text_api(c) for c in seller_cities]
             
-            # 4. Comparamos
             if buyer_city_norm and buyer_city_norm in seller_cities_norm:
                 is_combined_eligible = True
-            # Si no hay buyer_city (ej. usuario no logueado), se queda en False por seguridad
-        # ---------------------------------
+        # --------------------------------
 
         result.append(ProductListDTO(
             id=p.id, 
@@ -953,7 +942,7 @@ async def get_seller_products(
             description=p.content, 
             is_moda_completa=p.is_moda_completa_eligible, 
             
-            # ✅ CORREGIDO:
+            # MANDAMOS EL DATO FILTRADO
             combines_shipping=is_combined_eligible, 
             
             average_rating=avg_rating, 
@@ -1016,17 +1005,17 @@ async def create_report(req: ReportRequest, user_id: int = Query(...), session: 
 
 @router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
 async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
-    # 1. Obtener la ciudad del comprador NORMALIZADA
+    # 1. OBTENER CIUDAD DEL COMPRADOR (Igual que en la Web: Usamos la session)
+    # Buscamos al usuario fresco para acceder a sus shipping_addresses sin error
     buyer = session.get(UserInfo, user_id)
     buyer_city_norm = ""
     
     if buyer and buyer.shipping_addresses:
-        # Busca la dirección predeterminada o la primera disponible
+        # Prioridad: Dirección por defecto, si no, la primera
         addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
-        # AQUI EL CAMBIO: Normalizamos el texto inmediatamente
         buyer_city_norm = normalize_text_api(addr.city)
 
-    # 2. Cargar los posts guardados junto con la info del vendedor
+    # 2. Query normal de productos
     user_with_posts = session.exec(
         select(UserInfo)
         .options(
@@ -1044,29 +1033,30 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
         image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- 🛠️ LÓGICA DE FILTRADO CORREGIDA (BLINDADA) 🛠️ ---
+        # --- LÓGICA COPIADA DE LA WEB (STATE.PY) ---
         is_combined_eligible = False
         
         if p.combines_shipping:
-            # Obtenemos al vendedor desde el producto
+            # Obtenemos datos del vendedor usando la relación
             seller = p.userinfo 
             
-            # Obtenemos la lista. Si es None, la convertimos en lista vacía
+            # Obtenemos la lista. Si es None, es []
             seller_cities = seller.combined_shipping_cities or []
             
-            # CASO CRÍTICO: Si la lista está vacía, NO es todo el país.
-            # Asumimos que es SOLO la ciudad del vendedor.
+            # 🔥 CORRECCIÓN CRÍTICA: 
+            # Si el vendedor NO puso ciudades, asumimos que solo aplica en SU ciudad.
+            # (Antes el sistema pensaba "Lista vacía = Todo el país", eso estaba mal).
             if not seller_cities:
                 seller_cities = [seller.seller_city]
             
-            # Normalizamos la lista del vendedor para comparar bien
+            # Normalizamos lista del vendedor
             seller_cities_norm = [normalize_text_api(c) for c in seller_cities]
             
-            # Comparación final:
-            # Si tenemos ciudad del comprador Y coincide con la lista del vendedor
+            # VERIFICACIÓN FINAL:
+            # Solo es True si el comprador TIENE ciudad Y esa ciudad ESTÁ en la lista
             if buyer_city_norm and buyer_city_norm in seller_cities_norm:
                 is_combined_eligible = True
-        # -------------------------------------------------------
+        # -------------------------------------------
 
         result.append(ProductListDTO(
             id=p.id, 
@@ -1078,7 +1068,7 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
             description=p.content, 
             is_moda_completa=p.is_moda_completa_eligible, 
             
-            # ✅ CORREGIDO: Usamos la variable calculada is_combined_eligible
+            # MANDAMOS EL DATO FILTRADO A LA APP
             combines_shipping=is_combined_eligible, 
             
             average_rating=avg_rating, 

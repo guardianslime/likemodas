@@ -163,7 +163,7 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
 
 # Agrega esta función auxiliar (puedes ponerla antes de los endpoints):
 def normalize_text_api(text: str) -> str:
-    """Normaliza texto para comparar ciudades (ignora tildes y mayúsculas)"""
+    """Igual que en la web: normaliza texto para comparar ciudades."""
     if not text: return ""
     text = text.lower().strip()
     return ''.join((c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn'))
