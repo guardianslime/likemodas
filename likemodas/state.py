@@ -3783,6 +3783,40 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
 
+    def check_combined_shipping(self, post: BlogPostModel) -> bool:
+        """
+        Verifica si el post debe mostrar la etiqueta de Envío Combinado
+        basado en la ciudad del usuario actual (comprador).
+        """
+        # 1. Si el producto NO tiene activado envío combinado, falso.
+        if not post.combines_shipping:
+            return False
+            
+        # 2. Obtenemos la lista de ciudades restringidas del vendedor
+        # (Necesitamos acceder al userinfo del dueño del post)
+        seller_cities = post.userinfo.combined_shipping_cities
+        
+        # 3. Si la lista está vacía, aplica a TODO el país -> Verdadero
+        if not seller_cities:
+            return True
+            
+        # 4. Si hay restricciones, verificamos la ciudad del COMPRADOR (usuario logueado)
+        # Si no hay usuario logueado o no tiene dirección, asumimos falso por seguridad
+        if not self.authenticated_user_info or not self.authenticated_user_info.shipping_addresses:
+             return False
+             
+        # Buscamos la ciudad predeterminada del comprador
+        buyer_city = ""
+        for addr in self.authenticated_user_info.shipping_addresses:
+            if addr.is_default:
+                buyer_city = addr.city
+                break
+        if not buyer_city and self.authenticated_user_info.shipping_addresses:
+            buyer_city = self.authenticated_user_info.shipping_addresses[0].city
+            
+        # 5. Comparación final
+        return buyer_city in seller_cities
+
     # --- ✨ 2. REEMPLAZA COMPLETAMENTE TU BLOQUE DE VARIABLES DE ESTILO ✨ ---
     #    (Aquí declaramos las variables que faltaban)
     use_default_style: bool = True

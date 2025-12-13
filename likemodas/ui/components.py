@@ -340,7 +340,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 width="100%",
                             ),
                             rx.cond(
-                                 post.combines_shipping,
+                                 # ✅ CORRECCIÓN: Usamos una función del Estado para verificar
+                                 AppState.check_combined_shipping(post), 
                                  rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                             ),
                             spacing="1", 

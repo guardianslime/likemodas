@@ -399,6 +399,19 @@ class BlogPostModel(rx.Model, table=True):
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
+    # ✅ COPIA ESTA LÓGICA (Basada en Moda Completa)
+    @property
+    def is_combined_shipping_eligible(self) -> bool:
+        """
+        Calcula si el Envío Combinado aplica para el usuario actual.
+        Reflex no puede leer 'self' en tiempo de compilación para la UI, 
+        pero esto servirá para el backend (API Móvil y lógica interna).
+        """
+        # IMPORTANTE: Esta propiedad es útil para Python puro (API Móvil),
+        # pero para la UI de Reflex (Web) necesitamos usar Vars en el State.
+        # Por ahora, definimos la base.
+        return self.combines_shipping
+
     @property
     def base_price(self) -> float:
         if self.price_includes_iva:
