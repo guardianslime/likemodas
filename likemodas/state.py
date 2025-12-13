@@ -10,6 +10,8 @@ import sqlmodel
 from sqlmodel import select
 from sqlmodel import text # Importar text
 import sqlalchemy
+from sqlalchemy.orm import joinedload # <--- NECESARIO
+import unicodedata # Para quitar tildes al comparar
 from sqlalchemy.orm.attributes import flag_modified # <-- AÑADE ESTA LÍNEA
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple, Union
@@ -4177,13 +4179,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # 2. Carga los datos básicos de los productos desde la BD
         with rx.session() as session:
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-            if self.current_category and self.current_category != "todos":
-                query = query.where(BlogPostModel.category == self.current_category)
-            posts = session.exec(query).all()
+            # 1. QUERY MEJORADA: Usamos joinedload para traer la info del usuario dueño del post
+            query = (
+                select(BlogPostModel)
+                .options(
+                    joinedload(BlogPostModel.userinfo) # <--- CLAVE PARA QUE NO FALLE
+                )
+                .where(BlogPostModel.publish_active == True)
+                .order_by(BlogPostModel.created_at.desc())
+            )
             
-            # --- AGREGA ESTA LÍNEA MÁGICA ---
-            # Esto procesa los posts y oculta la etiqueta a quien no le corresponde
+            # 2. Ejecutar
+            posts = session.exec(query).unique().all() # .unique() es recomendado con joinedload
+            
+            # 3. FILTRAR (Pasando la session para verificar al comprador)
             self.posts = self._filtrar_envio_combinado(session, posts)
             # --- OPTIMIZACIÓN: PAGINACIÓN ---
             # En lugar de .all(), usamos limit().
@@ -10670,40 +10679,50 @@ class AppState(reflex_local_auth.LocalAuthState):
     # En likemodas/state.py
 
     # Nota que agregamos el parámetro 'session' aquí 👇
+    def _normalizar_texto(self, texto: str) -> str:
+        """Ayuda a comparar ciudades ignorando tildes y mayúsculas"""
+        if not texto: return ""
+        # Convierte a minúsculas
+        texto = texto.lower().strip()
+        # Quita tildes (á -> a, ñ -> n) para evitar errores de escritura
+        texto = ''.join((c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn'))
+        return texto
+
     def _filtrar_envio_combinado(self, session, posts: List[BlogPostModel]) -> List[BlogPostModel]:
         """
-        Recorre la lista de productos y APAGA la etiqueta de envío combinado
-        si el comprador no vive en la ciudad permitida.
+        Versión MEJORADA: Compara ciudades ignorando mayúsculas/tildes.
         """
-        buyer_city = None
+        # 1. Obtener ciudad del comprador (fresca de la BD)
+        buyer_city_norm = ""
         
-        # --- 🛠️ CORRECCIÓN DEL ERROR DETACHED INSTANCE 🛠️ ---
-        # No usamos self.authenticated_user_info directamente para las direcciones.
-        # Usamos la 'session' activa para buscar la versión más reciente del usuario.
         if self.authenticated_user_info:
             current_user = session.get(UserInfo, self.authenticated_user_info.id)
-            
             if current_user and current_user.shipping_addresses:
-                # Busca la predeterminada o usa la primera
-                for addr in current_user.shipping_addresses:
-                    if addr.is_default:
-                        buyer_city = addr.city
-                        break
-                if not buyer_city and current_user.shipping_addresses:
-                    buyer_city = current_user.shipping_addresses[0].city
-        # -------------------------------------------------------
+                # Buscar dirección predeterminada
+                addr = next((a for a in current_user.shipping_addresses if a.is_default), current_user.shipping_addresses[0])
+                buyer_city_norm = self._normalizar_texto(addr.city)
 
-        # 2. Recorrer productos y aplicar lógica
+        print(f"--- LOG DEBUG: Comprador en '{buyer_city_norm}' ---")
+
+        # 2. Recorrer productos
         for post in posts:
             if post.combines_shipping:
-                seller_cities = post.userinfo.combined_shipping_cities
+                # Asegurarnos de tener las ciudades del vendedor
+                # (Aunque sean None, las convertimos a lista vacía)
+                seller_cities = post.userinfo.combined_shipping_cities or []
                 
-                # Si el vendedor puso restricciones
+                # Si el vendedor NO puso restricciones (lista vacía) -> APLICA A TODOS (True)
+                # Si el vendedor SÍ puso restricciones -> VERIFICAMOS
                 if seller_cities:
-                    # Y el comprador NO tiene ciudad O su ciudad NO está en la lista...
-                    if not buyer_city or buyer_city not in seller_cities:
-                        # Apagamos la etiqueta visualmente
-                        post.combines_shipping = False 
+                    # Normalizamos la lista del vendedor también
+                    seller_cities_norm = [self._normalizar_texto(c) for c in seller_cities]
+                    
+                    # LOG PARA QUE VEAS SI COINCIDE
+                    # print(f"Prod {post.id}: Vendedor permite en {seller_cities_norm}")
+
+                    if not buyer_city_norm or buyer_city_norm not in seller_cities_norm:
+                        # NO COINCIDE -> APAGAMOS LA ETIQUETA
+                        post.combines_shipping = False
         
         return posts
 
