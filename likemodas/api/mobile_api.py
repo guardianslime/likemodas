@@ -676,6 +676,60 @@ async def get_products_for_mobile(
         ))
     return result
 
+@router.get("/debug/fix-shipping/{product_id}")
+async def fix_shipping_logic(
+    product_id: int, 
+    force_fix: bool = False, 
+    session: Session = Depends(get_session)
+):
+    """
+    Esta función te muestra cómo está la base de datos REALMENTE.
+    Si agregas ?force_fix=true al final de la URL, lo arregla.
+    """
+    # 1. Buscar el producto
+    p = session.exec(
+        select(BlogPostModel)
+        .options(joinedload(BlogPostModel.userinfo))
+        .where(BlogPostModel.id == product_id)
+    ).first()
+
+    if not p:
+        return {"status": "error", "msg": "Producto no encontrado"}
+
+    # 2. Ver estado ACTUAL (Antes del arreglo)
+    estado_actual = {
+        "id": p.id,
+        "titulo": p.title,
+        "combines_shipping_BD": p.combines_shipping, # ¿Qué dice la casilla maestra?
+        "ciudades_lista_BD": p.userinfo.combined_shipping_cities if p.userinfo else None
+    }
+
+    msg = "Solo lectura. Agrega ?force_fix=true para arreglar."
+
+    # 3. ARREGLARLO si se pide
+    if force_fix:
+        # Forzamos ACTIVADO
+        p.combines_shipping = True 
+        
+        # Forzamos LISTA VACÍA (Para que aplique a todo el país)
+        if p.userinfo:
+            p.userinfo.combined_shipping_cities = [] 
+            session.add(p.userinfo)
+        
+        session.add(p)
+        session.commit()
+        session.refresh(p)
+        msg = "¡REPARADO! Ahora debería verse en la App."
+
+    return {
+        "mensaje": msg,
+        "ANTES": estado_actual,
+        "AHORA": {
+            "combines_shipping_BD": p.combines_shipping,
+            "ciudades_lista_BD": p.userinfo.combined_shipping_cities
+        }
+    }
+
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
