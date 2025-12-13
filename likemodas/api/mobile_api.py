@@ -720,7 +720,7 @@ async def fix_shipping_logic(
         }
     }
 
-@router.get("/products/{product_id}", response_model=ProductDetailDTO)@router.get("/products/{product_id}", response_model=ProductDetailDTO)
+@router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
     try:
         p = session.exec(
