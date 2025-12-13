@@ -554,12 +554,12 @@ async def get_products_for_mobile(
     user_id: Optional[int] = Query(None), 
     session: Session = Depends(get_session)
 ):
-    # 1. Inicialización segura de variables de ubicación del comprador
+    # 1. Inicialización segura
     buyer_city = None
     buyer_barrio = None 
     normalized_buyer_city = ""
 
-    # 2. Obtener dirección del comprador (si existe)
+    # 2. Obtener dirección del comprador
     if user_id:
         default_addr = session.exec(
             select(ShippingAddressModel)
@@ -571,13 +571,15 @@ async def get_products_for_mobile(
             buyer_barrio = default_addr.neighborhood
             if buyer_city:
                 normalized_buyer_city = normalize_text_api(buyer_city)
+                # DEBUG TEMPORAL
+                print(f"-------- DEBUG USUARIO {user_id} --------")
+                print(f"Ciudad detectada: '{buyer_city}' -> Normalizada: '{normalized_buyer_city}'")
 
     # 3. Consulta de Productos
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
     if category and category != "todos": 
         query = query.where(BlogPostModel.category == category)
     
-    # Cargar relaciones necesarias
     query = query.options(joinedload(BlogPostModel.userinfo))
     query = query.order_by(get_ranking_query_sort(BlogPostModel).desc())
     
@@ -585,53 +587,53 @@ async def get_products_for_mobile(
     result = []
     
     for p in products:
-        # Lógica de Imagen y Rating
+        # (Lógica de imágenes y rating omitida por brevedad, se mantiene igual...)
         image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
         
-        lightbox_light = "dark"
-        lightbox_dark = "dark"
-        if p.variants and isinstance(p.variants, list) and len(p.variants) > 0:
-            first_var = p.variants[0]
-            if isinstance(first_var, dict):
-                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
-                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
-
         # --- LÓGICA DE MODA COMPLETA ---
         is_moda_eligible = p.is_moda_completa_eligible
         if p.userinfo and is_moda_eligible:
             seller_moda_cities = p.userinfo.moda_completa_cities or []
-            # Si hay lista de restricciones, verificamos. Si está vacía, aplica a todos.
             if seller_moda_cities:
                 if normalized_buyer_city:
                     normalized_seller_cities = [normalize_text_api(c) for c in seller_moda_cities]
                     if normalized_buyer_city not in normalized_seller_cities:
                         is_moda_eligible = False
                 else:
-                     # Si hay restricción pero no sabemos la ciudad del usuario, ocultamos
                      is_moda_eligible = False
 
-        # --- LÓGICA CORREGIDA DE ENVÍO COMBINADO (Igual a Moda Completa) ---
-        is_combined_eligible = p.combines_shipping # Empezamos con el valor de la BD (True/False)
+        # --- LÓGICA ENVÍO COMBINADO (CON DIAGNÓSTICO) ---
+        is_combined_eligible = p.combines_shipping
         
         if p.userinfo and is_combined_eligible:
             seller_combined_cities = p.userinfo.combined_shipping_cities or []
             
-            # REGLA DE NEGOCIO CORREGIDA:
-            # 1. Si la lista está VACÍA -> Aplica a TODO EL PAÍS (se mantiene True).
-            # 2. Si la lista TIENE ciudades -> Solo aplica si el comprador está en una de ellas.
-            
+            # Solo diagnosticamos si el producto tiene activada la opción
+            if is_combined_eligible:
+                # DEBUG: Ver qué tiene la lista
+                # print(f"[Prod {p.id}] Lista Vendedor: {seller_combined_cities}")
+                pass
+
             if seller_combined_cities:
                 if normalized_buyer_city:
                     normalized_combined_cities = [normalize_text_api(c) for c in seller_combined_cities]
+                    
                     if normalized_buyer_city not in normalized_combined_cities:
+                        # AQUÍ ES DONDE SE PIERDE LA ETIQUETA
+                        print(f"[Prod {p.id}] Ocultando Envío Combinado. Usuario '{normalized_buyer_city}' NO ESTÁ en {normalized_combined_cities}")
                         is_combined_eligible = False
+                    else:
+                        print(f"[Prod {p.id}] MOSTRANDO Envío Combinado. Match exitoso: '{normalized_buyer_city}'")
                 else:
-                    # Si hay restricciones geográficas y el usuario no tiene dirección, se oculta.
+                    print(f"[Prod {p.id}] Ocultando Envío Combinado. Usuario sin dirección o ciudad.")
                     is_combined_eligible = False 
-        # -------------------------------------------------------------------
-
-        # Textos dinámicos y cálculo de envío
+            else:
+                # Si la lista está vacía, se muestra a todos
+                # print(f"[Prod {p.id}] MOSTRANDO Envío Combinado (Lista vacía = Todo el país)")
+                pass
+        
+        # --- RESTO DE LA LÓGICA (Envío dinámico, DTO) ---
         shipping_txt = "Envío a convenir"
         seller_city = p.userinfo.seller_city if p.userinfo else None
         seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
@@ -644,10 +646,14 @@ async def get_products_for_mobile(
             buyer_city=buyer_city
         )
         
-        if final_shipping_cost == 0:
-            shipping_txt = "Envío Gratis"
-        elif final_shipping_cost > 0:
-            shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
+        if final_shipping_cost == 0: shipping_txt = "Envío Gratis"
+        elif final_shipping_cost > 0: shipping_txt = f"Envío: {fmt_price(final_shipping_cost)}"
+        
+        # Configuración de lightbox (breve)
+        lightbox_light = "dark"; lightbox_dark = "dark"
+        if p.variants and len(p.variants) > 0 and isinstance(p.variants[0], dict):
+             lightbox_light = p.variants[0].get("lightbox_bg_light", "dark")
+             lightbox_dark = p.variants[0].get("lightbox_bg_dark", "dark")
 
         result.append(ProductListDTO(
             id=p.id, 
@@ -658,7 +664,7 @@ async def get_products_for_mobile(
             category=p.category, 
             description=p.content,
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible, # Valor corregido
+            combines_shipping=is_combined_eligible, # <--- VERIFICAR ESTE VALOR EN LOS LOGS
             average_rating=avg_rating, 
             rating_count=rating_count,
             shipping_display_text=shipping_txt,
