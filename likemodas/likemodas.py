@@ -41,9 +41,8 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
-# --- 1. DEFINIR EL ENDPOINT DE SEGURIDAD (ASSETLINKS) ---
-# Nota: La función recibe 'request' aunque no lo use, es necesario para Starlette
-async def asset_links_endpoint(request):
+# --- 1. DEFINIR LA FUNCIÓN PARA EL ARCHIVO DE SEGURIDAD ---
+async def asset_links_endpoint():
     """Entrega el archivo de seguridad para Android."""
     return JSONResponse(content=[{
         "relation": ["delegate_permission/common.handle_all_urls"],
@@ -57,20 +56,7 @@ async def asset_links_endpoint(request):
         }
     }])
 
-# --- 2. CONFIGURADOR GLOBAL DE LA API (TRANSFORMER) ---
-def global_api_transformer(api: FastAPI) -> FastAPI:
-    # 🔴 CAMBIO CLAVE: Usamos 'add_route' en lugar de 'add_api_route'
-    # Esto es compatible con Starlette y evita el AttributeError.
-    api.add_route("/.well-known/assetlinks.json", asset_links_endpoint, methods=["GET"])
-    
-    # Incluir los routers de la aplicación normalmente
-    api.include_router(webhooks.router)
-    api.include_router(api_tasks.router)
-    api.include_router(mobile_api.router)
-    
-    return api
-
-# --- 3. CREAR LA APP USANDO EL TRANSFORMER ---
+# --- 2. CREAR LA APP (SIN TRANSFORMER) ---
 app = rx.App(
     head_components=[
         rx.el.meta(name="description", content="Compra lo mejor en moda..."),
@@ -83,9 +69,23 @@ app = rx.App(
         "font_family": "Arial, sans-serif",
         ".ToastViewport": {"z_index": "99999 !important"},
     },
-    # 👇 AQUÍ PASAMOS LA FUNCIÓN DE CONFIGURACIÓN 👇
-    api_transformer=global_api_transformer
 )
+
+# --- 3. INYECCIÓN DE RUTAS (CORRECCIÓN PARA TU VERSIÓN) ---
+# Usamos '_api' porque 'api' no existe o es un objeto Starlette limitado en tu versión.
+backend_api = getattr(app, "_api", None) or getattr(app, "api", None)
+
+if backend_api:
+    # 1. Añadimos el archivo de seguridad (AssetLinks)
+    backend_api.add_api_route("/.well-known/assetlinks.json", asset_links_endpoint)
+    
+    # 2. Añadimos tus routers (Mobile API, Webhooks, etc.)
+    backend_api.include_router(webhooks.router)
+    backend_api.include_router(api_tasks.router)
+    backend_api.include_router(mobile_api.router)
+else:
+    print("⚠️ ADVERTENCIA CRÍTICA: No se pudo encontrar la instancia de la API. Los enlaces no funcionarán.")
+
 
 # --- 4. LÓGICA DE DEEP LINKING (WEB) ---
 class DeepLinkState(rx.State):
