@@ -2,7 +2,7 @@
 
 import reflex as rx
 from ..state import AppState, CommentData
-from ..ui.components import product_gallery_component, star_rating_display_safe
+from ..ui.components import product_gallery_component, product_share_button, star_rating_display_safe
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 from ..ui.reputation_icon import reputation_icon
@@ -29,11 +29,10 @@ def render_update_item(update: CommentData) -> rx.Component:
         ),
         padding="0.75em",
         margin_top="0.5em",
-        margin_left="1.5em",
         border_left="2px solid var(--gray-6)",
         bg=rx.color("gray", 2),
-        border_radius="0 8px 8px 0",
-        width="95%"
+        width="95%",
+        align_self="end"
     )
 
 def review_submission_form() -> rx.Component:
@@ -272,45 +271,110 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
     return rx.dialog.root(
         rx.dialog.content(
-            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "10"})),
-            rx.cond(
-                AppState.product_in_modal,
-                rx.vstack(
-                    rx.grid(
-                        _modal_image_section(),
-                        _modal_info_section(),
-                        columns={"initial": "1", "md": "2"},
-                        spacing="6",
-                        align_items="start",
-                        width="100%",
-                    ),
-                    rx.divider(margin_y="1.5em"),
-                    
-                    rx.heading("Opiniones de Clientes", size="5", width="100%"),
-                    rx.vstack(
-                        # Formulario de NUEVA opinión (Solo si no es actualización)
-                        rx.cond(
-                            ~AppState.my_review_for_product, 
-                            review_submission_form()
-                        ),
-                        
-                        rx.cond(
-                            AppState.product_comments,
-                            rx.vstack(
-                                rx.foreach(AppState.product_comments, render_comment_item),
-                                width="100%", spacing="4"
+            rx.vstack(
+                rx.cond(
+                    AppState.is_product_detail_loading,
+                    skeleton_product_detail_view(),
+                    rx.flex(
+                        # COLUMNA IZQUIERDA: CARRUSEL
+                        rx.box(
+                            carousel(
+                                items=AppState.product_in_modal.images_for_carousel,
                             ),
-                            rx.center(rx.text("Aún no hay opiniones. ¡Sé el primero!", color_scheme="gray"), padding="2em", width="100%")
+                            width=["100%", "100%", "50%"],
+                            padding="1em"
                         ),
-                        width="100%", spacing="4"
-                    ),
+                        # COLUMNA DERECHA: INFORMACIÓN
+                        rx.vstack(
+                            rx.heading(AppState.product_in_modal.title, size="6", weight="bold"),
+                            
+                            rx.hstack(
+                                star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=20),
+                                rx.spacer(),
+                                rx.text(AppState.product_in_modal.price_cop, size="6", weight="bold", color_scheme="violet"),
+                                width="100%", align="center"
+                            ),
+
+                            # Badges de Envío
+                            rx.flex(
+                                rx.badge(AppState.product_in_modal.shipping_display_text, variant="soft", color_scheme="gray"),
+                                rx.cond(
+                                    AppState.product_in_modal.is_moda_completa_eligible,
+                                    rx.tooltip(
+                                        rx.badge("Moda Completa", variant="solid", color_scheme="violet"),
+                                        content=AppState.product_in_modal.moda_completa_tooltip_text
+                                    )
+                                ),
+                                rx.cond(
+                                    AppState.product_in_modal.combines_shipping,
+                                    rx.tooltip(
+                                        rx.badge("Envío Combinado", variant="solid", color_scheme="teal"),
+                                        content=AppState.product_in_modal.envio_combinado_tooltip_text
+                                    )
+                                ),
+                                rx.badge(
+                                    rx.cond(AppState.product_in_modal.is_imported, "Importado", "Nacional"),
+                                    variant="outline", 
+                                    color_scheme=rx.cond(AppState.product_in_modal.is_imported, "purple", "cyan")
+                                ),
+                                wrap="wrap", spacing="2"
+                            ),
+                            
+                            rx.divider(),
+
+                            # Información del Vendedor
+                            rx.hstack(
+                                rx.avatar(fallback=AppState.product_in_modal.author[0], size="3"),
+                                rx.vstack(
+                                    rx.text("Vendedor: " + AppState.product_in_modal.author, weight="bold"),
+                                    seller_score_stars(AppState.product_in_modal.seller_reputation),
+                                    spacing="0"
+                                ),
+                                width="100%", align="center",
+                                padding="0.5em", bg=rx.color("gray", 2), border_radius="md"
+                            ),
+
+                            # Selectores (Talla, Color) - Ejemplo simplificado
+                            # Aquí irían tus selectores reales vinculados al State
+
+                            rx.spacer(),
+
+                            # BOTONES DE ACCIÓN
+                            rx.hstack(
+                                rx.button(
+                                    "Añadir al Carrito", 
+                                    on_click=AppState.add_to_cart_from_modal, # Asegúrate que esta función exista en tu State
+                                    flex_grow="1", 
+                                    size="3", 
+                                    variant="solid", 
+                                    color_scheme="violet"
+                                ),
+                                
+                                # ✨ AQUÍ USAMOS EL BOTÓN DE COMPARTIR CORREGIDO ✨
+                                product_share_button(AppState.product_in_modal.id),
+                                
+                                width="100%", spacing="3"
+                            ),
+
+                            rx.text("Descripción", weight="bold", margin_top="1em"),
+                            rx.text(AppState.product_in_modal.description, size="2", color_scheme="gray"),
+
+                            spacing="4", width=["100%", "100%", "50%"], padding="1em", align_items="start"
+                        ),
+                        flex_direction=["column", "column", "row"],
+                        width="100%"
+                    )
                 ),
-                skeleton_product_detail_view(),
+                # Botón cerrar modal
+                rx.dialog.close(
+                    rx.button("Cerrar", size="2", variant="soft", color_scheme="gray", margin_top="1em")
+                ),
+                width="100%",
+                max_width="900px",
             ),
-            max_width="1200px", width="100%"
         ),
-        open=AppState.show_detail_modal,
-        on_open_change=AppState.close_product_detail_modal,
+        open=AppState.is_product_detail_open,
+        on_open_change=AppState.set_is_product_detail_open,
     )
 
 def public_qr_scanner_modal() -> rx.Component:
@@ -390,11 +454,12 @@ def blog_public_page_content() -> rx.Component:
         ),
         width="100%"
     )
-
-    return rx.fragment(
+    
+    return rx.box(
         floating_filter_panel(),
         main_content,
-        product_detail_modal(is_for_direct_sale=False),
-        public_qr_scanner_modal(),
-        lightbox_modal(),
+        product_detail_modal(), # Incluimos el modal en la página
+        width="100%",
+        min_height="100vh",
+        position="relative"
     )

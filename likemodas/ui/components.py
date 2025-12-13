@@ -1,4 +1,4 @@
-# En: likemodas/ui/components.py (COMPLETO Y CORREGIDO)
+# likemodas/ui/components.py
 
 from typing import Any
 import reflex as rx
@@ -10,14 +10,12 @@ from ..state import (
     ProductCardData,
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_TITLE, DEFAULT_LIGHT_PRICE,
     DEFAULT_DARK_BG, DEFAULT_DARK_TITLE, DEFAULT_DARK_PRICE,
-    # --- ✨ AÑADIR ESTAS DOS ✨ ---
     DEFAULT_LIGHT_IMAGE_BG, DEFAULT_DARK_IMAGE_BG
-    # --- FIN ✨ ---
 )
 
 from reflex.event import EventSpec
 
-# --- ESTILO PARA EL TÍTULO (SIN CAMBIOS) ---
+# --- ESTILOS AUXILIARES ---
 TITLE_CLAMP_STYLE = {
     "display": "-webkit-box",
     "-webkit-line-clamp": "2",
@@ -26,7 +24,6 @@ TITLE_CLAMP_STYLE = {
     "text_overflow": "ellipsis",
 }
 
-# --- star_rating_display_safe (SIN CAMBIOS) ---
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """Muestra estrellas de calificación de forma segura."""
     return rx.hstack(
@@ -37,7 +34,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
                 color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
                 style={"fill": rx.cond(rating > i, "gold", "none")},
                 size=size,
-            )
+            ),
         ),
         rx.cond(
             count > 0,
@@ -47,10 +44,6 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         spacing="1",
     )
 
-# --- searchable_select (SIN CAMBIOS) ---
-# 1. Modificar searchable_select para aceptar 'columns'
-# likemodas/ui/components.py
-# 1. Componente searchable_select ACTUALIZADO
 def searchable_select(
     placeholder: str,
     options: rx.Var[list],
@@ -61,25 +54,13 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
     columns: str = "1",
-    use_mapping: bool = False, # ✨ Usamos esto para evitar el error de tipos
+    use_mapping: bool = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
 
     def render_option(option: rx.Var):
-        # Si use_mapping es True, asumimos que option es una lista [label, value]
-        # Si es False, asumimos que option es un string directo.
-        
-        label = rx.cond(
-            use_mapping, 
-            option[0],  # Si es mapping, el texto es el primer elemento
-            option      # Si no, el texto es el string completo
-        )
-        
-        value = rx.cond(
-            use_mapping, 
-            option[1],  # Si es mapping, el valor es el segundo elemento
-            option      # Si no, el valor es el string completo
-        )
+        label = rx.cond(use_mapping, option[0], option)
+        value = rx.cond(use_mapping, option[1], option)
 
         return rx.button(
             label,
@@ -204,81 +185,38 @@ def multi_select_component(
             on_change_search=on_change_search,
             filter_name=filter_name,
             columns=columns,
-            use_mapping=False # Por defecto False para multi-select
+            use_mapping=False
         ),
         spacing="0", 
         align_items="stretch", 
         width="100%",
     )
 
-# --- FUNCIÓN product_gallery_component (CON LA LÓGICA DE APARIENCIA CORREGIDA) ---
 
+# --- COMPONENTE DE GALERÍA (CON LÓGICA DE TEMA CORREGIDA) ---
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """
-    [VERSIÓN FINAL CON PREFERENCIA DE USUARIO]
-    Galería de productos que renderiza tarjetas con la lógica de apariencia
-    unificada, respetando la preferencia 'force_site_theme' del usuario.
-    """
     
     def _render_single_card(post: ProductCardData) -> rx.Component:
-        
-        # 1. Obtiene el tema actual del NAVEGADOR ("light" o "dark")
+        # Detectar tema y preferencia
         site_theme = rx.color_mode_cond("light", "dark")
+        seller_chosen_appearance = rx.cond(site_theme == "light", post.light_mode_appearance, post.dark_mode_appearance)
         
-        # --- INICIO DE LA LÓGICA CORREGIDA ---
-        
-        # 2. Determina la APARIENCIA ELEGIDA POR EL VENDEDOR
-        seller_chosen_appearance = rx.cond(
-            site_theme == "light",
-            post.light_mode_appearance, # Si sitio es claro, usa config clara
-            post.dark_mode_appearance   # Si sitio es oscuro, usa config oscura
-        )
-        
-        # 3. Aplica la preferencia del USUARIO
-        # Si 'force_site_theme' es True, usa el 'site_theme'.
-        # Si es False, usa el 'seller_chosen_appearance'.
-        card_target_appearance = rx.cond(
-            AppState.force_site_theme,
-            site_theme,
-            seller_chosen_appearance
-        )
-        
-        # --- FIN DE LA LÓGICA CORREGIDA ---
+        # Preferencia del usuario fuerza el tema
+        card_target_appearance = rx.cond(AppState.force_site_theme, site_theme, seller_chosen_appearance)
 
-        # El resto de la lógica de renderizado depende de 'card_target_appearance',
-        # por lo que funcionará automáticamente con la nueva preferencia.
-        
         default_bg_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
         default_title_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
         default_price_by_appearance = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+        image_bg = rx.cond(card_target_appearance == "light", DEFAULT_LIGHT_IMAGE_BG, DEFAULT_DARK_IMAGE_BG)
 
-        custom_bg = rx.cond(
-            site_theme == "light",
-            post.light_card_bg_color | default_bg_by_appearance,
-            post.dark_card_bg_color | default_bg_by_appearance
-        )
-        custom_title = rx.cond(
-            site_theme == "light",
-            post.light_title_color | default_title_by_appearance,
-            post.dark_title_color | default_title_by_appearance
-        )
-        custom_price = rx.cond(
-            site_theme == "light",
-            post.light_price_color | default_price_by_appearance,
-            post.dark_price_color | default_price_by_appearance
-        )
+        custom_bg = rx.cond(site_theme == "light", post.light_card_bg_color | default_bg_by_appearance, post.dark_card_bg_color | default_bg_by_appearance)
+        custom_title = rx.cond(site_theme == "light", post.light_title_color | default_title_by_appearance, post.dark_title_color | default_title_by_appearance)
+        custom_price = rx.cond(site_theme == "light", post.light_price_color | default_price_by_appearance, post.dark_price_color | default_price_by_appearance)
         
         card_bg_color = rx.cond(post.use_default_style, default_bg_by_appearance, custom_bg)
         title_color = rx.cond(post.use_default_style, default_title_by_appearance, custom_title)
         price_color = rx.cond(post.use_default_style, default_price_by_appearance, custom_price)
-        
-        image_bg = rx.cond(
-            card_target_appearance == "light",
-            DEFAULT_LIGHT_IMAGE_BG,
-            DEFAULT_DARK_IMAGE_BG
-        )
-        
-        # (La función _card_badge es correcta)
+
         def _card_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
             light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
             dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -289,7 +227,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                 border_radius="var(--radius-full)", font_size="0.8em", white_space="nowrap",
             )
 
-        # (Estilos de imagen - SIN CAMBIOS)
+        # Transformaciones de imagen (Zoom, Rotación)
         image_styles = post.image_styles
         zoom = image_styles.get("zoom", 1.0)
         rotation = image_styles.get("rotation", 0)
@@ -297,55 +235,45 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         offset_y = image_styles.get("offsetY", 0)
         transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
 
-        # (Renderizado de la tarjeta - SIN CAMBIOS)
         return rx.box(
             rx.vstack(
-                rx.vstack( # Contenedor clickeable
-                    rx.box( # Imagen
+                rx.vstack(
+                    rx.box(
                          rx.cond(
                             post.main_image_url != "",
                             rx.image(
                                 src=rx.get_upload_url(post.main_image_url),
-                                width="100%", 
-                                height="260px", 
-                                object_fit="contain",
-                                transform=transform_style, 
-                                transition="transform 0.2s ease-out",
+                                width="100%", height="260px", object_fit="contain",
+                                transform=transform_style, transition="transform 0.2s ease-out",
                             ),
                             rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                         ),
-                         rx.badge( # Origen
+                         rx.badge(
                             rx.cond(post.is_imported, "Importado", "Nacional"),
                             color_scheme=rx.cond(post.is_imported, "purple", "cyan"), variant="solid",
                             style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                          ),
                         position="relative", width="100%", height="260px", overflow="hidden", bg=image_bg,
                     ),
-                    rx.vstack( # Información
+                    rx.vstack(
                         rx.text(post.title, weight="bold", size="6", width="100%", color=title_color, style=TITLE_CLAMP_STYLE),
                         star_rating_display_safe(post.average_rating, post.rating_count, size=24), 
                          rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                         rx.spacer(),
-                        rx.vstack( # Badges envío
+                        rx.vstack(
                             rx.grid(
                                  _card_badge(post.shipping_display_text, "gray"),
                                 rx.cond(
                                     post.is_moda_completa_eligible,
                                     rx.tooltip(_card_badge("Moda Completa", "violet"), content=post.moda_completa_tooltip_text),
-                                 ),
-                                columns="auto auto", 
-                                spacing="2", 
-                                align="center", 
-                                 justify="start", 
-                                width="100%",
+                                ),
+                                columns="auto auto", spacing="2", align="center", justify="start", width="100%",
                             ),
                             rx.cond(
-                                post.combines_shipping,  # ✅ VOLVEMOS A LA VARIABLE SIMPLE
+                                post.combines_shipping,
                                 rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                             ),
-                            spacing="1", 
-                            align_items="start", 
-                             width="100%",
+                            spacing="1", align_items="start", width="100%",
                         ),
                         spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
                     ),
@@ -359,11 +287,25 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             border_radius="8px", box_shadow="md", overflow="hidden"
         )
 
-    # (Renderizado de la galería - SIN CAMBIOS)
     return rx.cond(
         posts,
         rx.flex(
              rx.foreach(posts, _render_single_card),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
+    )
+
+# --- NUEVO COMPONENTE: BOTÓN DE COMPARTIR UNIVERSAL ---
+# Se utiliza en los modales para generar el link: https://likemodas.com/product/123
+def product_share_button(product_id: rx.Var[int]) -> rx.Component:
+    return rx.icon_button(
+        rx.icon(tag="share-2"),
+        on_click=[
+            rx.set_clipboard(AppState.base_app_url + "/product/" + product_id.to_string()),
+            rx.toast.success("¡Enlace copiado! Abre la App o Web.")
+        ],
+        size="3", 
+        variant="outline", 
+        color_scheme="violet",
+        tooltip="Copiar enlace universal"
     )
