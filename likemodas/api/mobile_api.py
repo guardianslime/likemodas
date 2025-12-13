@@ -550,7 +550,7 @@ async def set_default_address(user_id: int, address_id: int, session: Session = 
 
 # --- EN LIKEMODAS/API/MOBILE_API.PY ---
 
-@router.get("/products", response_model=List[ProductListDTO])@router.get("/products", response_model=List[ProductListDTO])
+@router.get("/products", response_model=List[ProductListDTO])
 async def get_products_for_mobile(
     category: Optional[str] = None, 
     user_id: Optional[int] = Query(None), 
