@@ -55,7 +55,7 @@ from .returns import page as returns_page
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 
 # ==================================================================
-#  SOLUCIÓN DEFINITIVA DE REDIRECCIÓN (ASSETLINKS.JSON)
+#  🔴 RUTA OBLIGATORIA PARA QUE ANDROID ABRA LA APP
 # ==================================================================
 @fastapi_app.get("/.well-known/assetlinks.json")
 async def asset_links():
@@ -64,8 +64,8 @@ async def asset_links():
         "target": {
             "namespace": "android_app",
             "package_name": "com.likemodas.app",
-            # 👇 AQUÍ ESTÁ TU HUELLA REAL QUE ACABAS DE OBTENER 👇
             "sha256_cert_fingerprints": [
+                # ESTA ES LA HUELLA QUE OBTUVISTE DE ANDROID STUDIO:
                 "E9:BC:A9:3D:0D:95:42:00:1D:C1:EC:F1:11:1A:6E:EF:70:19:61:6F:9B:D5:DF:97:0F:89:5B:6A:CA:6B:38:F8"
             ]
         }
@@ -91,22 +91,23 @@ app = rx.App(
     api_transformer=fastapi_app
 )
 
-# --- LÓGICA DE REDIRECCIÓN WEB (PUENTE) ---
+# --- LÓGICA DE REDIRECCIÓN WEB (CUANDO NO SE TIENE LA APP) ---
 class DeepLinkState(rx.State):
     @rx.var
     def product_id_from_url(self) -> str:
+        # Captura el ID de la URL: /product/123
         return self.router.page.params.get("product_id", "")
 
     def redirect_to_modal(self):
         p_id = self.product_id_from_url
         if p_id:
-            # Redirige a la home cargando el modal
+            # Redirige a la home y abre el modal
             return rx.redirect(f"/?product_id_to_load={p_id}")
         return rx.redirect("/")
 
+# Página "puente" que atrapa el link si el celular no abre la app
 @rx.page(route="/product/[product_id]", on_load=DeepLinkState.redirect_to_modal)
 def product_deep_link_page():
-    # Página invisible que redirige si no se abre la App
     return rx.center(
         rx.spinner(size="3", color="violet"),
         height="100vh", width="100%"
