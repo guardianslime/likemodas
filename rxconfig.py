@@ -28,4 +28,5 @@ config = rx.Config(
         accent_color="violet",
         panel_background="translucent",
     ),
+    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
 )
