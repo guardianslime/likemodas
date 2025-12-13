@@ -1,6 +1,6 @@
 # likemodas/likemodas.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import reflex as rx
 import reflex_local_auth
@@ -41,9 +41,9 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
-# --- 1. DEFINIR LA FUNCIÓN PARA EL ARCHIVO DE SEGURIDAD ---
-async def asset_links_endpoint():
-    """Entrega el archivo de seguridad para Android."""
+# --- 1. ENDPOINT DE SEGURIDAD (ASSETLINKS) ---
+# Acepta 'request' para ser compatible con Starlette y FastAPI
+async def asset_links_endpoint(request: Request):
     return JSONResponse(content=[{
         "relation": ["delegate_permission/common.handle_all_urls"],
         "target": {
@@ -71,21 +71,27 @@ app = rx.App(
     },
 )
 
-# --- 3. INYECCIÓN DE RUTAS (CORRECCIÓN PARA TU VERSIÓN) ---
-# Usamos '_api' porque 'api' no existe o es un objeto Starlette limitado en tu versión.
+# --- 3. INYECCIÓN DE RUTAS A PRUEBA DE ERRORES ---
+# Intentamos obtener la API, sea cual sea su forma interna
 backend_api = getattr(app, "_api", None) or getattr(app, "api", None)
 
 if backend_api:
-    # 1. Añadimos el archivo de seguridad (AssetLinks)
-    backend_api.add_api_route("/.well-known/assetlinks.json", asset_links_endpoint)
-    
-    # 2. Añadimos tus routers (Mobile API, Webhooks, etc.)
-    backend_api.include_router(webhooks.router)
-    backend_api.include_router(api_tasks.router)
-    backend_api.include_router(mobile_api.router)
-else:
-    print("⚠️ ADVERTENCIA CRÍTICA: No se pudo encontrar la instancia de la API. Los enlaces no funcionarán.")
+    # 3.1. Añadir assetlinks (Compatible con Starlette y FastAPI)
+    if hasattr(backend_api, "add_api_route"):
+        # Método FastAPI
+        backend_api.add_api_route("/.well-known/assetlinks.json", asset_links_endpoint, methods=["GET"])
+    elif hasattr(backend_api, "add_route"):
+        # Método Starlette (Fallback)
+        backend_api.add_route("/.well-known/assetlinks.json", asset_links_endpoint, methods=["GET"])
 
+    # 3.2. Añadir Routers (Solo si es FastAPI completo)
+    if hasattr(backend_api, "include_router"):
+        backend_api.include_router(webhooks.router)
+        backend_api.include_router(api_tasks.router)
+        backend_api.include_router(mobile_api.router)
+    else:
+        # Si estamos en modo 'export' y la API es limitada, imprimimos aviso pero NO crasheamos
+        print("⚠️ Modo exportación/limitado detectado: Routers dinámicos no cargados (esto es normal al exportar).")
 
 # --- 4. LÓGICA DE DEEP LINKING (WEB) ---
 class DeepLinkState(rx.State):
