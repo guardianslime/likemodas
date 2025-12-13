@@ -887,22 +887,81 @@ async def toggle_save_product(product_id: int, user_id: int, session: Session = 
         return ToggleSaveResponse(message="Producto guardado", is_saved=True)
 
 @router.get("/products/seller/{seller_id}", response_model=List[ProductListDTO])
-async def get_seller_products(seller_id: int, session: Session = Depends(get_session)):
+async def get_seller_products(
+    seller_id: int, 
+    # 👇 Agregamos esto para saber quién está mirando el perfil
+    buyer_id: Optional[int] = Query(None), 
+    session: Session = Depends(get_session)
+):
+    # 1. Buscar al Vendedor
     seller = session.get(UserInfo, seller_id)
     if not seller: raise HTTPException(404, "Vendedor no encontrado")
+
+    # 2. Buscar ciudad del Comprador (si se envió el ID)
+    buyer_city = None
+    if buyer_id:
+        buyer = session.get(UserInfo, buyer_id)
+        if buyer and buyer.shipping_addresses:
+            addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
+            buyer_city = addr.city
+
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id).order_by(BlogPostModel.created_at.desc())
     products = session.exec(query).all()
     result = []
+    
     for p in products:
         image_url = extract_display_image(p)
+        
+        # Gestión de variantes (Lightbox)
         lightbox_light = "dark"; lightbox_dark = "dark"
         safe_variants = p.variants if (p.variants and isinstance(p.variants, list)) else []
         if safe_variants:
             first_var = safe_variants[0]
             if isinstance(first_var, dict):
-                 lightbox_light = first_var.get("lightbox_bg_light", "dark"); lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+                 lightbox_light = first_var.get("lightbox_bg_light", "dark")
+                 lightbox_dark = first_var.get("lightbox_bg_dark", "dark")
+        
         avg_rating, rating_count = calculate_rating(session, p.id)
-        result.append(ProductListDTO(id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), image_url=image_url, category=p.category, description=p.content, is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping, average_rating=avg_rating, rating_count=rating_count, use_default_style=p.use_default_style, light_mode_appearance=p.light_mode_appearance, dark_mode_appearance=p.dark_mode_appearance, light_card_bg_color=p.light_card_bg_color, light_title_color=p.light_title_color, light_price_color=p.light_price_color, dark_card_bg_color=p.dark_card_bg_color, dark_title_color=p.dark_title_color, dark_price_color=p.dark_price_color, lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark))
+
+        # --- LÓGICA DE FILTRADO (NUEVO) ---
+        is_combined_eligible = False
+        if p.combines_shipping:
+            # Si el vendedor no tiene lista de ciudades, es para todos
+            if not seller.combined_shipping_cities:
+                is_combined_eligible = True
+            # Si tiene lista, VERIFICAMOS la ciudad del comprador
+            elif buyer_city and buyer_city in seller.combined_shipping_cities:
+                is_combined_eligible = True
+            # Si no hay buyer_city (ej. usuario no logueado), se queda en False por seguridad
+        # ---------------------------------
+
+        result.append(ProductListDTO(
+            id=p.id, 
+            title=p.title, 
+            price=p.price, 
+            price_formatted=fmt_price(p.price), 
+            image_url=image_url, 
+            category=p.category, 
+            description=p.content, 
+            is_moda_completa=p.is_moda_completa_eligible, 
+            
+            # ✅ CORREGIDO:
+            combines_shipping=is_combined_eligible, 
+            
+            average_rating=avg_rating, 
+            rating_count=rating_count, 
+            use_default_style=p.use_default_style, 
+            light_mode_appearance=p.light_mode_appearance, 
+            dark_mode_appearance=p.dark_mode_appearance, 
+            light_card_bg_color=p.light_card_bg_color, 
+            light_title_color=p.light_title_color, 
+            light_price_color=p.light_price_color, 
+            dark_card_bg_color=p.dark_card_bg_color, 
+            dark_title_color=p.dark_title_color, 
+            dark_price_color=p.dark_price_color, 
+            lightbox_bg_light=lightbox_light, 
+            lightbox_bg_dark=lightbox_dark
+        ))
     return result
 
 @router.post("/products/{productId}/reviews")
@@ -949,15 +1008,73 @@ async def create_report(req: ReportRequest, user_id: int = Query(...), session: 
 
 @router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
 async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
-    get_user_info(session, user_id)
-    user_with_posts = session.exec(select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts)).where(UserInfo.id == user_id)).one()
+    # 1. Obtener la ciudad del comprador (Usuario que consulta)
+    buyer = session.get(UserInfo, user_id)
+    buyer_city = None
+    if buyer and buyer.shipping_addresses:
+        # Busca la dirección predeterminada o la primera disponible
+        addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
+        buyer_city = addr.city
+
+    # 2. Cargar los posts guardados junto con la info del vendedor (para ver sus restricciones)
+    user_with_posts = session.exec(
+        select(UserInfo)
+        .options(
+            sqlalchemy.orm.selectinload(UserInfo.saved_posts).selectinload(BlogPostModel.userinfo)
+        )
+        .where(UserInfo.id == user_id)
+    ).one()
+    
     saved_posts = user_with_posts.saved_posts
     result = []
+    
     for p in saved_posts:
         if not p.publish_active: continue
+        
         image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
-        result.append(ProductListDTO(id=p.id, title=p.title, price=p.price, price_formatted=fmt_price(p.price), image_url=image_url, category=p.category, description=p.content, is_moda_completa=p.is_moda_completa_eligible, combines_shipping=p.combines_shipping, average_rating=avg_rating, rating_count=rating_count, use_default_style=p.use_default_style, light_mode_appearance=p.light_mode_appearance, dark_mode_appearance=p.dark_mode_appearance, light_card_bg_color=p.light_card_bg_color, light_title_color=p.light_title_color, light_price_color=p.light_price_color, dark_card_bg_color=p.dark_card_bg_color, dark_title_color=p.dark_title_color, dark_price_color=p.dark_price_color, lightbox_bg_light=p.light_mode_appearance, lightbox_bg_dark=p.dark_mode_appearance))
+
+        # --- LÓGICA DE FILTRADO (NUEVO) ---
+        is_combined_eligible = False
+        if p.combines_shipping:
+            # Obtenemos al vendedor desde el producto
+            seller = p.userinfo 
+            
+            # Caso 1: Vendedor no restringió ciudades (lista vacía) -> Aplica a todo Colombia
+            if not seller.combined_shipping_cities: 
+                is_combined_eligible = True
+            # Caso 2: Vendedor restringió -> Solo si el comprador está en la lista
+            elif buyer_city and buyer_city in seller.combined_shipping_cities:
+                is_combined_eligible = True
+        # ---------------------------------
+
+        result.append(ProductListDTO(
+            id=p.id, 
+            title=p.title, 
+            price=p.price, 
+            price_formatted=fmt_price(p.price), 
+            image_url=image_url, 
+            category=p.category, 
+            description=p.content, 
+            is_moda_completa=p.is_moda_completa_eligible, 
+            
+            # ✅ CORREGIDO: Usamos la variable calculada, no el valor directo
+            combines_shipping=is_combined_eligible, 
+            
+            average_rating=avg_rating, 
+            rating_count=rating_count, 
+            use_default_style=p.use_default_style, 
+            light_mode_appearance=p.light_mode_appearance, 
+            dark_mode_appearance=p.dark_mode_appearance, 
+            light_card_bg_color=p.light_card_bg_color, 
+            light_title_color=p.light_title_color, 
+            light_price_color=p.light_price_color, 
+            dark_card_bg_color=p.dark_card_bg_color, 
+            dark_title_color=p.dark_title_color, 
+            dark_price_color=p.dark_price_color, 
+            lightbox_bg_light=p.light_mode_appearance, 
+            lightbox_bg_dark=p.dark_mode_appearance
+        ))
     return result
 
 @router.post("/cart/calculate/{user_id}", response_model=CartSummaryResponse)
