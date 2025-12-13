@@ -1,0 +1,1 @@
+import{b as e}from"./bash-CeKgdeWi.js";export default e();
