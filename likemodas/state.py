@@ -14,6 +14,7 @@ from sqlalchemy.orm import joinedload # <--- NECESARIO
 import unicodedata # Para quitar tildes al comparar
 from sqlalchemy.orm.attributes import flag_modified # <-- AÑADE ESTA LÍNEA
 from sqlalchemy.dialects.postgresql import JSONB
+import unicodedata # <--- IMPORTANTE: Agrega esto junto a los otros imports
 from typing import Any, List, Dict, Optional, Tuple, Union
 from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, ReportModel, ReportStatus, RequestStatus, _format_to_cop_backend
 # ... otros imports ...
@@ -159,6 +160,13 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
     if shipping_cost is not None and shipping_cost > 0:
         return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
+
+# Agrega esta función auxiliar (puedes ponerla antes de los endpoints):
+def normalize_text_api(text: str) -> str:
+    """Normaliza texto para comparar ciudades (ignora tildes y mayúsculas)"""
+    if not text: return ""
+    text = text.lower().strip()
+    return ''.join((c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn'))
 
 # --- DTOs (Data Transfer Objects) ---
 

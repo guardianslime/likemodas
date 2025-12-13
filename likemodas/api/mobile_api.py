@@ -30,6 +30,7 @@ from likemodas.models import (
 from likemodas.services.email_service import send_verification_email, send_password_reset_email
 from likemodas.logic.shipping_calculator import calculate_dynamic_shipping
 from likemodas.data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
+from likemodas.state import normalize_text_api
 from likemodas.utils.validators import validate_password
 from likemodas.utils.formatting import format_to_cop
 from likemodas.services import wompi_service, sistecredito_service
@@ -897,13 +898,13 @@ async def get_seller_products(
     seller = session.get(UserInfo, seller_id)
     if not seller: raise HTTPException(404, "Vendedor no encontrado")
 
-    # 2. Buscar ciudad del Comprador (si se envió el ID)
-    buyer_city = None
+    # Pre-calculamos la ciudad del comprador normalizada (fuera del bucle)
+    buyer_city_norm = ""
     if buyer_id:
         buyer = session.get(UserInfo, buyer_id)
         if buyer and buyer.shipping_addresses:
             addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
-            buyer_city = addr.city
+            buyer_city_norm = normalize_text_api(addr.city)
 
     query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id).order_by(BlogPostModel.created_at.desc())
     products = session.exec(query).all()
@@ -923,14 +924,21 @@ async def get_seller_products(
         
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- LÓGICA DE FILTRADO (NUEVO) ---
+        # --- LÓGICA DE FILTRADO BLINDADA (COPIADA DE LA WEB) ---
         is_combined_eligible = False
         if p.combines_shipping:
-            # Si el vendedor no tiene lista de ciudades, es para todos
-            if not seller.combined_shipping_cities:
-                is_combined_eligible = True
-            # Si tiene lista, VERIFICAMOS la ciudad del comprador
-            elif buyer_city and buyer_city in seller.combined_shipping_cities:
+            # 1. Obtener lista. Si es None, es lista vacía.
+            seller_cities = seller.combined_shipping_cities or []
+            
+            # 2. Si la lista está vacía, FORZAMOS que sea la ciudad del vendedor
+            if not seller_cities:
+                seller_cities = [seller.seller_city]
+
+            # 3. Normalizamos la lista del vendedor
+            seller_cities_norm = [normalize_text_api(c) for c in seller_cities]
+            
+            # 4. Comparamos
+            if buyer_city_norm and buyer_city_norm in seller_cities_norm:
                 is_combined_eligible = True
             # Si no hay buyer_city (ej. usuario no logueado), se queda en False por seguridad
         # ---------------------------------
@@ -1008,15 +1016,17 @@ async def create_report(req: ReportRequest, user_id: int = Query(...), session: 
 
 @router.get("/profile/{user_id}/saved-posts", response_model=List[ProductListDTO])
 async def get_saved_posts(user_id: int, session: Session = Depends(get_session)):
-    # 1. Obtener la ciudad del comprador (Usuario que consulta)
+    # 1. Obtener la ciudad del comprador NORMALIZADA
     buyer = session.get(UserInfo, user_id)
-    buyer_city = None
+    buyer_city_norm = ""
+    
     if buyer and buyer.shipping_addresses:
         # Busca la dirección predeterminada o la primera disponible
         addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
-        buyer_city = addr.city
+        # AQUI EL CAMBIO: Normalizamos el texto inmediatamente
+        buyer_city_norm = normalize_text_api(addr.city)
 
-    # 2. Cargar los posts guardados junto con la info del vendedor (para ver sus restricciones)
+    # 2. Cargar los posts guardados junto con la info del vendedor
     user_with_posts = session.exec(
         select(UserInfo)
         .options(
@@ -1034,19 +1044,29 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
         image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
 
-        # --- LÓGICA DE FILTRADO (NUEVO) ---
+        # --- 🛠️ LÓGICA DE FILTRADO CORREGIDA (BLINDADA) 🛠️ ---
         is_combined_eligible = False
+        
         if p.combines_shipping:
             # Obtenemos al vendedor desde el producto
             seller = p.userinfo 
             
-            # Caso 1: Vendedor no restringió ciudades (lista vacía) -> Aplica a todo Colombia
-            if not seller.combined_shipping_cities: 
+            # Obtenemos la lista. Si es None, la convertimos en lista vacía
+            seller_cities = seller.combined_shipping_cities or []
+            
+            # CASO CRÍTICO: Si la lista está vacía, NO es todo el país.
+            # Asumimos que es SOLO la ciudad del vendedor.
+            if not seller_cities:
+                seller_cities = [seller.seller_city]
+            
+            # Normalizamos la lista del vendedor para comparar bien
+            seller_cities_norm = [normalize_text_api(c) for c in seller_cities]
+            
+            # Comparación final:
+            # Si tenemos ciudad del comprador Y coincide con la lista del vendedor
+            if buyer_city_norm and buyer_city_norm in seller_cities_norm:
                 is_combined_eligible = True
-            # Caso 2: Vendedor restringió -> Solo si el comprador está en la lista
-            elif buyer_city and buyer_city in seller.combined_shipping_cities:
-                is_combined_eligible = True
-        # ---------------------------------
+        # -------------------------------------------------------
 
         result.append(ProductListDTO(
             id=p.id, 
@@ -1058,7 +1078,7 @@ async def get_saved_posts(user_id: int, session: Session = Depends(get_session))
             description=p.content, 
             is_moda_completa=p.is_moda_completa_eligible, 
             
-            # ✅ CORREGIDO: Usamos la variable calculada, no el valor directo
+            # ✅ CORREGIDO: Usamos la variable calculada is_combined_eligible
             combines_shipping=is_combined_eligible, 
             
             average_rating=avg_rating, 
