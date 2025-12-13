@@ -4129,16 +4129,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_moda_city: return ALL_CITIES
         return [c for c in ALL_CITIES if self.search_moda_city.lower() in c.lower()]
 
-    @rx.event
-    def save_seller_destinations(self):
-        if not self.authenticated_user_info: return
-        with rx.session() as session:
-            user_info = session.get(UserInfo, self.authenticated_user_info.id)
-            if user_info:
-                user_info.moda_completa_cities = self.seller_moda_completa_cities
-                session.add(user_info)
-                session.commit()
-        yield rx.toast.success("Destinos de Moda Completa actualizados.")
     
     @rx.event
     def load_main_page_data(self):
