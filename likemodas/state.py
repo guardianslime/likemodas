@@ -10699,43 +10699,34 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _filtrar_envio_combinado(self, session, posts: List[BlogPostModel]) -> List[BlogPostModel]:
         """
-        LÓGICA CORREGIDA:
-        1. Si hay ciudades definidas -> Respeta la lista.
-        2. Si NO hay ciudades definidas (None) -> Usa la ciudad del vendedor por defecto.
+        LÓGICA CORREGIDA (Igual a Mobile API):
+        1. Si hay ciudades definidas -> Solo mostramos si coincide.
+        2. Si NO hay ciudades definidas (Lista Vacía) -> SE MUESTRA A TODOS.
         """
         # 1. Obtener ciudad del comprador
         buyer_city_norm = ""
         if self.authenticated_user_info:
-            # Recargamos al usuario para evitar el error de desconexión
             current_user = session.get(UserInfo, self.authenticated_user_info.id)
             if current_user and current_user.shipping_addresses:
                 addr = next((a for a in current_user.shipping_addresses if a.is_default), current_user.shipping_addresses[0])
                 buyer_city_norm = self._normalizar_texto(addr.city)
 
-        print(f"--- DEBUG COMPRADOR: {buyer_city_norm} ---")
-
         # 2. Recorrer productos
         for post in posts:
             if post.combines_shipping:
-                # Obtenemos la lista. Si es None, la convertimos en lista vacía
+                # Obtenemos la lista. 
                 seller_cities = post.userinfo.combined_shipping_cities or []
                 
-                # --- CAMBIO CLAVE AQUÍ ---
-                # Si la lista está vacía, NO permitimos todo el país.
-                # En su lugar, asumimos que solo aplica en la CIUDAD DEL VENDEDOR.
-                if not seller_cities:
-                    seller_cities = [post.userinfo.seller_city]
-                    # O si prefieres que sea igual a Moda Completa:
-                    # seller_cities = post.userinfo.moda_completa_cities or [post.userinfo.seller_city]
-
-                # Normalizamos la lista permitida
-                seller_cities_norm = [self._normalizar_texto(c) for c in seller_cities]
-                
-                # Verificamos
-                if not buyer_city_norm or buyer_city_norm not in seller_cities_norm:
-                    # NO COINCIDE -> APAGAMOS LA ETIQUETA
-                    post.combines_shipping = False
-                    # print(f"OCULTO en post {post.id}: Comprador {buyer_city_norm} vs Vendedor {seller_cities_norm}")
+                # --- CAMBIO CRÍTICO AQUÍ ---
+                # Solo filtramos SI la lista tiene ciudades. 
+                # Si está vacía, no entramos aquí y se mantiene True (Todo el país).
+                if seller_cities:
+                    seller_cities_norm = [self._normalizar_texto(c) for c in seller_cities]
+                    
+                    # Verificamos coincidencia
+                    if not buyer_city_norm or buyer_city_norm not in seller_cities_norm:
+                        # NO COINCIDE o NO TIENE DIRECCIÓN -> APAGAMOS LA ETIQUETA
+                        post.combines_shipping = False
         
         return posts
 
