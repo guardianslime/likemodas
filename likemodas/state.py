@@ -50,9 +50,6 @@ from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
 
-from .ui.components import ProductCardData
-
-
 from .data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from .logic.shipping_calculator import calculate_dynamic_shipping
 # Al principio de likemodas/state.py
