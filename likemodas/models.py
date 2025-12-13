@@ -355,7 +355,7 @@ class BlogPostModel(rx.Model, table=True):
     free_shipping_threshold: Optional[float] = Field(default=None)
     # ✨ --- FIN: AÑADE ESTE NUEVO CAMPO --- ✨
 
-    combines_shipping: bool = Field(default=False, nullable=False)
+    combines_shipping: bool = Field(default=True, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
