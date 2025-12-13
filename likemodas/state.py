@@ -4422,7 +4422,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
     
     _raw_posts: list[ProductCardData] = []
-    posts: list[ProductCardData] = []
+    posts: List[BlogPostModel] = []
     is_loading: bool = True
     
 
@@ -10688,41 +10688,47 @@ class AppState(reflex_local_auth.LocalAuthState):
         texto = ''.join((c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn'))
         return texto
 
+    # En likemodas/state.py
+
     def _filtrar_envio_combinado(self, session, posts: List[BlogPostModel]) -> List[BlogPostModel]:
         """
-        Versión MEJORADA: Compara ciudades ignorando mayúsculas/tildes.
+        LÓGICA CORREGIDA:
+        1. Si hay ciudades definidas -> Respeta la lista.
+        2. Si NO hay ciudades definidas (None) -> Usa la ciudad del vendedor por defecto.
         """
-        # 1. Obtener ciudad del comprador (fresca de la BD)
+        # 1. Obtener ciudad del comprador
         buyer_city_norm = ""
-        
         if self.authenticated_user_info:
+            # Recargamos al usuario para evitar el error de desconexión
             current_user = session.get(UserInfo, self.authenticated_user_info.id)
             if current_user and current_user.shipping_addresses:
-                # Buscar dirección predeterminada
                 addr = next((a for a in current_user.shipping_addresses if a.is_default), current_user.shipping_addresses[0])
                 buyer_city_norm = self._normalizar_texto(addr.city)
 
-        print(f"--- LOG DEBUG: Comprador en '{buyer_city_norm}' ---")
+        print(f"--- DEBUG COMPRADOR: {buyer_city_norm} ---")
 
         # 2. Recorrer productos
         for post in posts:
             if post.combines_shipping:
-                # Asegurarnos de tener las ciudades del vendedor
-                # (Aunque sean None, las convertimos a lista vacía)
+                # Obtenemos la lista. Si es None, la convertimos en lista vacía
                 seller_cities = post.userinfo.combined_shipping_cities or []
                 
-                # Si el vendedor NO puso restricciones (lista vacía) -> APLICA A TODOS (True)
-                # Si el vendedor SÍ puso restricciones -> VERIFICAMOS
-                if seller_cities:
-                    # Normalizamos la lista del vendedor también
-                    seller_cities_norm = [self._normalizar_texto(c) for c in seller_cities]
-                    
-                    # LOG PARA QUE VEAS SI COINCIDE
-                    # print(f"Prod {post.id}: Vendedor permite en {seller_cities_norm}")
+                # --- CAMBIO CLAVE AQUÍ ---
+                # Si la lista está vacía, NO permitimos todo el país.
+                # En su lugar, asumimos que solo aplica en la CIUDAD DEL VENDEDOR.
+                if not seller_cities:
+                    seller_cities = [post.userinfo.seller_city]
+                    # O si prefieres que sea igual a Moda Completa:
+                    # seller_cities = post.userinfo.moda_completa_cities or [post.userinfo.seller_city]
 
-                    if not buyer_city_norm or buyer_city_norm not in seller_cities_norm:
-                        # NO COINCIDE -> APAGAMOS LA ETIQUETA
-                        post.combines_shipping = False
+                # Normalizamos la lista permitida
+                seller_cities_norm = [self._normalizar_texto(c) for c in seller_cities]
+                
+                # Verificamos
+                if not buyer_city_norm or buyer_city_norm not in seller_cities_norm:
+                    # NO COINCIDE -> APAGAMOS LA ETIQUETA
+                    post.combines_shipping = False
+                    # print(f"OCULTO en post {post.id}: Comprador {buyer_city_norm} vs Vendedor {seller_cities_norm}")
         
         return posts
 
