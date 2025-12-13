@@ -153,7 +153,7 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                             width="100%",
                         ),
                         rx.cond(
-                            post.combines_shipping,
+                            post.combines_shipping,  # <--- VOLVEMOS A ESTO (Variable directa)
                             rx.tooltip(_card_badge("Envío Combinado", "teal"), content=post.envio_combinado_tooltip_text),
                         ),
                         spacing="1", align_items="start", width="100%",
