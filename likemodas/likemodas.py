@@ -12,7 +12,7 @@ from .state import AppState
 from .ui.base import base_page
 from . import navigation
 
-# Importaciones de páginas (Auth, Account, Admin, etc.)
+# Importaciones de páginas
 from .auth import pages as auth_pages
 from .auth.tfa_verify_page import tfa_verify_page_content
 from .account import profile_page as user_profile_page
@@ -41,25 +41,9 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
-# --- 1. DEFINIR LA APP DE REFLEX PRIMERO ---
-app = rx.App(
-    head_components=[
-        rx.el.meta(name="description", content="Compra lo mejor en moda..."),
-        rx.el.meta(name="keywords", content="likemodas, ropa, calzado..."),
-        rx.el.meta(property="og:title", content="Likemodas"),
-        rx.el.meta(property="og:description", content="Descubre nuestra colección."),
-        rx.el.meta(property="og:image", content="/logo.png"),
-    ],
-    style={
-        "font_family": "Arial, sans-serif",
-        ".ToastViewport": {"z_index": "99999 !important"},
-    },
-)
-
-# --- 2. AÑADIR RUTAS DE API AL BACKEND DE REFLEX (CORREGIDO) ---
-
-# Función para servir el archivo de seguridad
+# --- 1. DEFINIR EL ENDPOINT DE SEGURIDAD ---
 async def asset_links_endpoint():
+    """Entrega el archivo de seguridad para Android."""
     return JSONResponse(content=[{
         "relation": ["delegate_permission/common.handle_all_urls"],
         "target": {
@@ -72,16 +56,37 @@ async def asset_links_endpoint():
         }
     }])
 
-# Agregamos la ruta directamente a app.api
-app.api.add_api_route("/.well-known/assetlinks.json", asset_links_endpoint)
+# --- 2. CONFIGURADOR GLOBAL DE LA API (TRANSFORMER) ---
+# Esta función recibe el servidor FastAPI de Reflex y le añade nuestras rutas
+def global_api_transformer(api: FastAPI) -> FastAPI:
+    # 1. Añadir ruta de assetlinks
+    api.add_api_route("/.well-known/assetlinks.json", asset_links_endpoint)
+    
+    # 2. Incluir los routers de la aplicación
+    api.include_router(webhooks.router)
+    api.include_router(api_tasks.router)
+    api.include_router(mobile_api.router)
+    
+    return api
 
-# Incluimos los otros routers
-app.api.include_router(webhooks.router)
-app.api.include_router(api_tasks.router)
-app.api.include_router(mobile_api.router)
+# --- 3. CREAR LA APP USANDO EL TRANSFORMER ---
+app = rx.App(
+    head_components=[
+        rx.el.meta(name="description", content="Compra lo mejor en moda..."),
+        rx.el.meta(name="keywords", content="likemodas, ropa, calzado..."),
+        rx.el.meta(property="og:title", content="Likemodas"),
+        rx.el.meta(property="og:description", content="Descubre nuestra colección."),
+        rx.el.meta(property="og:image", content="/logo.png"),
+    ],
+    style={
+        "font_family": "Arial, sans-serif",
+        ".ToastViewport": {"z_index": "99999 !important"},
+    },
+    # 👇 AQUÍ PASAMOS LA FUNCIÓN DE CONFIGURACIÓN 👇
+    api_transformer=global_api_transformer
+)
 
-
-# --- 3. LÓGICA DE REDIRECCIÓN WEB ---
+# --- 4. LÓGICA DE DEEP LINKING (WEB) ---
 class DeepLinkState(rx.State):
     @rx.var
     def product_id_from_url(self) -> str:
@@ -100,7 +105,7 @@ def product_deep_link_page():
         height="100vh", width="100%"
     )
 
-# --- 4. RUTAS DE PÁGINAS ---
+# --- 5. RUTAS DE PÁGINAS ---
 app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
 app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
