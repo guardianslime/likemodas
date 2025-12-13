@@ -1,0 +1,1 @@
+import{b as e}from"./haskell-Cj_kNely.js";export default e();
