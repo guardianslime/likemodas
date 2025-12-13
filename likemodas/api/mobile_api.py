@@ -588,43 +588,34 @@ async def get_products_for_mobile(
         image_url = extract_display_image(p)
         avg_rating, rating_count = calculate_rating(session, p.id)
         
-        # --- LOGICA MODA COMPLETA ---
+        # --- LÓGICA MODA COMPLETA (OPTIMISTA) ---
         is_moda_eligible = p.is_moda_completa_eligible
         if p.userinfo and is_moda_eligible:
             seller_moda_cities = p.userinfo.moda_completa_cities or []
+            # Solo filtramos si hay restricción Y sabemos dónde está el comprador.
             if seller_moda_cities and normalized_buyer_city:
                 normalized_seller_cities = [normalize_text_api(c) for c in seller_moda_cities]
                 if normalized_buyer_city not in normalized_seller_cities:
                     is_moda_eligible = False
 
-        # --- LOGICA CORREGIDA DE ENVÍO COMBINADO (DEFINITIVA) ---
-        # Paso 1: Confiar en lo que dice la Base de Datos. 
-        # Si aquí es False, es porque el vendedor NO activó el checkbox.
+        # --- LÓGICA ENVÍO COMBINADO (OPTIMISTA - IGUAL A MODA COMPLETA) ---
         is_combined_eligible = p.combines_shipping 
         
-        # Paso 2: Filtrar por ciudad (Solo si está activo)
         if p.userinfo and is_combined_eligible:
             seller_combined_cities = p.userinfo.combined_shipping_cities or []
             
-            # IMPRIMIR DIAGNÓSTICO REAL
-            # print(f"DEBUG PROD {p.id}: DB={is_combined_eligible}, Lista={seller_combined_cities}, Usuario={normalized_buyer_city}")
-
             # REGLA DE ORO: 
-            # Si lista vacía ([] o None) -> NO HACEMOS NADA (Se mantiene True para todos).
-            # Solo entramos al IF si la lista TIENE ciudades.
-            if seller_combined_cities:
-                if normalized_buyer_city:
-                    normalized_combined_cities = [normalize_text_api(c) for c in seller_combined_cities]
-                    
-                    # Si el usuario NO está en la lista permitida -> SE APAGA
-                    if normalized_buyer_city not in normalized_combined_cities:
-                        is_combined_eligible = False
-                else:
-                    # Si hay restricción de ciudad pero el usuario no tiene dirección -> SE APAGA
+            # 1. Si la lista está VACÍA -> Aplica a TODOS.
+            # 2. Si la lista TIENE ciudades -> Solo filtramos SI conocemos la ciudad del comprador.
+            #    Si 'normalized_buyer_city' está vacío (usuario sin dirección), NO entramos al IF 
+            #    y la variable se mantiene en True (Visible).
+            
+            if seller_combined_cities and normalized_buyer_city:
+                normalized_combined_cities = [normalize_text_api(c) for c in seller_combined_cities]
+                
+                # Solo ocultamos si tenemos certeza de que NO coincide
+                if normalized_buyer_city not in normalized_combined_cities:
                     is_combined_eligible = False
-        
-        # Si seller_combined_cities estaba vacía, el código saltó el IF 
-        # y is_combined_eligible se mantuvo en True (Correcto).
         # -----------------------------------------------------------
 
         # Calcular envío dinámico
@@ -658,7 +649,7 @@ async def get_products_for_mobile(
             category=p.category, 
             description=p.content,
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible, # <--- VALOR CALCULADO
+            combines_shipping=is_combined_eligible, # Ahora usa lógica optimista
             average_rating=avg_rating, 
             rating_count=rating_count,
             shipping_display_text=shipping_txt,
@@ -743,6 +734,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             raise HTTPException(404, "Producto no encontrado")
 
         normalized_buyer_city = ""
+        buyer_city = None
         
         if user_id:
             default_addr = session.exec(
@@ -750,35 +742,32 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                 .where(ShippingAddressModel.userinfo_id == user_id, ShippingAddressModel.is_default == True)
             ).first()
             if default_addr and default_addr.city:
+                buyer_city = default_addr.city
                 normalized_buyer_city = normalize_text_api(default_addr.city)
 
-        # --- LÓGICA MODA COMPLETA ---
+        # --- LÓGICA MODA COMPLETA (OPTIMISTA) ---
         is_moda_eligible = p.is_moda_completa_eligible
         moda_cities = getattr(p.userinfo, 'moda_completa_cities', []) or []
         
         if is_moda_eligible and p.userinfo and moda_cities:
+            # Solo si hay restricción Y ciudad del comprador
             if normalized_buyer_city:
                 normalized_moda = [normalize_text_api(c) for c in moda_cities]
                 if normalized_buyer_city not in normalized_moda:
                     is_moda_eligible = False
-            else:
-                is_moda_eligible = False
+            # Si no hay ciudad del comprador, se mantiene True
 
-        # --- LÓGICA CORREGIDA ENVÍO COMBINADO ---
+        # --- LÓGICA ENVÍO COMBINADO (OPTIMISTA) ---
         is_combined_eligible = p.combines_shipping
         combined_cities = getattr(p.userinfo, 'combined_shipping_cities', []) or []
 
         if is_combined_eligible and p.userinfo:
-            # Si la lista tiene ciudades, aplicamos el filtro restrictivo
-            if combined_cities:
-                if normalized_buyer_city:
-                    normalized_combined = [normalize_text_api(c) for c in combined_cities]
-                    if normalized_buyer_city not in normalized_combined:
-                        is_combined_eligible = False
-                else:
-                    # Usuario sin dirección o no logueado, pero hay restricción geográfica -> Ocultar
+            # Solo filtramos si hay ciudades restringidas Y conocemos la ciudad del comprador
+            if combined_cities and normalized_buyer_city:
+                normalized_combined = [normalize_text_api(c) for c in combined_cities]
+                if normalized_buyer_city not in normalized_combined:
                     is_combined_eligible = False
-            # Si combined_cities está vacío, NO entramos al if, por lo tanto is_combined_eligible sigue siendo True (Todo el país)
+            # En cualquier otro caso (lista vacía O usuario sin ciudad), sigue siendo True
 
         # --- Procesamiento de Imágenes ---
         main_image_final = extract_display_image(p)
@@ -896,7 +885,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             variants=variants_dto, 
             shipping_cost=p.shipping_cost, 
             is_moda_completa=is_moda_eligible, 
-            combines_shipping=is_combined_eligible, # Corregido
+            combines_shipping=is_combined_eligible, # Valor optimista
             free_shipping_threshold=p.free_shipping_threshold,
             shipping_combination_limit=p.shipping_combination_limit,
             shipping_display_text=shipping_text, 
