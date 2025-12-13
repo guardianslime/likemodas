@@ -41,8 +41,9 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
-# --- 1. DEFINIR EL ENDPOINT DE SEGURIDAD ---
-async def asset_links_endpoint():
+# --- 1. DEFINIR EL ENDPOINT DE SEGURIDAD (ASSETLINKS) ---
+# Nota: La función recibe 'request' aunque no lo use, es necesario para Starlette
+async def asset_links_endpoint(request):
     """Entrega el archivo de seguridad para Android."""
     return JSONResponse(content=[{
         "relation": ["delegate_permission/common.handle_all_urls"],
@@ -57,12 +58,12 @@ async def asset_links_endpoint():
     }])
 
 # --- 2. CONFIGURADOR GLOBAL DE LA API (TRANSFORMER) ---
-# Esta función recibe el servidor FastAPI de Reflex y le añade nuestras rutas
 def global_api_transformer(api: FastAPI) -> FastAPI:
-    # 1. Añadir ruta de assetlinks
-    api.add_api_route("/.well-known/assetlinks.json", asset_links_endpoint)
+    # 🔴 CAMBIO CLAVE: Usamos 'add_route' en lugar de 'add_api_route'
+    # Esto es compatible con Starlette y evita el AttributeError.
+    api.add_route("/.well-known/assetlinks.json", asset_links_endpoint, methods=["GET"])
     
-    # 2. Incluir los routers de la aplicación
+    # Incluir los routers de la aplicación normalmente
     api.include_router(webhooks.router)
     api.include_router(api_tasks.router)
     api.include_router(mobile_api.router)
