@@ -232,7 +232,6 @@ class ProductCardData(rx.Base):
     allowed_moda_cities: list[str] = []
     
     # ✨ NUEVOS CAMPOS
-    combines_shipping: bool = False
     allowed_combined_cities: list[str] = []
     free_shipping_threshold: Optional[float] = None
     combines_shipping: bool = False
@@ -4617,7 +4616,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_shipping_cost_str: str = ""
     edit_is_moda_completa: bool = True
     edit_free_shipping_threshold_str: str = "200000"
-    edit_combines_shipping: bool = False
+    edit_combines_shipping: bool = True
     edit_shipping_combination_limit_str: str = "3"
     edit_is_imported: bool = False
     edit_price_includes_iva: bool = True
@@ -4795,7 +4794,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Opciones de envío
     edit_shipping_cost_str: str = ""
     edit_is_moda_completa: bool = True
-    edit_combines_shipping: bool = False
+    edit_combines_shipping: bool = True
     edit_shipping_combination_limit_str: str = "3"
     edit_is_imported: bool = False
     edit_price_includes_iva: bool = True
@@ -9290,7 +9289,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
     
     # --- ✨ AÑADE ESTAS VARIABLES PARA EL FORMULARIO DE PRODUCTO ✨ ---
-    combines_shipping: bool = False
+    combines_shipping: bool = True
     shipping_combination_limit_str: str = "3" # Valor por defecto
 
     # --- ✨ AÑADE ESTOS SETTERS ✨ ---
