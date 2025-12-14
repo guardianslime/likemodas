@@ -54,6 +54,18 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
+# DEFINIR UN COMPONENTE VACÍO (TRAMPOLÍN)
+def deep_link_handler():
+    """
+    Esta página no muestra nada visualmente.
+    Solo existe para ejecutar el evento 'on_load' y redirigir.
+    """
+    return rx.center(
+        rx.spinner(color="violet", size="3"), # Spinner de carga mientras redirige
+        height="100vh",
+        width="100%",
+    )
+
 # Configuración del backend de FastAPI
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 fastapi_app.include_router(webhooks.router)

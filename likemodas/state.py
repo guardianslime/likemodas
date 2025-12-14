@@ -5268,18 +5268,31 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
-    # Esta variable capturará el ID desde la URL
-    product_id_from_url: str = ""
+    # Variable para capturar el ID de la URL
+    product_id_url: str = ""
 
     def check_deep_link(self):
-        """Se ejecuta al cargar la página (on_load)"""
-        # Obtenemos los parámetros de la consulta o de la ruta
-        # Reflex maneja rutas dinámicas como /product/[product_id_from_url]
-        p_id = self.router.page.params.get("product_id_from_url")
+        """
+        Lógica del Trampolín:
+        1. Lee el ID de la URL.
+        2. Prepara el estado (abre modal).
+        3. Redirige al Home.
+        """
+        # Obtenemos el parámetro de la URL
+        p_id = self.router.page.params.get("product_id_url", "")
         
+        # Validación de seguridad
         if p_id and p_id.isdigit():
-            # Reutilizamos tu lógica existente para abrir el modal
-            return AppState.open_product_detail_modal(int(p_id))
+            product_id = int(p_id)
+            print(f"--- DEEP LINK DETECTADO: ID {product_id} ---")
+            
+            # 1. Llamamos a tu función existente que prepara el modal
+            # (Asegúrate de que esta función exista y configure las variables del modal)
+            yield AppState.open_product_detail_modal(product_id)
+            
+        # 2. CRUCIAL: Redirigir al usuario a la página principal limpia
+        # El estado del modal se mantendrá "abierto" durante la redirección
+        return rx.redirect("/")
 
 
     # --- ⚙️ INICIO: NUEVOS HELPERS Y PROPIEDADES PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
