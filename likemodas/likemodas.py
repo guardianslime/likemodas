@@ -40,10 +40,7 @@ from .admin.reports_page import reports_page_content
 from .blog import blog_admin_page, blog_post_add_content
 from .pages import landing, seller_page
 
-# Vistas del proceso de compra
-from .pages import checkout_page
-
-# Páginas legales
+# Páginas legales (Si estas te dan error también, avísame para ajustar su importación)
 from .pages import terms_page, privacy_page
 
 load_dotenv()
@@ -55,12 +52,11 @@ config = rx.Config(
     api_url=os.getenv("API_URL", "https://api.likemodas.com"),
     deploy_url=os.getenv("DEPLOY_URL", "https://www.likemodas.com"),
     
-    # --- CAMBIO DE SEGURIDAD: CORS RESTRICTIVO ---
+    # --- CONFIGURACIÓN DE CORS ---
     cors_allowed_origins=[
         "http://localhost:3000",
         "https://www.likemodas.com",
         "https://likemodas.com",
-        # NECESARIO: Permitir todo (*) temporalmente para que la App y WebViews conecten si es necesario
         "*", 
     ],
     
@@ -80,9 +76,8 @@ app = rx.App()
 # 1. Ruta Principal (Landing / Home)
 app.add_page(base_page(landing.landing_content()), route=navigation.routes.HOME_ROUTE, title="Inicio")
 
-# 2. RUTA DEEP LINK (NUEVA)
-# Esta ruta captura el tráfico de https://likemodas.com/product/{id}
-# Reutiliza el contenido del Home (donde viven los modales) pero ejecuta la lógica de apertura automática
+# 2. RUTA DEEP LINK (NUEVA - INTEGRADA)
+# Captura el tráfico de https://likemodas.com/product/123 y abre el modal
 app.add_page(
     base_page(landing.landing_content()), 
     route="/product/[product_id_url]", 
@@ -121,9 +116,6 @@ app.add_page(base_page(reports_page_content()), route="/admin/reports", on_load=
 # Páginas Legales
 app.add_page(terms_page.terms_page_content(), route="/terms", title="Términos y Condiciones")
 app.add_page(privacy_page.privacy_page_content(), route="/privacy", title="Política de Privacidad")
-
-# Checkout
-app.add_page(base_page(checkout_page.checkout_page_content()), route="/checkout", on_load=AppState.check_auth, title="Finalizar Compra")
 
 # Incluir Routers de API
 app.api.include_router(webhooks.router)
