@@ -5271,27 +5271,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Variable para capturar el ID de la URL
     product_id_url: str = ""
 
+    # En AppState (state.py)
+    
     def check_deep_link(self):
-        """
-        Lógica del Trampolín:
-        1. Lee el ID de la URL.
-        2. Prepara el estado (abre modal).
-        3. Redirige al Home.
-        """
-        # Obtenemos el parámetro de la URL
-        p_id = self.router.page.params.get("product_id_url", "")
+        # 1. Obtenemos el ID usando el NUEVO nombre del parámetro
+        p_id = self.router.page.params.get("deep_id", "")
         
-        # Validación de seguridad
         if p_id and p_id.isdigit():
-            product_id = int(p_id)
-            print(f"--- DEEP LINK DETECTADO: ID {product_id} ---")
+            # 2. Preparamos el modal (esto guarda el estado)
+            yield AppState.open_product_detail_modal(int(p_id))
             
-            # 1. Llamamos a tu función existente que prepara el modal
-            # (Asegúrate de que esta función exista y configure las variables del modal)
-            yield AppState.open_product_detail_modal(product_id)
-            
-        # 2. CRUCIAL: Redirigir al usuario a la página principal limpia
-        # El estado del modal se mantendrá "abierto" durante la redirección
+        # 3. REDIRECCIÓN (Trampolín): 
+        # Llevamos al usuario al Home para que vea la tienda + el modal
         return rx.redirect("/")
 
 

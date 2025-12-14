@@ -6,7 +6,7 @@ import reflex_local_auth
 
 # Módulos internos de la aplicación
 from .api import webhooks, tasks as api_tasks
-from .api import mobile_api  # <--- IMPORTAR EL NUEVO ARCHIVO
+from .api import mobile_api
 from .state import AppState
 from .ui.base import base_page
 from . import navigation
@@ -32,7 +32,7 @@ from .admin.store_page import admin_store_page
 from .admin.tickets_page import admin_tickets_page_content
 from .admin.users_page import user_management_page
 from .admin import employees_page
-from .admin.reports_page import reports_page_content # <--- IMPORTAR
+from .admin.reports_page import reports_page_content
 
 # Vistas de Blog y Productos
 from .blog import blog_admin_page, blog_post_add_content
@@ -44,7 +44,7 @@ from .purchases import page as purchases_page
 from .pages import payment_status, payment_pending, processing_payment
 from likemodas.pages.delete_account_info import delete_account_info
 
-# Importamos las páginas legales (Rutas corregidas según tu archivo)
+# Importamos las páginas legales
 from .pages.legal.terms_page import terms_page
 from .pages.legal.privacy_page import privacy_page
 from .pages.legal.cookies_page import cookies_page
@@ -54,24 +54,10 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
-# DEFINIR UN COMPONENTE VACÍO (TRAMPOLÍN)
-def deep_link_handler():
-    """
-    Esta página no muestra nada visualmente.
-    Solo existe para ejecutar el evento 'on_load' y redirigir.
-    """
-    return rx.center(
-        rx.spinner(color="violet", size="3"), # Spinner de carga mientras redirige
-        height="100vh",
-        width="100%",
-    )
-
 # Configuración del backend de FastAPI
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 fastapi_app.include_router(webhooks.router)
 fastapi_app.include_router(api_tasks.router)
-
-# Justo donde configuras fastapi_app
 fastapi_app.include_router(mobile_api.router)
 
 # Configuración de la aplicación Reflex
@@ -79,13 +65,10 @@ app = rx.App(
     head_components=[
         rx.el.meta(name="description", content="Compra lo mejor en moda, calzado y accesorios en Likemodas. Envíos a toda Colombia. Calidad y estilo al mejor precio."),
         rx.el.meta(name="keywords", content="likemodas, ropa, calzado, colombia, moda, tienda online, zapatillas, bolsos"),
-        
-        # Open Graph (para que se vea bonito al compartir en WhatsApp/Facebook)
         rx.el.meta(property="og:title", content="Likemodas - Estilo y Calidad"),
         rx.el.meta(property="og:description", content="Descubre nuestra colección exclusiva."),
         rx.el.meta(property="og:image", content="/logo.png"),
     ],
-
     style={
         "font_family": "Arial, sans-serif",
         ".ToastViewport": {
@@ -95,24 +78,33 @@ app = rx.App(
     api_transformer=fastapi_app
 )
 
+# --- PÁGINA TRAMPOLÍN (SOLUCIÓN AL CONGELAMIENTO) ---
+# Esta página carga instantáneamente, ejecuta la lógica y redirige.
+# Evita cargar toda la Landing Page dentro de la ruta dinámica.
+def deep_link_handler():
+    return rx.center(
+        rx.spinner(color="violet", size="3"),
+        height="100vh",
+        width="100%",
+        bg="white"
+    )
+
 # --- REGISTRO DE RUTAS ---
 
 # Rutas Públicas y de Autenticación
 app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
 
-# 2. RUTA DEEP LINK (CORREGIDA)
-# YA NO usamos 'base_page(landing...)' aquí. Usamos 'deep_link_handler'.
-# Esto evita que la app cargue dos veces y crashee.
+# --- RUTA DEEP LINK (SOLUCIÓN DEFINITIVA) ---
+# 1. Usamos 'deep_link_handler' para evitar el crash/congelamiento.
+# 2. Usamos '[deep_id]' para evitar el error de Shadowing con state.py.
 app.add_page(
     deep_link_handler(), 
-    route="/product/[product_id_url]", 
+    route="/product/[deep_id]", 
     on_load=AppState.check_deep_link 
 )
 
-# Corrección aquí: Usamos 'my_login_page_content' en lugar de 'login_page'
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
 app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
-
 app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token, title="Verificar Email")
 app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password", title="Recuperar Contraseña")
 app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token, title="Restablecer Contraseña")
