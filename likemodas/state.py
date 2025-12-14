@@ -2540,31 +2540,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_deep_link_route(self):
         """
-        Manejador Trampolín: Usa Chrome Intent para forzar la apertura del Custom Scheme.
-        Esto elimina la dependencia de la verificación del assetlinks.json.
+        Manejador Trampolín que usa Chrome Intent para forzar la apertura del Custom Scheme
+        y pasar el ID del producto a la aplicación nativa.
         """
+        # Asegúrate de que tu ruta en likemodas/likemodas.py sea algo como:
+        # app.add_page(..., route="/product/[deep_id]", ...)
         p_id = self.router.page.params.get("deep_id", "")
         
         if p_id and p_id.isdigit():
             # 1. Abrir modal en la web (Plan B, por si el usuario NO tiene la app)
+            # Esto se puede hacer antes o después de la llamada al script, dependiendo de la UX.
             yield AppState.open_product_detail_modal(int(p_id))
             
             # 2. Construir la URL "Intent" de Android con el Custom Scheme
-            # Sintaxis: intent://<HOST>/<PATH>#Intent;scheme=likemodas;package=<PAQUETE>;end
-            custom_scheme_link = f"likemodas://product/{p_id}"
-            
             # El Intent de Chrome ahora intenta abrir 'likemodas://product/ID'.
-            # Si tiene la app, Chrome lanza el Intent. Si no, falla y el usuario se queda en la web.
+            # Si tiene la app, Chrome lanza el Intent. Si no, usa el fallback_url.
             intent_url = (
-                f"intent://product/{p_id}"
+                # Usa el host 'product' que declaraste en AndroidManifest.xml
+                f"intent://product/{p_id}" 
                 "#Intent;"
-                f"scheme=likemodas;"  # <-- CAMBIO CLAVE: Usamos tu esquema 'likemodas'
+                f"scheme=likemodas;"  # <-- Esquema personalizado
                 "package=com.likemodas.app;"
                 "S.browser_fallback_url=https://www.likemodas.com/;" 
                 "end"
             )
 
             # 3. Ejecutar el salto. 
+            # Esto debe ser lo último que ocurre antes de redirigir.
             yield rx.call_script(f"window.location.href = '{intent_url}';")
             
             # 4. Limpiar URL visualmente en la web (opcional)
