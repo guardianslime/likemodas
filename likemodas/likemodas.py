@@ -169,12 +169,7 @@ app.add_page(
     on_load=AppState.handle_deep_link_route # Ejecuta la lógica al cargar
 )
 
-# RUTA DEEP LINK (PLAN B - Custom Scheme)
-# Usa el handler corregido arriba
-app.add_page(
-    deep_link_handler(), 
-    route="/product/[deep_id]", 
-)
+
 
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
 app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
