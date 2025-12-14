@@ -5268,6 +5268,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
+    # Esta variable capturará el ID desde la URL
+    product_id_from_url: str = ""
+
+    def check_deep_link(self):
+        """Se ejecuta al cargar la página (on_load)"""
+        # Obtenemos los parámetros de la consulta o de la ruta
+        # Reflex maneja rutas dinámicas como /product/[product_id_from_url]
+        p_id = self.router.page.params.get("product_id_from_url")
+        
+        if p_id and p_id.isdigit():
+            # Reutilizamos tu lógica existente para abrir el modal
+            return AppState.open_product_detail_modal(int(p_id))
+
 
     # --- ⚙️ INICIO: NUEVOS HELPERS Y PROPIEDADES PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
 

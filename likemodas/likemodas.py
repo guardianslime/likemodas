@@ -3,10 +3,12 @@
 from fastapi import FastAPI
 import reflex as rx
 import reflex_local_auth
+import os
+from dotenv import load_dotenv
 
 # Módulos internos de la aplicación
 from .api import webhooks, tasks as api_tasks
-from .api import mobile_api  # <--- IMPORTAR EL NUEVO ARCHIVO
+from .api import mobile_api
 from .state import AppState
 from .ui.base import base_page
 from . import navigation
@@ -32,105 +34,81 @@ from .admin.store_page import admin_store_page
 from .admin.tickets_page import admin_tickets_page_content
 from .admin.users_page import user_management_page
 from .admin import employees_page
-from .admin.reports_page import reports_page_content # <--- IMPORTAR
+from .admin.reports_page import reports_page_content
 
 # Vistas de Blog y Productos
 from .blog import blog_admin_page, blog_post_add_content
 from .pages import landing, seller_page
 
 # Vistas del proceso de compra
-from .cart import page as cart_page
-from .purchases import page as purchases_page
-from .pages import payment_status, payment_pending, processing_payment
-from likemodas.pages.delete_account_info import delete_account_info
+from .pages import checkout_page
 
-# Importamos las páginas legales
-from .pages.legal.terms_page import terms_page
-from .pages.legal.privacy_page import privacy_page
-from .pages.legal.cookies_page import cookies_page
+# Páginas legales
+from .pages import terms_page, privacy_page
 
-# Vistas de soporte y facturas
-from .invoice import page as invoice_page
-from .invoice.state import InvoiceState
-from .returns import page as returns_page
+load_dotenv()
 
-# Configuración del backend de FastAPI
-fastapi_app = FastAPI(title="API extendida de Likemodas")
-fastapi_app.include_router(webhooks.router)
-fastapi_app.include_router(api_tasks.router)
-
-# Justo donde configuras fastapi_app
-fastapi_app.include_router(mobile_api.router)
-
-# Configuración de la aplicación Reflex
-app = rx.App(
-    # CORRECCIÓN: Eliminamos rx.title() de aquí porque causaba el error.
-    # El título se define en cada página (app.add_page).
-    # Aquí dejamos solo los metadatos globales para SEO.
-    head_components=[
-        rx.el.meta(name="description", content="Compra lo mejor en moda, calzado y accesorios en Likemodas. Envíos a toda Colombia. Calidad y estilo al mejor precio."),
-        rx.el.meta(name="keywords", content="likemodas, ropa, calzado, colombia, moda, tienda online, zapatillas, bolsos"),
-        
-        # Open Graph (para que se vea bonito al compartir en WhatsApp/Facebook)
-        rx.el.meta(property="og:title", content="Likemodas - Estilo y Calidad"),
-        rx.el.meta(property="og:description", content="Descubre nuestra colección exclusiva."),
-        rx.el.meta(property="og:image", content="/logo.png"),
+config = rx.Config(
+    app_name="likemodas",
+    show_built_with_reflex=False,
+    db_url=os.getenv("DATABASE_URL"),
+    api_url=os.getenv("API_URL", "https://api.likemodas.com"),
+    deploy_url=os.getenv("DEPLOY_URL", "https://www.likemodas.com"),
+    
+    # --- CAMBIO DE SEGURIDAD: CORS RESTRICTIVO ---
+    cors_allowed_origins=[
+        "http://localhost:3000",
+        "https://www.likemodas.com",
+        "https://likemodas.com",
+        # NECESARIO: Permitir todo (*) temporalmente para que la App y WebViews conecten si es necesario
+        "*", 
     ],
-
-    style={
-        "font_family": "Arial, sans-serif",
-        # Esta regla CSS le dice al contenedor de notificaciones
-        # que tenga un z-index altísimo, asegurando que flote
-        # por encima de cualquier modal.
-        ".ToastViewport": {
-            "z_index": "99999 !important",
-        },
-    },
-    api_transformer=fastapi_app
+    
+    theme=rx.theme(
+        appearance="light",
+        has_background=True,
+        radius="medium",
+        accent_color="violet",
+        panel_background="translucent",
+    ),
 )
 
-# --- REGISTRO DE RUTAS ---
+app = rx.App()
 
-# Rutas Públicas y de Autenticación
-app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
-app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
-app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
-app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token, title="Verificar Email")
-app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password", title="Recuperar Contraseña")
-app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token, title="Restablecer Contraseña")
-app.add_page(base_page(tfa_verify_page_content()), route="/verify-2fa", title="Verificación 2FA")
-app.add_page(base_page(seller_page.seller_page_content()), route="/vendedor", on_load=AppState.on_load_seller_page, title="Publicaciones del Vendedor")
+# --- RUTAS DE LA APLICACIÓN ---
 
-# Rutas de la Cuenta de CLIENTE
-app.add_page(user_profile_page.profile_page_content(), route="/my-account/profile", title="Mi Perfil", on_load=AppState.on_load_profile_page)
-app.add_page(shipping_info_module.shipping_info_content(), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
-app.add_page(saved_posts_module.saved_posts_content(), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
-app.add_page(display_settings_page(), route="/my-account/display-settings", title="Configuración de Visualización")
+# 1. Ruta Principal (Landing / Home)
+app.add_page(base_page(landing.landing_content()), route=navigation.routes.HOME_ROUTE, title="Inicio")
 
-# Rutas del Proceso de Compra
-app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
-app.add_page(purchases_page.purchase_history_content(), route="/my-purchases", title="Mis Compras", on_load=AppState.on_load_purchases_page)
-app.add_page(base_page(payment_status.payment_status_page()), route="/payment-status", title="Estado del Pago")
-app.add_page(base_page(payment_pending.payment_pending_page()), route="/payment-pending", title="Pago Pendiente")
-app.add_page(processing_payment.processing_payment_page(), route="/processing-payment", on_load=AppState.start_sistecredito_polling, title="Procesando Pago")
-
-# Rutas de Soporte y Facturas
-app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=AppState.on_load_invoice_page, title="Factura")
-app.add_page(base_page(returns_page.return_exchange_page_content()), route=navigation.routes.RETURN_EXCHANGE_ROUTE, on_load=AppState.on_load_return_page, title="Devolución o Cambio")
-
-# Rutas del Panel de ADMINISTRADOR
-app.add_page(admin_profile_page_content(), route="/admin/profile", title="Perfil de Administrador", on_load=AppState.on_load_profile_page)
-app.add_page(my_location_page_content(), route="/admin/my-location", on_load=AppState.on_load_seller_profile, title="Mi Ubicación de Origen")
+# 2. RUTA DEEP LINK (NUEVA)
+# Esta ruta captura el tráfico de https://likemodas.com/product/{id}
+# Reutiliza el contenido del Home (donde viven los modales) pero ejecuta la lógica de apertura automática
 app.add_page(
-    base_page(blog_admin_page()), 
-    route="/blog", 
-    title="Mis Publicaciones",
-    on_load=[
-        AppState.sync_user_context,
-        AppState.load_mis_publicaciones
-    ]
+    base_page(landing.landing_content()), 
+    route="/product/[product_id_url]", 
+    on_load=AppState.check_deep_link 
 )
-app.add_page(base_page(finance_page.finance_page_content()), route="/admin/finance", on_load=AppState.on_load_finance_data, title="Finanzas")
+
+# Rutas de Autenticación
+app.add_page(base_page(auth_pages.login_page()), route=navigation.routes.LOGIN_ROUTE, title="Iniciar Sesión")
+app.add_page(base_page(auth_pages.register_page()), route=navigation.routes.REGISTER_ROUTE, title="Registrarse")
+app.add_page(base_page(tfa_verify_page_content()), route="/verify-2fa", title="Verificación 2FA")
+
+# Rutas de Cuenta de Usuario
+app.add_page(base_page(user_profile_page.profile_page_content()), route=navigation.routes.PROFILE_ROUTE, on_load=AppState.check_auth, title="Mi Perfil")
+app.add_page(base_page(shipping_info_module.shipping_info_page()), route=navigation.routes.SHIPPING_INFO_ROUTE, on_load=AppState.check_auth, title="Datos de Envío")
+app.add_page(base_page(saved_posts_module.saved_posts_page()), route=navigation.routes.SAVED_POSTS_ROUTE, on_load=AppState.check_auth, title="Guardados")
+app.add_page(base_page(display_settings_page()), route="/account/display-settings", on_load=AppState.check_auth, title="Configuración de Visualización")
+
+# Rutas Públicas de Vendedor
+app.add_page(base_page(seller_page.seller_page_content()), route="/seller/[user_id]", on_load=AppState.load_seller_page, title="Perfil del Vendedor")
+
+# Rutas de Administrador
+app.add_page(base_page(admin_page.dashboard_content()), route=navigation.routes.ADMIN_DASHBOARD_ROUTE, on_load=AppState.check_admin_access, title="Panel Admin")
+app.add_page(base_page(admin_profile_page_content()), route="/admin/profile", on_load=AppState.check_admin_access, title="Perfil Admin")
+app.add_page(base_page(my_location_page_content()), route="/admin/my-location", on_load=AppState.check_admin_access, title="Mi Ubicación")
+app.add_page(base_page(finance_page.finance_content()), route=navigation.routes.ADMIN_FINANCE_ROUTE, on_load=AppState.load_finance_data, title="Finanzas")
+app.add_page(base_page(blog_admin_page.blog_admin_content()), route=navigation.routes.BLOG_ADMIN_ROUTE, on_load=AppState.load_blog_posts_admin, title="Gestión de Productos")
 app.add_page(base_page(user_management_page()), route="/admin/users", on_load=AppState.load_all_users, title="Gestión de Usuarios")
 app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE, title="Añadir Producto")
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Gestionar Órdenes", on_load=AppState.load_active_purchases)
@@ -141,9 +119,12 @@ app.add_page(base_page(employees_page.employees_management_page()), route="/admi
 app.add_page(base_page(reports_page_content()), route="/admin/reports", on_load=AppState.load_admin_reports, title="Gestión de Reportes")
 
 # Páginas Legales
-app.add_page(terms_page, route="/terms", title="Términos y Condiciones")
-app.add_page(privacy_page, route="/privacy", title="Política de Privacidad")
-app.add_page(cookies_page, route="/cookies", title="Política de Cookies")
+app.add_page(terms_page.terms_page_content(), route="/terms", title="Términos y Condiciones")
+app.add_page(privacy_page.privacy_page_content(), route="/privacy", title="Política de Privacidad")
 
-# Eliminar cuenta
-app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar Cuenta")
+# Checkout
+app.add_page(base_page(checkout_page.checkout_page_content()), route="/checkout", on_load=AppState.check_auth, title="Finalizar Compra")
+
+# Incluir Routers de API
+app.api.include_router(webhooks.router)
+app.api.include_router(mobile_api.router)

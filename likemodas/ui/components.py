@@ -309,3 +309,32 @@ def product_share_button(product_id: rx.Var[int]) -> rx.Component:
         color_scheme="violet",
         tooltip="Copiar enlace universal"
     )
+
+def product_share_button(product_id: int) -> rx.Component:
+    url = f"https://www.likemodas.com/product/{product_id}"
+    
+    # Script Javascript híbrido:
+    # 1. Intenta usar el menú nativo de compartir del celular.
+    # 2. Si falla (ej: en PC de escritorio), copia al portapapeles.
+    share_js = f"""
+    if (navigator.share) {{
+        navigator.share({{
+            title: 'Likemodas',
+            text: '¡Mira este producto!',
+            url: '{url}'
+        }}).catch(console.error);
+    }} else {{
+        navigator.clipboard.writeText('{url}');
+        // Aquí puedes disparar un toast de Reflex si quieres
+    }}
+    """
+    
+    return rx.icon_button(
+        rx.icon("share-2"),
+        on_click=[
+            rx.call_script(share_js),
+            rx.toast.success("Enlace copiado / Compartir abierto")
+        ],
+        variant="soft",
+        color_scheme="violet"
+    )
