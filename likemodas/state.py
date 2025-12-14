@@ -4175,36 +4175,32 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # 2. Carga los datos básicos de los productos desde la BD
         with rx.session() as session:
-            # 1. Consulta: Traer productos activos, ordenados por fecha, cargando la info del vendedor
+            # 1. Consulta a la base de datos
             query = (
                 select(BlogPostModel)
                 .where(BlogPostModel.publish_active == True)
-                .options(joinedload(BlogPostModel.userinfo)) # Optimización para leer la ciudad del vendedor
+                .options(joinedload(BlogPostModel.userinfo)) 
                 .order_by(BlogPostModel.created_at.desc())
             )
             
             db_posts = session.exec(query).all()
             
-            # 2. Conversión (Mapping): De Base de Datos -> Interfaz Gráfica
-            # Esto soluciona el error: Expected field 'AppState.posts' to receive type 'list[ProductCardData]'
+            # 2. Mapeo CORREGIDO (Agregamos userinfo_id)
             self.posts = [
                 ProductCardData(
                     id=p.id,
                     title=p.title,
                     price=p.price,
-                    # Si no tiene imagen, ponemos una por defecto para que no se rompa
                     image_url=p.main_image_url_variant if p.main_image_url_variant else "/logo.png",
                     
-                    # Campos calculados (ajusta según tu lógica real)
+                    # --- AQUÍ ESTABA EL ERROR ---
+                    # Agregamos el campo obligatorio que faltaba:
+                    userinfo_id=p.userinfo_id, 
+                    # ----------------------------
+
                     reviews_count=0, 
-                    average_rating=5.0, # Puedes poner 0.0 o 5.0 por defecto
-                    
-                    # Manejo seguro de la ubicación (por si el usuario se borró)
+                    average_rating=5.0,
                     location_label=p.userinfo.seller_city if (p.userinfo and p.userinfo.seller_city) else "Nacional",
-                    
-                    # Mapeo de otros campos necesarios para tu tarjeta
-                    # discount=0,
-                    # is_new=True
                 )
                 for p in db_posts
             ]
