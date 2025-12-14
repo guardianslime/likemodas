@@ -54,8 +54,6 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
-
-
 # Configuración del backend de FastAPI
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 fastapi_app.include_router(webhooks.router)
@@ -80,22 +78,25 @@ app = rx.App(
     api_transformer=fastapi_app
 )
 
-# --- PÁGINA TRAMPOLÍN (SOLUCIÓN AL CONGELAMIENTO) ---
-# Esta página carga instantáneamente, ejecuta la lógica y redirige.
-# Evita cargar toda la Landing Page dentro de la ruta dinámica.
-# Modificamos el handler para aceptar el ID como argumento (propiedad de Reflex)
+# --- PÁGINA TRAMPOLÍN (CORREGIDA) ---
+# Esta función gestiona la apertura de la app mediante esquema personalizado
 def deep_link_handler():
-    # Obtenemos el ID de la URL actual
+    # Obtenemos el ID de la URL actual como una Variable de Reflex
     current_id = AppState.router.page.params.get("deep_id", "")
     
+    # CORRECCIÓN 1: Usamos .to_string() para asegurar la concatenación correcta en Python
     # Construimos el link "fuerte": likemodas://product/123
-    app_scheme_url = "likemodas://product/" + current_id
+    app_scheme_url = "likemodas://product/" + current_id.to_string()
+
+    # CORRECCIÓN 2: Construimos el script como una concatenación de Vars
+    # Esto asegura que Reflex inyecte el valor dinámico del ID en el navegador
+    script_code = "window.location.href = '" + app_scheme_url + "';"
 
     return rx.box(
         # 1. Intentar abrir la App inmediatamente usando Javascript
-        rx.script(f"window.location.href = '{app_scheme_url}';"),
+        rx.script(script_code),
         
-        # 2. Mostrar spinner mientras carga la web (por si no tiene la app)
+        # 2. Mostrar spinner mientras carga la web (fallback)
         rx.center(
             rx.spinner(color="violet", size="3"),
             rx.text("Abriendo...", margin_top="1em", color="gray"),
@@ -103,18 +104,12 @@ def deep_link_handler():
             width="100%",
             bg="white"
         ),
-        # Ejecutar también la lógica original (cargar modal) para que la web funcione si falla la app
+        # Ejecutar también la lógica original (modal web)
         on_mount=AppState.check_deep_link 
     )
 
-# --- EN EL REGISTRO DE RUTAS ---
-app.add_page(
-    deep_link_handler(), 
-    # Mantenemos la ruta web estándar
-    route="/product/[deep_id]", 
-)
-
-# Usa la variable 'fastapi_app' que definiste más arriba en el archivo
+# --- ENDPOINT DE SEGURIDAD (ASSETLINKS) ---
+# Sirve el archivo de verificación para Android App Links (si el custom scheme falla)
 @fastapi_app.get("/.well-known/assetlinks.json") 
 async def assetlinks_endpoint():
     return [
@@ -135,13 +130,11 @@ async def assetlinks_endpoint():
 # Rutas Públicas y de Autenticación
 app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
 
-# --- RUTA DEEP LINK (SOLUCIÓN DEFINITIVA) ---
-# 1. Usamos 'deep_link_handler' para evitar el crash/congelamiento.
-# 2. Usamos '[deep_id]' para evitar el error de Shadowing con state.py.
+# RUTA DEEP LINK (PLAN B - Custom Scheme)
+# Usa el handler corregido arriba
 app.add_page(
     deep_link_handler(), 
     route="/product/[deep_id]", 
-    on_load=AppState.check_deep_link 
 )
 
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
