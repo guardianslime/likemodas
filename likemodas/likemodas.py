@@ -54,6 +54,8 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
+
+
 # Configuración del backend de FastAPI
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 fastapi_app.include_router(webhooks.router)
@@ -88,6 +90,22 @@ def deep_link_handler():
         width="100%",
         bg="white"
     )
+
+# Usa la variable 'fastapi_app' que definiste más arriba en el archivo
+@fastapi_app.get("/.well-known/assetlinks.json") 
+async def assetlinks_endpoint():
+    return [
+      {
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+          "namespace": "android_app",
+          "package_name": "com.likemodas.app",
+          "sha256_cert_fingerprints": [
+            "E9:BC:A9:3D:0D:95:42:00:1D:C1:EC:F1:11:1A:6E:EF:70:19:61:6F:9B:D5:DF:97:0F:89:5B:6A:CA:6B:38:F8"
+          ]
+        }
+      }
+    ]
 
 # --- REGISTRO DE RUTAS ---
 
