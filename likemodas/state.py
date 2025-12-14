@@ -152,6 +152,32 @@ def copy_qr_image_action(self):
         )
     ]
 
+@rx.event
+def share_product_native(self):
+    """
+    Llama al puente nativo de Android (AndroidShare) si existe.
+    Si no, usa el API de compartir del navegador o copia al portapapeles.
+    """
+    return rx.call_script("""
+        if (window.AndroidShare) {
+            // Opción 1: App Android (Abre WhatsApp, Telegram, etc.)
+            window.AndroidShare.shareText('¡Mira este producto en Likemodas! ' + window.location.href);
+        } else if (navigator.share) {
+            // Opción 2: Navegador móvil (Chrome/Safari nativo)
+            navigator.share({
+                title: 'Likemodas',
+                text: '¡Mira este producto en Likemodas!',
+                url: window.location.href
+            }).catch(console.error);
+        } else {
+            // Opción 3: PC (Copia al portapapeles)
+            navigator.clipboard.writeText(window.location.href);
+            alert('Enlace copiado al portapapeles');
+        }
+    """)
+
+
+
 def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
     """Genera el texto de envío basado en el costo."""
     if shipping_cost == 0.0:
@@ -2509,6 +2535,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             yield self.load_empleados()
             yield rx.toast.success("Empleado añadido correctamente.")
+
+
+    @rx.event
+    async def handle_deep_link_route(self):
+        """
+        Manejador para la ruta /product/[deep_id].
+        Actúa como un 'trampolín': abre el modal y limpia la URL.
+        """
+        # 1. Obtener el parámetro de la ruta dinámica
+        p_id = self.router.page.params.get("deep_id", "")
+        
+        if p_id and p_id.isdigit():
+            # 2. Abrir el modal del producto (esto carga los datos en el estado)
+            # Asegúrate de que 'open_product_detail_modal' esté definido como en tu resumen
+            yield AppState.open_product_detail_modal(int(p_id))
+            
+            # 3. Redirigir a la raíz ("/") visualmente.
+            # Como Reflex es SPA, el estado del modal se mantiene abierto aunque cambiemos la URL.
+            yield rx.redirect("/")
 
     @rx.event
     def remove_empleado(self, empleado_userinfo_id: int):

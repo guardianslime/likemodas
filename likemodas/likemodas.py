@@ -162,6 +162,13 @@ async def assetlinks_endpoint():
 # Rutas Públicas y de Autenticación
 app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
 
+# Añade esta línea donde defines tus páginas
+app.add_page(
+    landing.landing_content, 
+    route="/product/[deep_id]",  # Captura el ID de la URL
+    on_load=AppState.handle_deep_link_route # Ejecuta la lógica al cargar
+)
+
 # RUTA DEEP LINK (PLAN B - Custom Scheme)
 # Usa el handler corregido arriba
 app.add_page(

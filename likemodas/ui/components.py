@@ -295,37 +295,20 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         )
     )
 
-# --- NUEVO COMPONENTE: BOTÓN DE COMPARTIR UNIVERSAL ---
-# Se utiliza en los modales para generar el link: https://likemodas.com/product/123
-def product_share_button(product_id: rx.Var[int]) -> rx.Component:
-    return rx.icon_button(
-        rx.icon(tag="share-2"),
-        on_click=[
-            rx.set_clipboard(AppState.base_app_url + "/product/" + product_id.to_string()),
-            rx.toast.success("¡Enlace copiado! Abre la App o Web.")
-        ],
-        size="3", 
-        variant="outline", 
-        color_scheme="violet",
-        tooltip="Copiar enlace universal"
-    )
-
 def product_share_button(product_id: int) -> rx.Component:
+    # URL Universal
     url = f"https://www.likemodas.com/product/{product_id}"
     
-    # Script Javascript híbrido:
-    # 1. Intenta usar el menú nativo de compartir del celular.
-    # 2. Si falla (ej: en PC de escritorio), copia al portapapeles.
+    # Javascript híbrido: Usa el menú nativo del celular si es posible
     share_js = f"""
     if (navigator.share) {{
         navigator.share({{
             title: 'Likemodas',
-            text: '¡Mira este producto!',
+            text: '¡Mira este producto en Likemodas!',
             url: '{url}'
         }}).catch(console.error);
     }} else {{
         navigator.clipboard.writeText('{url}');
-        // Aquí puedes disparar un toast de Reflex si quieres
     }}
     """
     
