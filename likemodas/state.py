@@ -2540,20 +2540,36 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_deep_link_route(self):
         """
-        Manejador para la ruta /product/[deep_id].
-        Actúa como un 'trampolín': abre el modal y limpia la URL.
+        Manejador Trampolín: Usa Chrome Intent para forzar la apertura del Custom Scheme.
+        Esto elimina la dependencia de la verificación del assetlinks.json.
         """
-        # 1. Obtener el parámetro de la ruta dinámica
         p_id = self.router.page.params.get("deep_id", "")
         
         if p_id and p_id.isdigit():
-            # 2. Abrir el modal del producto (esto carga los datos en el estado)
-            # Asegúrate de que 'open_product_detail_modal' esté definido como en tu resumen
+            # 1. Abrir modal en la web (Plan B, por si el usuario NO tiene la app)
             yield AppState.open_product_detail_modal(int(p_id))
             
-            # 3. Redirigir a la raíz ("/") visualmente.
-            # Como Reflex es SPA, el estado del modal se mantiene abierto aunque cambiemos la URL.
+            # 2. Construir la URL "Intent" de Android con el Custom Scheme
+            # Sintaxis: intent://<HOST>/<PATH>#Intent;scheme=likemodas;package=<PAQUETE>;end
+            custom_scheme_link = f"likemodas://product/{p_id}"
+            
+            # El Intent de Chrome ahora intenta abrir 'likemodas://product/ID'.
+            # Si tiene la app, Chrome lanza el Intent. Si no, falla y el usuario se queda en la web.
+            intent_url = (
+                f"intent://product/{p_id}"
+                "#Intent;"
+                f"scheme=likemodas;"  # <-- CAMBIO CLAVE: Usamos tu esquema 'likemodas'
+                "package=com.likemodas.app;"
+                "S.browser_fallback_url=https://www.likemodas.com/;" 
+                "end"
+            )
+
+            # 3. Ejecutar el salto. 
+            yield rx.call_script(f"window.location.href = '{intent_url}';")
+            
+            # 4. Limpiar URL visualmente en la web (opcional)
             yield rx.redirect("/")
+
 
     @rx.event
     def remove_empleado(self, empleado_userinfo_id: int):
