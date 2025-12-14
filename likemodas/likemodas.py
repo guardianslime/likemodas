@@ -83,13 +83,36 @@ app = rx.App(
 # --- PÁGINA TRAMPOLÍN (SOLUCIÓN AL CONGELAMIENTO) ---
 # Esta página carga instantáneamente, ejecuta la lógica y redirige.
 # Evita cargar toda la Landing Page dentro de la ruta dinámica.
+# Modificamos el handler para aceptar el ID como argumento (propiedad de Reflex)
 def deep_link_handler():
-    return rx.center(
-        rx.spinner(color="violet", size="3"),
-        height="100vh",
-        width="100%",
-        bg="white"
+    # Obtenemos el ID de la URL actual
+    current_id = AppState.router.page.params.get("deep_id", "")
+    
+    # Construimos el link "fuerte": likemodas://product/123
+    app_scheme_url = "likemodas://product/" + current_id
+
+    return rx.box(
+        # 1. Intentar abrir la App inmediatamente usando Javascript
+        rx.script(f"window.location.href = '{app_scheme_url}';"),
+        
+        # 2. Mostrar spinner mientras carga la web (por si no tiene la app)
+        rx.center(
+            rx.spinner(color="violet", size="3"),
+            rx.text("Abriendo...", margin_top="1em", color="gray"),
+            height="100vh",
+            width="100%",
+            bg="white"
+        ),
+        # Ejecutar también la lógica original (cargar modal) para que la web funcione si falla la app
+        on_mount=AppState.check_deep_link 
     )
+
+# --- EN EL REGISTRO DE RUTAS ---
+app.add_page(
+    deep_link_handler(), 
+    # Mantenemos la ruta web estándar
+    route="/product/[deep_id]", 
+)
 
 # Usa la variable 'fastapi_app' que definiste más arriba en el archivo
 @fastapi_app.get("/.well-known/assetlinks.json") 
