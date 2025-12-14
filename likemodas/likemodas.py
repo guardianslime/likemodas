@@ -100,14 +100,14 @@ app = rx.App(
 # Rutas Públicas y de Autenticación
 app.add_page(base_page(landing.landing_content()), route="/", on_load=AppState.load_main_page_data, title="Likemodas - Inicio")
 
-# --- RUTA DEEP LINK (AGREGADA) ---
-# Esta ruta captura https://likemodas.com/product/123 y abre el modal automáticamente
+# 2. RUTA DEEP LINK (CORREGIDA)
+# YA NO usamos 'base_page(landing...)' aquí. Usamos 'deep_link_handler'.
+# Esto evita que la app cargue dos veces y crashee.
 app.add_page(
-    base_page(landing.landing_content()), 
+    deep_link_handler(), 
     route="/product/[product_id_url]", 
     on_load=AppState.check_deep_link 
 )
-# ---------------------------------
 
 # Corrección aquí: Usamos 'my_login_page_content' en lugar de 'login_page'
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
