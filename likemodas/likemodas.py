@@ -80,32 +80,64 @@ app = rx.App(
 
 # --- PÁGINA TRAMPOLÍN (CORREGIDA) ---
 # Esta función gestiona la apertura de la app mediante esquema personalizado
+# --- PÁGINA TRAMPOLÍN (MEJORADA CON BOTÓN MANUAL) ---
 def deep_link_handler():
-    # Obtenemos el ID de la URL actual como una Variable de Reflex
+    # 1. Obtener ID
     current_id = AppState.router.page.params.get("deep_id", "")
     
-    # CORRECCIÓN 1: Usamos .to_string() para asegurar la concatenación correcta en Python
-    # Construimos el link "fuerte": likemodas://product/123
+    # 2. Construir link directo a la app (Plan B)
+    # Usamos to_string() para evitar errores de tipo
     app_scheme_url = "likemodas://product/" + current_id.to_string()
-
-    # CORRECCIÓN 2: Construimos el script como una concatenación de Vars
-    # Esto asegura que Reflex inyecte el valor dinámico del ID en el navegador
+    
+    # 3. Construir el script de redirección automática
+    # Intentará abrir la app apenas cargue
     script_code = "window.location.href = '" + app_scheme_url + "';"
 
-    return rx.box(
-        # 1. Intentar abrir la App inmediatamente usando Javascript
+    return rx.center(
+        # Intentar redirección automática (invisible)
         rx.script(script_code),
         
-        # 2. Mostrar spinner mientras carga la web (fallback)
-        rx.center(
+        rx.vstack(
+            rx.heading("¡Producto Encontrado!", size="6", color="violet"),
+            rx.text("Intentando abrir la App...", color="gray"),
+            
             rx.spinner(color="violet", size="3"),
-            rx.text("Abriendo...", margin_top="1em", color="gray"),
-            height="100vh",
-            width="100%",
-            bg="white"
+            
+            rx.divider(),
+            
+            # --- BOTÓN MANUAL (LA SOLUCIÓN) ---
+            # Si Chrome bloquea la redirección automática, este botón SIEMPRE funcionará
+            rx.link(
+                rx.button(
+                    "Abrir en la App",
+                    size="4",
+                    color_scheme="violet",
+                    width="100%"
+                ),
+                href=app_scheme_url, # Clic manual -> Chrome permite abrir la App
+                is_external=True
+            ),
+            
+            rx.text("o", color="gray", size="1"),
+            
+            # Opción para quedarse en la web
+            rx.button(
+                "Ver en el Navegador",
+                variant="outline",
+                on_click=AppState.check_deep_link, # Carga el modal en la web
+                width="100%"
+            ),
+            
+            spacing="4",
+            align="center",
+            padding="2em",
+            bg="white",
+            border_radius="1em",
+            box_shadow="lg"
         ),
-        # Ejecutar también la lógica original (modal web)
-        on_mount=AppState.check_deep_link 
+        height="100vh",
+        width="100%",
+        bg="#f5f5f5"
     )
 
 # --- ENDPOINT DE SEGURIDAD (ASSETLINKS) ---
