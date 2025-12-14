@@ -40,8 +40,9 @@ from .admin.reports_page import reports_page_content
 from .blog import blog_admin_page, blog_post_add_content
 from .pages import landing, seller_page
 
-# Páginas legales (Si estas te dan error también, avísame para ajustar su importación)
-from .pages import terms_page, privacy_page
+# --- COMENTADO POR ERROR DE IMPORTACIÓN ---
+# Si tienes estos archivos, descomenta y ajusta la ruta correcta (ej: .pages.legal import ...)
+# from .pages import terms_page, privacy_page 
 
 load_dotenv()
 
@@ -76,8 +77,8 @@ app = rx.App()
 # 1. Ruta Principal (Landing / Home)
 app.add_page(base_page(landing.landing_content()), route=navigation.routes.HOME_ROUTE, title="Inicio")
 
-# 2. RUTA DEEP LINK (NUEVA - INTEGRADA)
-# Captura el tráfico de https://likemodas.com/product/123 y abre el modal
+# 2. RUTA DEEP LINK (NUEVA - IMPORTANTE)
+# Esta ruta permite que los links compartidos (ej: likemodas.com/product/123) abran el modal automáticamente
 app.add_page(
     base_page(landing.landing_content()), 
     route="/product/[product_id_url]", 
@@ -113,9 +114,9 @@ app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SU
 app.add_page(base_page(employees_page.employees_management_page()), route="/admin/employees", on_load=AppState.load_empleados, title="Gestión de Empleados")
 app.add_page(base_page(reports_page_content()), route="/admin/reports", on_load=AppState.load_admin_reports, title="Gestión de Reportes")
 
-# Páginas Legales
-app.add_page(terms_page.terms_page_content(), route="/terms", title="Términos y Condiciones")
-app.add_page(privacy_page.privacy_page_content(), route="/privacy", title="Política de Privacidad")
+# --- PÁGINAS LEGALES (COMENTADAS) ---
+# app.add_page(terms_page.terms_page_content(), route="/terms", title="Términos y Condiciones")
+# app.add_page(privacy_page.privacy_page_content(), route="/privacy", title="Política de Privacidad")
 
 # Incluir Routers de API
 app.api.include_router(webhooks.router)
