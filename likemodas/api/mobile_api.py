@@ -111,13 +111,14 @@ class VariantDTO(BaseModel):
     images: List[str]
     attributes: Dict[str, Any] = {}
 
+# --- DTO ACTUALIZADO ---
 class ReviewDTO(BaseModel):
     id: int
     username: str
     rating: int
     comment: str
-    date: str
-    updates: List['ReviewDTO'] = [] 
+    date: str  # Ahora contendrá fecha Y hora
+    updates: List['ReviewDTO'] = []
 
 class ProductDetailDTO(BaseModel):
     id: int
@@ -350,6 +351,18 @@ def calculate_rating(session: Session, product_id: int):
             total_rating += parent.rating
     avg = total_rating / count if count > 0 else 0.0
     return avg, count
+
+# Función auxiliar para formatear fecha y hora
+def format_datetime_complete(date_value: str) -> str:
+    # Asumimos que date_value viene como ISO string desde la BD
+    try:
+        if not date_value:
+            return ""
+        # Convertir de string a datetime si es necesario, o formatear directamente
+        dt = datetime.datetime.fromisoformat(date_value)
+        return dt.strftime("%d/%m/%Y %H:%M") # Ejemplo: 16/12/2025 14:30
+    except:
+        return str(date_value).split("T")[0] # Fallback
 
 # ==========================================
 # 3. ENDPOINTS
@@ -799,7 +812,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
                     ))
         final_images = list(all_images_set)
 
-        # --- OPINIONES ---
+        # --- OPINIONES (CORREGIDO: FECHA + HORA) ---
         avg_rating, rating_count = calculate_rating(session, p.id)
         reviews_list = []
         db_parent_reviews = session.exec(select(CommentModel).where(CommentModel.blog_post_id == p.id, CommentModel.parent_comment_id == None).order_by(CommentModel.created_at.desc()).options(joinedload(CommentModel.updates))).unique().all()
@@ -808,16 +821,17 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             if parent.updates:
                 sorted_updates = sorted(parent.updates, key=lambda x: x.created_at, reverse=True)
                 for up in sorted_updates: 
-                    updates_dtos.append(ReviewDTO(id=up.id, username=up.author_username, rating=up.rating, comment=up.content, date=up.created_at.strftime("%d/%m/%Y"), updates=[]))
-            reviews_list.append(ReviewDTO(id=parent.id, username=parent.author_username or "Usuario", rating=parent.rating, comment=parent.content, date=parent.created_at.strftime("%d/%m/%Y"), updates=updates_dtos))
+                    # AQUÍ AGREGAMOS %H:%M
+                    updates_dtos.append(ReviewDTO(id=up.id, username=up.author_username, rating=up.rating, comment=up.content, date=up.created_at.strftime("%d/%m/%Y %H:%M"), updates=[]))
+            # AQUÍ AGREGAMOS %H:%M
+            reviews_list.append(ReviewDTO(id=parent.id, username=parent.author_username or "Usuario", rating=parent.rating, comment=parent.content, date=parent.created_at.strftime("%d/%m/%Y %H:%M"), updates=updates_dtos))
 
-        # --- ✨ CÁLCULO DE ENVÍO DINÁMICO (CORRECCIÓN) ✨ ---
+        # --- CÁLCULO DE ENVÍO DINÁMICO ---
         shipping_text = "Envío a convenir"
         
         seller_city = p.userinfo.seller_city if p.userinfo else None
         seller_barrio = p.userinfo.seller_barrio if p.userinfo else None
         
-        # Calculamos el costo real usando la lógica de barrios
         final_shipping_cost = calculate_dynamic_shipping(
             base_cost=p.shipping_cost or 0.0,
             seller_barrio=seller_barrio,
@@ -828,10 +842,9 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
 
         if final_shipping_cost == 0: 
             shipping_text = "Envío Gratis"
-        elif final_shipping_cost > 0: 
+        elif final_shipping_cost is not None and final_shipping_cost > 0: 
             shipping_text = f"Envío: {fmt_price(final_shipping_cost)}"
-        # --------------------------------------------------------
-
+        
         author_name = "Likemodas"
         seller_info_id = 0
         if p.userinfo:
@@ -861,7 +874,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             combines_shipping=is_combined_eligible,
             free_shipping_threshold=p.free_shipping_threshold,
             shipping_combination_limit=p.shipping_combination_limit,
-            shipping_display_text=shipping_text, # ✨ Texto actualizado
+            shipping_display_text=shipping_text,
             is_saved=is_saved, is_imported=p.is_imported, 
             average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
             can_review=can_review, author=author_name, author_id=seller_info_id,
