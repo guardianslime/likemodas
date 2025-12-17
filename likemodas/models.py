@@ -56,16 +56,11 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
         return "N/A"
     try:
         colombia_tz = pytz.timezone("America/Bogota")
-        # Aseguramos que sea aware
-        if utc_dt.tzinfo is None:
-            aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
-        else:
-            aware_utc_dt = utc_dt
+        aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
         local_dt = aware_utc_dt.astimezone(colombia_tz)
-        # Cambiamos el formato para incluir hora: %d/%m/%Y %I:%M %p
-        return local_dt.strftime('%d/%m/%Y %I:%M %p')
+        return local_dt.strftime('%d-%m-%Y %I:%M %p')
     except Exception:
-        return utc_dt.strftime('%d/%m/%Y %H:%M')
+        return utc_dt.strftime('%Y-%m-%d %H:%M')
     
 
     

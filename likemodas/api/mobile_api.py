@@ -878,7 +878,7 @@ async def get_product_detail(product_id: int, user_id: Optional[int] = None, ses
             is_saved=is_saved, is_imported=p.is_imported, 
             average_rating=avg_rating, rating_count=rating_count, reviews=reviews_list,
             can_review=can_review, author=author_name, author_id=seller_info_id,
-            created_at=p.created_at.strftime("%d/%m/%Y %I:%M %p") if p.created_at else "", lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark,
+            created_at=date_created_str, lightbox_bg_light=lightbox_light, lightbox_bg_dark=lightbox_dark,
             light_mode_appearance=p.light_mode_appearance, dark_mode_appearance=p.dark_mode_appearance,
             light_card_bg_color=p.light_card_bg_color, light_title_color=p.light_title_color,
             light_price_color=p.light_price_color, dark_card_bg_color=p.dark_card_bg_color,
