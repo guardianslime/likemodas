@@ -1,0 +1,1 @@
+import{b as e}from"./basic-BqYmK3XW.js";export default e();
