@@ -226,13 +226,14 @@ app.add_page(cookies_page, route="/cookies", title="Política de Cookies")
 # Eliminar cuenta
 app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar Cuenta")
 
-# --- AL FINAL DE likemodas.py ---
+# --- AL FINAL DE likemodas/likemodas.py ---
 from fastapi.responses import JSONResponse
 
-# La huella digital de tu App (La copié de tus mensajes anteriores)
 SHA256_FINGERPRINT = "DB:E5:6D:DF:32:E1:99:4D:F6:C2:42:B9:DD:5C:03:17:61:E7:EC:80:AF:06:3F:2A:C5:2A:24:9E:6E:A4:FD:95"
 
-async def assetlinks_endpoint():
+# CAMBIO 1: Agregamos el parámetro 'request' aquí. 
+# Starlette lo exige aunque no lo usemos dentro.
+async def assetlinks_endpoint(request):
     content = [{
         "relation": ["delegate_permission/common.handle_all_urls"],
         "target": {
@@ -243,6 +244,5 @@ async def assetlinks_endpoint():
     }]
     return JSONResponse(content=content)
 
-# Agregamos la ruta DIRECTA a la API.
-# Esto hace que esté disponible en: https://api.likemodas.com/.well-known/assetlinks.json
-app.api.add_api_route("/.well-known/assetlinks.json", assetlinks_endpoint)
+# CAMBIO 2: Usamos .add_route en lugar de .add_api_route
+app._api.add_route("/.well-known/assetlinks.json", assetlinks_endpoint)
