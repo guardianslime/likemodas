@@ -228,29 +228,25 @@ app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar 
 
 # --- AL FINAL DE likemodas/likemodas.py ---
 from fastapi.responses import JSONResponse
+from .api.tasks import reconcile_pending_payments # Aseguramos la importación
+from likemodas.db.session import get_session # Necesario para la base de datos
 
-# 1. Endpoint para Google Play (Assetlinks)
-SHA256_FINGERPRINT = "DB:E5:6D:DF:32:E1:99:4D:F6:C2:42:B9:DD:5C:03:17:61:E7:EC:80:AF:06:3F:2A:C5:2A:24:9E:6E:A4:FD:95"
-
-async def assetlinks_endpoint(request):
-    content = [{
-        "relation": ["delegate_permission/common.handle_all_urls"],
-        "target": {
-            "namespace": "android_app",
-            "package_name": "com.likemodas.app",
-            "sha256_cert_fingerprints": [SHA256_FINGERPRINT]
-        }
-    }]
-    return JSONResponse(content=content)
-
-# 2. Endpoint para el Cron-job (Reconciliación de Pagos)
-# Usamos la función que ya tienes importada como api_tasks.reconcile_payments
 async def reconcile_payments_task(request):
     try:
-        # Intentamos ejecutar la tarea
-        return await api_tasks.reconcile_payments()
+        # 1. Obtenemos el secreto de los parámetros de la URL (?secret=...)
+        # Si no envías secreto en la URL, el script de tasks.py lo rechazará.
+        secret = request.query_params.get("secret")
+        
+        # 2. Obtenemos una sesión de base de datos manualmente
+        # ya que Starlette.add_route no maneja Depends() automáticamente
+        session_gen = get_session()
+        session = next(session_gen)
+        
+        # 3. Llamamos a la función con el nombre CORRECTO: reconcile_pending_payments
+        resultado = await reconcile_pending_payments(secret=secret, session=session)
+        return JSONResponse(content=resultado)
+        
     except Exception as e:
-        # Si falla, nos dirá el error exacto en lugar de Error 500
         import logging
         logging.error(f"Error en reconcile_payments: {str(e)}")
         return JSONResponse(
@@ -258,8 +254,7 @@ async def reconcile_payments_task(request):
             content={"error": "Fallo interno", "detalle": str(e)}
         )
 
-# Asegúrate de que esta línea esté después de la función
-app._api.add_route("/tasks/reconcile-payments", reconcile_payments_task)
-
-# Registramos las rutas en el motor interno (Starlette/FastAPI)
+# Registramos las rutas
 app._api.add_route("/.well-known/assetlinks.json", assetlinks_endpoint)
+# Usamos métodos GET y POST para que sea compatible con cualquier Cron-job
+app._api.add_route("/tasks/reconcile-payments", reconcile_payments_task, methods=["GET", "POST"])
