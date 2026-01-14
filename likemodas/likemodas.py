@@ -225,3 +225,24 @@ app.add_page(cookies_page, route="/cookies", title="Política de Cookies")
 
 # Eliminar cuenta
 app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar Cuenta")
+
+# --- AL FINAL DE likemodas.py ---
+from fastapi.responses import JSONResponse
+
+# La huella digital de tu App (La copié de tus mensajes anteriores)
+SHA256_FINGERPRINT = "DB:E5:6D:DF:32:E1:99:4D:F6:C2:42:B9:DD:5C:03:17:61:E7:EC:80:AF:06:3F:2A:C5:2A:24:9E:6E:A4:FD:95"
+
+async def assetlinks_endpoint():
+    content = [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.likemodas.app",
+            "sha256_cert_fingerprints": [SHA256_FINGERPRINT]
+        }
+    }]
+    return JSONResponse(content=content)
+
+# Agregamos la ruta DIRECTA a la API.
+# Esto hace que esté disponible en: https://api.likemodas.com/.well-known/assetlinks.json
+app.api.add_api_route("/.well-known/assetlinks.json", assetlinks_endpoint)
