@@ -246,9 +246,20 @@ async def assetlinks_endpoint(request):
 # 2. Endpoint para el Cron-job (Reconciliación de Pagos)
 # Usamos la función que ya tienes importada como api_tasks.reconcile_payments
 async def reconcile_payments_task(request):
-    # Llamamos a la lógica interna de tu módulo api/tasks.py
-    return await api_tasks.reconcile_payments()
+    try:
+        # Intentamos ejecutar la tarea
+        return await api_tasks.reconcile_payments()
+    except Exception as e:
+        # Si falla, nos dirá el error exacto en lugar de Error 500
+        import logging
+        logging.error(f"Error en reconcile_payments: {str(e)}")
+        return JSONResponse(
+            status_code=500, 
+            content={"error": "Fallo interno", "detalle": str(e)}
+        )
+
+# Asegúrate de que esta línea esté después de la función
+app._api.add_route("/tasks/reconcile-payments", reconcile_payments_task)
 
 # Registramos las rutas en el motor interno (Starlette/FastAPI)
 app._api.add_route("/.well-known/assetlinks.json", assetlinks_endpoint)
-app._api.add_route("/tasks/reconcile-payments", reconcile_payments_task)
