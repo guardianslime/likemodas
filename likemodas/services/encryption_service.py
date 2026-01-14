@@ -1,30 +1,54 @@
-# likemodas/services/encryption_service.py
-
 import os
+from dotenv import load_dotenv
 from cryptography.fernet import Fernet
-from typing import Optional
 
-ENCRYPTION_KEY = os.getenv("TFA_ENCRYPTION_KEY")
+# Cargamos variables locales si existen
+load_dotenv()
 
-if not ENCRYPTION_KEY:
-    raise ValueError("La variable de entorno TFA_ENCRYPTION_KEY no está configurada.")
+# Variable global para guardar la instancia de Fernet en memoria y no crearla mil veces
+_fernet_instance = None
 
-try:
-   fernet = Fernet(ENCRYPTION_KEY.encode())
-except (ValueError, TypeError) as e:
-    raise ValueError(f"La clave de cifrado es inválida: {e}")
+def _get_fernet() -> Fernet:
+    """
+    Obtiene o crea la instancia de encriptación.
+    Esta función se llama SOLO cuando se necesita encriptar/desencriptar.
+    Aquí es donde validamos que la clave exista de forma segura.
+    """
+    global _fernet_instance
+    
+    # Si ya tenemos la instancia lista, la devolvemos (eficiencia)
+    if _fernet_instance is not None:
+        return _fernet_instance
+
+    # Buscamos la clave en las variables de entorno
+    key = os.getenv("TFA_ENCRYPTION_KEY")
+    
+    # --- VALIDACIÓN DE SEGURIDAD ---
+    # Si la clave no existe, lanzamos el error AHORA.
+    # Esto protege tu producción: si falta la clave, la app fallará al intentar
+    # proteger datos, en lugar de usar una clave insegura.
+    if not key:
+        raise ValueError("CRÍTICO: La variable de entorno TFA_ENCRYPTION_KEY no está configurada.")
+    
+    try:
+        _fernet_instance = Fernet(key)
+    except Exception as e:
+        raise ValueError(f"CRÍTICO: La clave TFA_ENCRYPTION_KEY no es válida para Fernet. Error: {e}")
+        
+    return _fernet_instance
 
 def encrypt_secret(secret: str) -> str:
-     if not secret:
+    """Encripta un secreto usando la clave configurada."""
+    if not secret:
         return ""
-     encrypted_bytes = fernet.encrypt(secret.encode('utf-8'))
-     return encrypted_bytes.decode('utf-8')
+    
+    f = _get_fernet() # Aquí es donde se valida la clave
+    return f.encrypt(secret.encode()).decode()
 
-def decrypt_secret(encrypted_secret: str) -> Optional[str]:
-     if not encrypted_secret:
-       return None
-     try:
-       decrypted_bytes = fernet.decrypt(encrypted_secret.encode('utf-8'))
-       return decrypted_bytes.decode('utf-8')
-     except Exception:
-         return None
+def decrypt_secret(token: str) -> str:
+    """Desencripta un token usando la clave configurada."""
+    if not token:
+        return ""
+        
+    f = _get_fernet() # Aquí es donde se valida la clave
+    return f.decrypt(token.encode()).decode()
