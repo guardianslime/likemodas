@@ -229,10 +229,9 @@ app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar 
 # --- AL FINAL DE likemodas/likemodas.py ---
 from fastapi.responses import JSONResponse
 
+# 1. Endpoint para Google Play (Assetlinks)
 SHA256_FINGERPRINT = "DB:E5:6D:DF:32:E1:99:4D:F6:C2:42:B9:DD:5C:03:17:61:E7:EC:80:AF:06:3F:2A:C5:2A:24:9E:6E:A4:FD:95"
 
-# CAMBIO 1: Agregamos el parámetro 'request' aquí. 
-# Starlette lo exige aunque no lo usemos dentro.
 async def assetlinks_endpoint(request):
     content = [{
         "relation": ["delegate_permission/common.handle_all_urls"],
@@ -244,5 +243,12 @@ async def assetlinks_endpoint(request):
     }]
     return JSONResponse(content=content)
 
-# CAMBIO 2: Usamos .add_route en lugar de .add_api_route
+# 2. Endpoint para el Cron-job (Reconciliación de Pagos)
+# Usamos la función que ya tienes importada como api_tasks.reconcile_payments
+async def reconcile_payments_task(request):
+    # Llamamos a la lógica interna de tu módulo api/tasks.py
+    return await api_tasks.reconcile_payments()
+
+# Registramos las rutas en el motor interno (Starlette/FastAPI)
 app._api.add_route("/.well-known/assetlinks.json", assetlinks_endpoint)
+app._api.add_route("/tasks/reconcile-payments", reconcile_payments_task)
