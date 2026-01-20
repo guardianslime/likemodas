@@ -1,18 +1,18 @@
 # nixpacks.toml
+# Configuración Híbrida Definitiva (Python + Node + Librerías Gráficas)
 
 [phases.setup]
-# 1. Usamos 'python311Full' que YA INCLUYE PIP (esto arregla el error "No module named pip").
-# 2. Agregamos 'nodejs' explícitamente porque Reflex lo necesita para compilar el frontend.
-# 3. Agregamos 'unzip' que a veces Reflex requiere.
+# Instalamos Python 3.11, Pip explícito y Node.js
 nixPkgs = [
-    "python311Full",
-    "nodejs",
-    "ffmpeg",
-    "zlib",
+    "python311", 
+    "python311Packages.pip", 
+    "nodejs", 
+    "ffmpeg", 
+    "zlib", 
     "unzip"
 ]
 
-# Librerías de sistema Linux requeridas para OpenCV (arregla el error libGL)
+# Librerías de sistema Linux para OpenCV (fix libGL error)
 aptPkgs = [
     "libgl1", 
     "libglib2.0-0", 
@@ -22,17 +22,20 @@ aptPkgs = [
 ]
 
 [phases.install]
-# Instalamos las dependencias de Python usando el pip que viene con python311Full
-cmds = ["python -m pip install -r requirements.txt"]
+# 1. Usamos 'python3' explícitamente para evitar conflictos.
+# 2. Instalamos también las dependencias de Node ('npm ci') porque Reflex las necesita.
+cmds = [
+    "python3 -m pip install --upgrade pip",
+    "python3 -m pip install -r requirements.txt",
+    "npm ci"
+]
 
 [start]
-# Arrancamos usando 'python -m reflex' para asegurar que encuentre el módulo
-# NOTA: Cambia a 'reflex run --env prod' si prefieres que se encargue él
-cmd = "python -m reflex run --env prod --backend-only"
+# Arrancamos usando el módulo de Python directamente
+cmd = "python3 -m reflex run --env prod --backend-only"
 
 [variables]
-# Optimizaciones
+# Variables de entorno críticas
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
 PYTHONUNBUFFERED = "1"
-# Asegúrate de que este puerto coincida con el que configuraste en Coolify (Backend suele ser 8000)
 PORT = "8000"
