@@ -1,9 +1,5 @@
 # nixpacks.toml
-# Solo inyectamos las dependencias de sistema (Linux) para OpenCV.
-# Dejamos que Nixpacks detecte e instale Python y Pip automáticamente.
-
 [phases.setup]
-# Librerías de sistema requeridas por OpenCV (soluciona el error libGL)
 aptPkgs = [
     "libgl1", 
     "libglib2.0-0", 
@@ -12,6 +8,11 @@ aptPkgs = [
     "libxrender1"
 ]
 
+[start]
+# CAMBIO IMPORTANTE: Quitamos '--backend-only' para que sirva también el frontend
+cmd = "reflex run --env prod"
+
 [variables]
-# Optimización para que OpenCV no llene los logs de advertencias
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
+# Reflex usa el puerto 3000 para el frontend por defecto, asegurémonos que escuche en el PORT que Coolify espera
+PORT = "3000"
