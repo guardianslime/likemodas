@@ -1,5 +1,15 @@
 # nixpacks.toml
+
 [phases.setup]
+# 1. Instalamos Python, PIP y las librerías gráficas de Linux necesarias
+nixPkgs = [
+    "python311", 
+    "python311Packages.pip", 
+    "ffmpeg", 
+    "zlib"
+]
+
+# Librerías del sistema operativo (solución al error libGL)
 aptPkgs = [
     "libgl1", 
     "libglib2.0-0", 
@@ -8,11 +18,19 @@ aptPkgs = [
     "libxrender1"
 ]
 
+[phases.install]
+# 2. OBLIGAMOS a instalar las dependencias de Python.
+# Si no ponemos esto, Nixpacks ve el package.json y solo instala cosas de Node.
+cmds = ["python -m pip install -r requirements.txt"]
+
 [start]
-# CAMBIO IMPORTANTE: Quitamos '--backend-only' para que sirva también el frontend
-cmd = "reflex run --env prod"
+# 3. Arrancamos usando 'python -m reflex'. 
+# Esto es más seguro que usar solo 'reflex' porque no depende del PATH del sistema.
+cmd = "python -m reflex run --env prod"
 
 [variables]
+# Optimizaciones
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
-# Reflex usa el puerto 3000 para el frontend por defecto, asegurémonos que escuche en el PORT que Coolify espera
-PORT = "3000"
+PYTHONUNBUFFERED = "1"
+# Aseguramos que escuche en el puerto correcto (Coolify suele esperar el 8000 o 3000)
+PORT = "8000"
