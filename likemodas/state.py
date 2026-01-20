@@ -40,7 +40,7 @@ import io
 from .services.encryption_service import encrypt_secret, decrypt_secret
 import csv
 from urllib.parse import urlparse, parse_qs
-import cv2  # <-- AÑADE ESTA IMPORTACIÓN
+# import cv2  # <-- AÑADE ESTA IMPORTACIÓN
 import numpy as np # <-- AÑADE ESTA IMPORTACIÓN
 
 import logging
@@ -3436,6 +3436,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
+        import cv2
         """
         Manejador robusto para escaneo de QR.
         Implementa lectura asíncrona, decodificación en memoria y parseo RFC 3986.
