@@ -1,42 +1,16 @@
-# nixpacks.toml
-
-# 1. Mantenemos los proveedores automáticos (es buena idea)
+# Configuración de Nixpacks para Likemodas (Versión Minimalista)
+# Solo definimos los proveedores, Nixpacks resolverá las versiones compatibles automáticamente.
 providers = ["python", "node"]
 
 [phases.setup]
-# 2. Fusión CRÍTICA de librerías:
-# - Tus librerías: libjpeg, zbar (para códigos de barra), etc.
-# - Librerías OBLIGATORIAS para OpenCV: libgl1, libglib2.0, etc. (Si faltan estas, la app crashea al inicio).
-aptPkgs = [
-    "libgl1", 
-    "libglib2.0-0", 
-    "libsm6", 
-    "libxext6", 
-    "libxrender1",
-    "libjpeg-dev", 
-    "zlib1g-dev", 
-    "libpng-dev", 
-    "libzbar-dev", 
-    "ghostscript", 
-    "gcc"
-]
+# Instalamos solo las librerías de sistema indispensables para Pillow/OpenCV/ZBar
+# NO especificamos nodejs/npm/python aquí para evitar conflictos con los providers.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", "ghostscript", "gcc"]
 
 [phases.install]
-# 3. CORRECCIÓN: No creamos un venv manual en /opt/venv.
-# Dejamos que pip instale en el entorno que Nixpacks ya preparó.
-# Esto asegura que el comando 'reflex' esté disponible globalmente en el contenedor.
-cmds = [
-    "pip install --upgrade pip",
-    "pip install --no-cache-dir -r requirements.txt"
-]
+# Instalamos dependencias de Python
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-# 4. Usamos 'python -m reflex' en lugar de solo 'reflex'.
-# Es más seguro porque garantiza que se use el reflex instalado en el Python actual.
-cmd = "python -m reflex run --env prod"
-
-[variables]
-# Evita logs basura de OpenCV
-OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
-# Puerto estándar (ajusta a 3000 si prefieres que Reflex maneje el frontend en ese puerto)
-PORT = "8000"
+# Comando de inicio
+cmd = "reflex run --env prod"
