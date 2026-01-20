@@ -1,41 +1,16 @@
-# nixpacks.toml
-# Configuración Híbrida Definitiva (Python + Node + Librerías Gráficas)
+# Configuración de Nixpacks para Likemodas (Versión Minimalista)
+# Solo definimos los proveedores, Nixpacks resolverá las versiones compatibles automáticamente.
+providers = ["python", "node"]
 
 [phases.setup]
-# Instalamos Python 3.11, Pip explícito y Node.js
-nixPkgs = [
-    "python311", 
-    "python311Packages.pip", 
-    "nodejs", 
-    "ffmpeg", 
-    "zlib", 
-    "unzip"
-]
-
-# Librerías de sistema Linux para OpenCV (fix libGL error)
-aptPkgs = [
-    "libgl1", 
-    "libglib2.0-0", 
-    "libsm6", 
-    "libxext6", 
-    "libxrender1"
-]
+# Instalamos solo las librerías de sistema indispensables para Pillow/OpenCV/ZBar
+# NO especificamos nodejs/npm/python aquí para evitar conflictos con los providers.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", "ghostscript", "gcc"]
 
 [phases.install]
-# 1. Usamos 'python3' explícitamente para evitar conflictos.
-# 2. Instalamos también las dependencias de Node ('npm ci') porque Reflex las necesita.
-cmds = [
-    "python3 -m pip install --upgrade pip",
-    "python3 -m pip install -r requirements.txt",
-    "npm ci"
-]
+# Instalamos dependencias de Python
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-# Arrancamos usando el módulo de Python directamente
-cmd = "python3 -m reflex run --env prod --backend-only"
-
-[variables]
-# Variables de entorno críticas
-OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
-PYTHONUNBUFFERED = "1"
-PORT = "8000"
+# Comando de inicio
+cmd = "reflex run --env prod"
