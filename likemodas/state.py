@@ -3436,42 +3436,34 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
         """
-        Escáner público: Versión mejorada para detectar el error real.
+        Escáner público: Ahora soporta tanto ?variant_uuid= como /product/123
         """
-        self.show_public_qr_scanner_modal = False
-
         if not files:
-            yield rx.toast.error("No se recibió ningún archivo.")
+            yield rx.toast.error("No hay archivo.")
             return
 
+        self.show_public_qr_scanner_modal = False
+
         try:
-            # 1. Leer el archivo de imagen
             upload_data = await files[0].read()
-            
-            if len(upload_data) == 0:
-                yield rx.toast.error("El archivo subido está vacío.")
-                return
+            decoded_url = self._decode_qr_from_image(upload_data) # Asumo que esta función existe en tu clase
 
-            # 2. Intentar decodificar (Aquí es donde suele fallar si la librería da error)
-            decoded_url = self._decode_qr_from_image(upload_data)
-
-            # Si la función interna devolvió vacío o None
             if not decoded_url:
-                yield rx.toast.error("No se pudo detectar ningún QR en la imagen. Intenta con otra foto con mejor luz.")
+                yield rx.toast.error("No se pudo leer el QR.", duration=4000)
                 return
 
-            # 3. Procesar la URL detectada
             product_id = None
             
             # --- CASO A: Link moderno (.../product/123) ---
             if "/product/" in decoded_url:
                 try:
-                    clean_url = decoded_url.split("?")[0]
+                    # Limpiamos URL y sacamos el ID del final
+                    clean_url = decoded_url.split("?")[0] # Quitamos query params
                     possible_id = clean_url.rstrip("/").split("/")[-1]
                     if possible_id.isdigit():
                         product_id = int(possible_id)
-                except Exception as e:
-                    print(f"Error parseando URL moderna: {e}")
+                except:
+                    pass
 
             # --- CASO B: Link antiguo o con variante (?variant_uuid=...) ---
             if not product_id and "variant_uuid=" in decoded_url:
@@ -3480,24 +3472,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                     qs = parse_qs(parsed.query)
                     uuid = qs.get("variant_uuid", [None])[0]
                     if uuid:
+                        # Buscamos el producto dueño de esa variante
                         res = self.find_variant_by_uuid(uuid)
                         if res:
                             product_id = res[0].id
-                except Exception as e:
-                    print(f"Error parseando UUID: {e}")
+                except:
+                    pass
 
             # --- RESULTADO FINAL ---
             if product_id:
                 yield AppState.open_product_detail_modal(product_id)
             else:
-                # Mostramos qué leyó para entender por qué falló
-                yield rx.toast.error(f"QR leído pero inválido: {decoded_url[:30]}...")
+                yield rx.toast.error("Este QR no corresponde a un producto válido.")
 
         except Exception as e:
-            # ESTO ES LO IMPORTANTE: Verás el error real en la pantalla
-            error_msg = str(e)
-            print(f"Error crítico en escáner: {error_msg}")
-            yield rx.toast.error(f"Error técnico: {error_msg}")
+            print(f"Error QR: {e}")
+            yield rx.toast.error("Error procesando la imagen.")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
@@ -3620,92 +3610,57 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("El producto del código QR no fue encontrado.")
         
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
-    def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
+    def _decode_qr_from_image(self, image_bytes: bytes) -> str:
         """
-        [VERSIÓN OPTIMIZADA] Decodifica QR reduciendo primero la imagen para ahorrar RAM.
-        Incluye pipeline de mejora de imagen (Escala de grises -> Contraste -> Nitidez).
+        Decodifica QR usando puramente Pyzbar y Pillow.
+        Eliminamos OpenCV para evitar errores de librerías del sistema (libxcb).
         """
-        import cv2
-        import numpy as np
-        import gc
+        import io
+        from PIL import Image, ImageEnhance, ImageOps
+        
+        try:
+            # Importación segura
+            from pyzbar.pyzbar import decode, ZBarSymbol
+        except ImportError:
+            print("ERROR CRÍTICO: Pyzbar no está instalado.")
+            return ""
 
         try:
-            # 1. Cargar bytes en array (bajo consumo)
-            np_arr = np.frombuffer(image_bytes, np.uint8)
+            # 1. Cargar la imagen desde los bytes
+            img = Image.open(io.BytesIO(image_bytes))
             
-            # 2. Decodificar a imagen OpenCV
-            image_orig = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            # 2. Pre-procesamiento para mejorar lectura (sin usar cv2)
+            # Convertir a escala de grises
+            img = img.convert('L')
             
-            if image_orig is None:
-                logger.error("OpenCV no pudo decodificar la imagen.")
-                return None
+            # Aumentar contraste (ayuda si la cámara del celular es mala)
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(1.5)
 
-            # --- 🚀 OPTIMIZACIÓN CLAVE DE RAM 🚀 ---
-            # Si la imagen es muy grande (más de 1000px), la reducimos.
-            # Esto no afecta la lectura del QR pero ahorra muchísima RAM y CPU.
-            height, width = image_orig.shape[:2]
-            max_dimension = 1000
+            # 3. Intentar decodificar
+            # symbols=[ZBarSymbol.QRCODE] hace que sea más rápido al buscar solo QRs
+            decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
+
+            if decoded_objects:
+                # Éxito: Devolver el contenido
+                result = decoded_objects[0].data.decode("utf-8")
+                print(f"QR Detectado con éxito: {result}")
+                return result
             
-            if width > max_dimension or height > max_dimension:
-                scale = max_dimension / max(width, height)
-                new_width = int(width * scale)
-                new_height = int(height * scale)
-                # INTER_AREA es el mejor método para reducir tamaño sin perder calidad
-                image_to_process = cv2.resize(image_orig, (new_width, new_height), interpolation=cv2.INTER_AREA)
-            else:
-                image_to_process = image_orig
-
-            # Liberamos la memoria de la imagen original gigante INMEDIATAMENTE
-            del image_orig
-            del np_arr
-            gc.collect() 
-            # ---------------------------------------
-
-            detector = cv2.QRCodeDetector()
-
-            # --- Pipeline de Detección Secuencial (Usando la imagen reducida) ---
-
-            # Intento 1: Imagen Normal (Redimensionada)
-            logger.info("QR: Intento 1 - Imagen Normal")
-            decoded_text, points, _ = detector.detectAndDecode(image_to_process)
-            if points is not None and decoded_text:
-                return decoded_text
-
-            # Intento 2: Escala de Grises + Mejora de Contraste (CLAHE)
-            logger.info("QR: Intento 2 - Grises + CLAHE")
-            # Convertir a grises
-            if len(image_to_process.shape) == 3:
-                gray_image = cv2.cvtColor(image_to_process, cv2.COLOR_BGR2GRAY)
-            else:
-                gray_image = image_to_process
-
-            # Aplicar CLAHE (Contrast Limited Adaptive Histogram Equalization)
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            enhanced_image = clahe.apply(gray_image)
+            # 4. INTENTO EXTRA: Si falla, probar invirtiendo colores 
+            # (algunos QRs oscuros sobre fondo claro o viceversa fallan)
+            img_inverted = ImageOps.invert(img)
+            decoded_objects_inv = decode(img_inverted, symbols=[ZBarSymbol.QRCODE])
             
-            decoded_text, points, _ = detector.detectAndDecode(enhanced_image)
-            if points is not None and decoded_text:
-                return decoded_text
-
-            # Intento 3: Binarización (Blanco y Negro puro)
-            logger.info("QR: Intento 3 - Binarización")
-            _, binary_image = cv2.threshold(enhanced_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            decoded_text, points, _ = detector.detectAndDecode(binary_image)
-            if points is not None and decoded_text:
-                return decoded_text
-
-            logger.warning("No se pudo detectar QR después de todos los intentos.")
-            
-            # Limpieza final
-            del image_to_process
-            del gray_image
-            gc.collect()
-            
-            return None
+            if decoded_objects_inv:
+                result = decoded_objects_inv[0].data.decode("utf-8")
+                return result
 
         except Exception as e:
-            logger.error(f"Error fatal durante la decodificación del QR: {e}")
-            return None
+            print(f"Error procesando imagen QR (Pyzbar): {e}")
+            # No lanzamos el error para que la app no colapse, solo retornamos vacío
+            
+        return ""
         
     # --- INICIA EL NUEVO BLOQUE DE CÓDIGO ---
 
