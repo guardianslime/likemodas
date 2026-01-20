@@ -8,24 +8,18 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# --- CORRECCIÓN CRÍTICA ---
-# Si no hay variable de entorno (ej. durante el 'reflex export'),
-# asignamos una base de datos SQLite temporal para evitar el error "got None".
-if not DATABASE_URL:
-    DATABASE_URL = "sqlite:///./build_dummy.db"
-
-# --- LÓGICA DE CONEXIÓN ---
-# Si es SQLite (local o build), usamos configuración simple.
-if "sqlite" in DATABASE_URL:
+# --- LÓGICA DE SEGURIDAD ---
+# Si estamos en local (SQLite), usamos configuración simple.
+if DATABASE_URL and "sqlite" in DATABASE_URL:
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False}
     )
 else:
-    # Si es Postgres (Producción/Hetzner), usamos la configuración robusta.
+    # Si estamos en producción (Postgres), usamos configuración robusta.
     engine = create_engine(
         DATABASE_URL, 
-        # connect_args={"options": "-c timezone=utc"}, # Descomenta si usas Postgres y necesitas UTC forzado
+        connect_args={"options": "-c timezone=utc"}, 
         pool_recycle=300
     )
 

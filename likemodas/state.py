@@ -40,7 +40,7 @@ import io
 from .services.encryption_service import encrypt_secret, decrypt_secret
 import csv
 from urllib.parse import urlparse, parse_qs
-# import cv2  # <-- AÑADE ESTA IMPORTACIÓN
+import cv2  # <-- AÑADE ESTA IMPORTACIÓN
 import numpy as np # <-- AÑADE ESTA IMPORTACIÓN
 
 import logging
@@ -3318,18 +3318,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.search_attr_tipo.lower() in o.lower()
         ]
     
-    is_copying_qr: bool = False  # Para controlar el proceso de copiado
+    is_copying_qr: bool = False # Para controlar el proceso de copiado (opcional, pero buena práctica)
 
     @rx.event
     def show_qr_copy_success_toast(self):
         """Muestra el toast de éxito DESPUÉS de que el script JS haya terminado."""
-        self.is_copying_qr = False
+        # Restablecemos el estado de copiado aquí, después de que el toast se va a mostrar
+        self.is_copying_qr = False 
         return rx.toast.success("Imagen QR copiada al portapapeles")
 
     @rx.event
     def set_is_copying_qr(self, value: bool):
+        """Define el estado de si se está copiando un QR."""
         self.is_copying_qr = value
-
+    
     show_qr_scanner_modal: bool = False
 
     def toggle_qr_scanner_modal(self):
@@ -3339,14 +3341,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_qr_scanner_modal = state
 
     # --- INICIO: SECCIÓN PARA EL MODAL DE VISUALIZACIÓN DE QR ---
+
+    # Variable para controlar la visibilidad del modal de visualización de QR
     show_qr_display_modal: bool = False
+
+    # Variable para almacenar los datos del post cuyos QR se están mostrando
     post_for_qr_display: Optional[AdminPostRowData] = None
 
     @rx.event
     def open_qr_modal(self, post_id: int):
-        """Busca un post por su ID y lo carga para mostrar sus QR."""
-        # CORRECCIÓN APLICADA: Usamos la lista correcta 'mis_publicaciones_list'
+        """
+        Busca un post por su ID y lo carga en el estado para mostrar sus QR en el modal.
+        """
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Cambiamos 'self.my_admin_posts' por la nueva variable 'self.mis_publicaciones_list'
         post_data = next((p for p in self.mis_publicaciones_list if p.id == post_id), None)
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
         
         if post_data:
             self.post_for_qr_display = post_data
@@ -3354,145 +3364,114 @@ class AppState(reflex_local_auth.LocalAuthState):
         else:
             return rx.toast.error("No se pudo encontrar la publicación.")
 
-    def set_show_qr_display_modal(self, state: bool):
-        self.show_qr_display_modal = state
-        if not state:
-            self.post_for_qr_display = None
-
-    # --- FIN DE LA SECCIÓN PARA EL MODAL DE VISUALIZACIÓN ---
-
-    # --- LÓGICA DEL ESCÁNER (CORREGIDA PARA SOPORTAR LINKS NUEVOS) ---
+    # --- FIN DE LA SECCIÓN PARA EL MODAL DE VISUALIZACIÓN DE QR --
 
     @rx.event
     def handle_qr_scan_success(self, decoded_text: str):
-        """
-        Maneja el escaneo interno (Venta Directa).
-        Intenta detectar si es un QR de Variante (UUID) o de Producto (ID).
-        """
-        self.last_scanned_url = decoded_text
-        
-        if not decoded_text:
-            return rx.toast.error("Lectura vacía.")
-
-        variant_uuid = None
-        
-        # 1. Intento: Buscar variant_uuid (Formato Antiguo/Interno)
-        if "variant_uuid=" in decoded_text:
-            try:
-                parsed_url = urlparse(decoded_text)
-                query_params = parse_qs(parsed_url.query)
-                variant_uuid = query_params.get("variant_uuid", [None])[0]
-            except:
-                pass
-
-        # 2. Lógica principal de Venta Directa
-        if variant_uuid:
-            # Si tenemos UUID, procedemos con la lógica exacta de agregar al carrito
-            result = self.find_variant_by_uuid(variant_uuid)
-            if not result:
-                return rx.toast.error("Variante no encontrada.")
-            
-            post, variant = result
-            
-            # Lógica de atributos y stock
-            attributes = variant.get("attributes", {})
-            selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
-            variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
-
-            if variant_index == -1:
-                return rx.toast.error("Error de datos en la variante.")
-
-            cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
-            available_stock = variant.get("stock", 0)
-            quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-
-            if quantity_in_cart + 1 > available_stock:
-                yield rx.toast.error(f"¡Sin stock para '{post.title}'!")
-            else:
-                self.direct_sale_cart[cart_key] = quantity_in_cart + 1
-                yield rx.toast.success(f"'{post.title}' añadido.")
-                self.show_qr_scanner_modal = False
-        
-        else:
-            # Si NO hay UUID, puede ser un link de compartir (ej: .../product/123)
-            # Para venta directa, esto es ambiguo (no sabemos talla/color), 
-            # así que notificamos o abrimos el producto para selección manual.
-            if "/product/" in decoded_text:
-                 yield rx.toast.warning("QR de producto detectado. Selecciona la variante manualmente.")
-                 # Opcional: Podrías abrir el modal del producto aquí si quisieras
-            else:
-                return rx.toast.error("QR no reconocido para venta directa.")
-
-
-    # --- ESCÁNER PÚBLICO (EL QUE MÁS IMPORTA ARREGLAR PARA LOS LINKS) ---
+        self.last_scanned_url = decoded_text  # Guardar para depuración
     
+        if not decoded_text or "variant_uuid=" not in decoded_text:
+            return rx.toast.error("El código QR no es válido para esta aplicación.")
+        
+        try:
+            parsed_url = urlparse(decoded_text)
+            query_params = parse_qs(parsed_url.query)
+            variant_uuid = query_params.get("variant_uuid", [None])[0]
+        except Exception:
+            return rx.toast.error("URL malformada en el código QR.")
+
+        if not variant_uuid:
+            return rx.toast.error("No se encontró un identificador de producto en el QR.")
+        
+        # Reutilizar la lógica de búsqueda ya existente en AppState
+        result = self.find_variant_by_uuid(variant_uuid)
+        
+        if not result:
+            return rx.toast.error("Producto no encontrado para este código QR.")
+        
+        post, variant = result
+        
+        attributes = variant.get("attributes", {})
+        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+        variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
+
+        if variant_index == -1:
+            return rx.toast.error("Error de consistencia de datos de la variante.")
+
+        cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+        
+        available_stock = variant.get("stock", 0)
+        quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+        
+        if quantity_in_cart + 1 > available_stock:
+            yield rx.toast.error(f"¡Sin stock para '{post.title}'!")
+        else:
+            self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+            yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
+            self.show_qr_scanner_modal = False
+
+    # --- Añade estas nuevas variables de estado ---
     show_public_qr_scanner_modal: bool = False
 
     def toggle_public_qr_scanner_modal(self):
+        """Muestra u oculta el modal del escáner QR público."""
         self.show_public_qr_scanner_modal = not self.show_public_qr_scanner_modal
 
     def set_show_public_qr_scanner_modal(self, state: bool):
         self.show_public_qr_scanner_modal = state
 
+    # --- Añade este nuevo manejador de eventos ---
     async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
         """
-        Escáner público: Ahora soporta tanto ?variant_uuid= como /product/123
+        Manejador para el escáner público. Decodifica el QR y abre el modal del producto.
         """
         if not files:
-            yield rx.toast.error("No hay archivo.")
+            yield rx.toast.error("No se ha subido ningún archivo.")
             return
 
         self.show_public_qr_scanner_modal = False
 
         try:
             upload_data = await files[0].read()
-            decoded_url = self._decode_qr_from_image(upload_data) # Asumo que esta función existe en tu clase
+            decoded_url = self._decode_qr_from_image(upload_data)
 
             if not decoded_url:
-                yield rx.toast.error("No se pudo leer el QR.", duration=4000)
+                yield rx.toast.error("No se pudo leer el código QR.", duration=6000)
                 return
 
-            product_id = None
-            
-            # --- CASO A: Link moderno (.../product/123) ---
-            if "/product/" in decoded_url:
-                try:
-                    # Limpiamos URL y sacamos el ID del final
-                    clean_url = decoded_url.split("?")[0] # Quitamos query params
-                    possible_id = clean_url.rstrip("/").split("/")[-1]
-                    if possible_id.isdigit():
-                        product_id = int(possible_id)
-                except:
-                    pass
+            if "variant_uuid=" not in decoded_url:
+                yield rx.toast.error("El código QR no es válido.")
+                return
 
-            # --- CASO B: Link antiguo o con variante (?variant_uuid=...) ---
-            if not product_id and "variant_uuid=" in decoded_url:
-                try:
-                    parsed = urlparse(decoded_url)
-                    qs = parse_qs(parsed.query)
-                    uuid = qs.get("variant_uuid", [None])[0]
-                    if uuid:
-                        # Buscamos el producto dueño de esa variante
-                        res = self.find_variant_by_uuid(uuid)
-                        if res:
-                            product_id = res[0].id
-                except:
-                    pass
+            parsed_url = urlparse(decoded_url)
+            query_params = parse_qs(parsed_url.query)
+            variant_uuid = query_params.get("variant_uuid", [None])[0]
 
-            # --- RESULTADO FINAL ---
-            if product_id:
-                yield AppState.open_product_detail_modal(product_id)
-            else:
-                yield rx.toast.error("Este QR no corresponde a un producto válido.")
+            if not variant_uuid:
+                yield rx.toast.error("QR sin identificador de producto.")
+                return
+
+            result = self.find_variant_by_uuid(variant_uuid)
+
+            if not result:
+                yield rx.toast.error("Producto no encontrado para este código QR.")
+                return
+
+            post, _ = result
+            # En lugar de añadir al carrito, llamamos al evento que abre el modal
+            yield AppState.open_product_detail_modal(post.id)
 
         except Exception as e:
-            print(f"Error QR: {e}")
-            yield rx.toast.error("Error procesando la imagen.")
+            logger.error(f"Error fatal al procesar el QR público: {e}")
+            yield rx.toast.error("Ocurrió un error inesperado al procesar la imagen.")
 
+    # --- Manejador para errores de la cámara ---
     @rx.event
     def handle_camera_error(self, error_message: str):
-        self.show_qr_scanner_modal = False
-        return rx.toast.error(f"Error de cámara: {error_message}", duration=5000)
+        """ Se ejecuta si la cámara no se puede iniciar o hay un error. """
+        self.show_qr_scanner_modal = False   # Cierra el modal si hay un error
+        return rx.toast.error(f"Error de cámara: {error_message}", duration=6000)
+
 
 
     def set_show_qr_display_modal(self, state: bool):
@@ -3610,63 +3589,96 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("El producto del código QR no fue encontrado.")
         
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
-    def _decode_qr_from_image(self, image_bytes: bytes) -> str:
+    def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
         """
-        Decodifica QR usando puramente Pyzbar y Pillow.
-        Eliminamos OpenCV para evitar errores de librerías del sistema (libxcb).
+        [VERSIÓN OPTIMIZADA] Decodifica QR reduciendo primero la imagen para ahorrar RAM.
+        Incluye pipeline de mejora de imagen (Escala de grises -> Contraste -> Nitidez).
         """
-        import io
-        from PIL import Image, ImageEnhance, ImageOps
-        
-        try:
-            # Importación segura
-            from pyzbar.pyzbar import decode, ZBarSymbol
-        except ImportError:
-            print("ERROR CRÍTICO: Pyzbar no está instalado.")
-            return ""
+        import cv2
+        import numpy as np
+        import gc
 
         try:
-            # 1. Cargar la imagen desde los bytes
-            img = Image.open(io.BytesIO(image_bytes))
+            # 1. Cargar bytes en array (bajo consumo)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
             
-            # 2. Pre-procesamiento para mejorar lectura (sin usar cv2)
-            # Convertir a escala de grises
-            img = img.convert('L')
+            # 2. Decodificar a imagen OpenCV
+            image_orig = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             
-            # Aumentar contraste (ayuda si la cámara del celular es mala)
-            enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.5)
+            if image_orig is None:
+                logger.error("OpenCV no pudo decodificar la imagen.")
+                return None
 
-            # 3. Intentar decodificar
-            # symbols=[ZBarSymbol.QRCODE] hace que sea más rápido al buscar solo QRs
-            decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
+            # --- 🚀 OPTIMIZACIÓN CLAVE DE RAM 🚀 ---
+            # Si la imagen es muy grande (más de 1000px), la reducimos.
+            # Esto no afecta la lectura del QR pero ahorra muchísima RAM y CPU.
+            height, width = image_orig.shape[:2]
+            max_dimension = 1000
+            
+            if width > max_dimension or height > max_dimension:
+                scale = max_dimension / max(width, height)
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                # INTER_AREA es el mejor método para reducir tamaño sin perder calidad
+                image_to_process = cv2.resize(image_orig, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            else:
+                image_to_process = image_orig
 
-            if decoded_objects:
-                # Éxito: Devolver el contenido
-                result = decoded_objects[0].data.decode("utf-8")
-                print(f"QR Detectado con éxito: {result}")
-                return result
+            # Liberamos la memoria de la imagen original gigante INMEDIATAMENTE
+            del image_orig
+            del np_arr
+            gc.collect() 
+            # ---------------------------------------
+
+            detector = cv2.QRCodeDetector()
+
+            # --- Pipeline de Detección Secuencial (Usando la imagen reducida) ---
+
+            # Intento 1: Imagen Normal (Redimensionada)
+            logger.info("QR: Intento 1 - Imagen Normal")
+            decoded_text, points, _ = detector.detectAndDecode(image_to_process)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            # Intento 2: Escala de Grises + Mejora de Contraste (CLAHE)
+            logger.info("QR: Intento 2 - Grises + CLAHE")
+            # Convertir a grises
+            if len(image_to_process.shape) == 3:
+                gray_image = cv2.cvtColor(image_to_process, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_image = image_to_process
+
+            # Aplicar CLAHE (Contrast Limited Adaptive Histogram Equalization)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced_image = clahe.apply(gray_image)
             
-            # 4. INTENTO EXTRA: Si falla, probar invirtiendo colores 
-            # (algunos QRs oscuros sobre fondo claro o viceversa fallan)
-            img_inverted = ImageOps.invert(img)
-            decoded_objects_inv = decode(img_inverted, symbols=[ZBarSymbol.QRCODE])
+            decoded_text, points, _ = detector.detectAndDecode(enhanced_image)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            # Intento 3: Binarización (Blanco y Negro puro)
+            logger.info("QR: Intento 3 - Binarización")
+            _, binary_image = cv2.threshold(enhanced_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            decoded_text, points, _ = detector.detectAndDecode(binary_image)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            logger.warning("No se pudo detectar QR después de todos los intentos.")
             
-            if decoded_objects_inv:
-                result = decoded_objects_inv[0].data.decode("utf-8")
-                return result
+            # Limpieza final
+            del image_to_process
+            del gray_image
+            gc.collect()
+            
+            return None
 
         except Exception as e:
-            print(f"Error procesando imagen QR (Pyzbar): {e}")
-            # No lanzamos el error para que la app no colapse, solo retornamos vacío
-            
-        return ""
+            logger.error(f"Error fatal durante la decodificación del QR: {e}")
+            return None
         
     # --- INICIA EL NUEVO BLOQUE DE CÓDIGO ---
 
     def _apply_clahe_color(self, image):
-        import cv2  # <--- IMPORTACIÓN SEGURA AQUÍ
-
         """Aplica mejora de contraste a una imagen a color sin distorsionar los colores."""
         lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
@@ -3676,13 +3688,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 
     def _unsharp_mask(self, image, sigma=1.0, strength=1.5):
-        import cv2  # <--- IMPORTACIÓN SEGURA AQUÍ
         """Aplica un filtro de nitidez para corregir desenfoques leves."""
         blurred = cv2.GaussianBlur(image, (0, 0), sigma)
         return cv2.addWeighted(image, 1.0 + strength, blurred, -strength, 0)
 
     def _apply_morphological_cleanup(self, binary_image):
-        import cv2  # <--- IMPORTACIÓN SEGURA AQUÍ
         """Elimina ruido y pequeños imperfectos de la imagen binarizada."""
         kernel = np.ones((3, 3), np.uint8)
         # Elimina ruido blanco (puntos pequeños)

@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/.well-known/assetlinks.json",
-      "destination": "https://api.likemodas.com/.well-known/assetlinks.json"
-    }
-  ]
-}

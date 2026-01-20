@@ -1,6 +1,6 @@
 # En: likemodas/blog/admin_page.py (VERSIÓN COMPLETA Y CORREGIDA)
 
-# from cv2 import add
+from cv2 import add
 import reflex as rx
 from ..auth.admin_auth import require_panel_access
 from .. import navigation

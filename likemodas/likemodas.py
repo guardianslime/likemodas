@@ -225,36 +225,3 @@ app.add_page(cookies_page, route="/cookies", title="Política de Cookies")
 
 # Eliminar cuenta
 app.add_page(delete_account_info, route="/delete-account-info", title="Eliminar Cuenta")
-
-# --- AL FINAL DE likemodas/likemodas.py ---
-from fastapi.responses import JSONResponse
-from .api.tasks import reconcile_pending_payments # Aseguramos la importación
-from likemodas.db.session import get_session # Necesario para la base de datos
-
-async def reconcile_payments_task(request):
-    try:
-        # 1. Obtenemos el secreto de los parámetros de la URL (?secret=...)
-        # Si no envías secreto en la URL, el script de tasks.py lo rechazará.
-        secret = request.query_params.get("secret")
-        
-        # 2. Obtenemos una sesión de base de datos manualmente
-        # ya que Starlette.add_route no maneja Depends() automáticamente
-        session_gen = get_session()
-        session = next(session_gen)
-        
-        # 3. Llamamos a la función con el nombre CORRECTO: reconcile_pending_payments
-        resultado = await reconcile_pending_payments(secret=secret, session=session)
-        return JSONResponse(content=resultado)
-        
-    except Exception as e:
-        import logging
-        logging.error(f"Error en reconcile_payments: {str(e)}")
-        return JSONResponse(
-            status_code=500, 
-            content={"error": "Fallo interno", "detalle": str(e)}
-        )
-
-# Registramos las rutas
-app._api.add_route("/.well-known/assetlinks.json", assetlinks_endpoint)
-# Usamos métodos GET y POST para que sea compatible con cualquier Cron-job
-app._api.add_route("/tasks/reconcile-payments", reconcile_payments_task, methods=["GET", "POST"])
