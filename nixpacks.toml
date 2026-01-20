@@ -1,35 +1,17 @@
 # nixpacks.toml
-# Configuración corregida para Likemodas (Reflex)
+# Solo inyectamos las dependencias de sistema (Linux) para OpenCV.
+# Dejamos que Nixpacks detecte e instale Python y Pip automáticamente.
 
 [phases.setup]
-# 'python311Full' incluye pip y venv, solucionando el error "No module named pip".
-# Agregamos 'nodejs' por si Reflex necesita compilar activos, y 'unzip' que es útil.
-nixPkgs = [
-    "python311Full",
-    "nodejs",
-    "ffmpeg",
-    "zlib",
-    "unzip"
-]
-
-# Librerías de sistema requeridas para que OpenCV funcione (libGL error)
+# Librerías de sistema requeridas por OpenCV (soluciona el error libGL)
 aptPkgs = [
-    "libgl1",
-    "libglib2.0-0",
-    "libsm6",
-    "libxext6",
+    "libgl1", 
+    "libglib2.0-0", 
+    "libsm6", 
+    "libxext6", 
     "libxrender1"
 ]
 
-[phases.install]
-# Instalamos las dependencias de Python
-cmds = ["python -m pip install -r requirements.txt"]
-
-[start]
-# Comando de arranque para producción (solo backend)
-cmd = "reflex run --env prod --backend-only"
-
 [variables]
-# Optimizaciones
+# Optimización para que OpenCV no llene los logs de advertencias
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
-PYTHONUNBUFFERED = "1"
