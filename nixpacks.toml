@@ -1,16 +1,20 @@
-# Configuración de Nixpacks para Likemodas (Versión Minimalista)
-# Solo definimos los proveedores, Nixpacks resolverá las versiones compatibles automáticamente.
-providers = ["python", "node"]
+# nixpacks.toml
+# Configuración para inyectar dependencias de sistema requeridas por OpenCV
 
 [phases.setup]
-# Instalamos solo las librerías de sistema indispensables para Pillow/OpenCV/ZBar
-# NO especificamos nodejs/npm/python aquí para evitar conflictos con los providers.
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", "ghostscript", "gcc"]
+# Mantenemos los paquetes base y agregamos las librerías gráficas de bajo nivel
+nixPkgs = ["python3", "ffmpeg", "zlib"]
+aptPkgs = [
+    "libgl1", 
+    "libglib2.0-0", 
+    "libsm6", 
+    "libxext6", 
+    "libxrender1"
+]
 
 [phases.install]
-# Instalamos dependencias de Python
-cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
+cmds = ["python -m pip install -r requirements.txt"]
 
-[start]
-# Comando de inicio
-cmd = "reflex run --env prod"
+[variables]
+# Optimización para evitar logs de advertencia de OpenCV en servidor
+OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
