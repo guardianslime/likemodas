@@ -1,9 +1,17 @@
 # nixpacks.toml
-# Configuración para inyectar dependencias de sistema requeridas por OpenCV
+# Configuración corregida para Likemodas
 
 [phases.setup]
-# Mantenemos los paquetes base y agregamos las librerías gráficas de bajo nivel
-nixPkgs = ["python3", "ffmpeg", "zlib"]
+# AQUÍ ESTABA EL ERROR: Agregamos 'python3Packages.pip' explícitamente.
+# Usamos python311 para mayor compatibilidad con Reflex.
+nixPkgs = [
+    "python311", 
+    "python311Packages.pip", 
+    "ffmpeg", 
+    "zlib"
+]
+
+# Librerías de sistema necesarias para OpenCV (Esto soluciona el error libGL)
 aptPkgs = [
     "libgl1", 
     "libglib2.0-0", 
@@ -13,8 +21,15 @@ aptPkgs = [
 ]
 
 [phases.install]
+# Ahora que pip está instalado, este comando funcionará
 cmds = ["python -m pip install -r requirements.txt"]
 
+[start]
+# Aseguramos que el comando de inicio sea correcto para producción
+cmd = "reflex run --env prod --backend-only"
+
 [variables]
-# Optimización para evitar logs de advertencia de OpenCV en servidor
+# Optimización para OpenCV
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
+# Forzar Python a usar buffer de salida estándar (ayuda a ver logs en tiempo real)
+PYTHONUNBUFFERED = "1"
