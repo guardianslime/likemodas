@@ -3609,6 +3609,49 @@ class AppState(reflex_local_auth.LocalAuthState):
             # También retornamos el evento de notificación de error.
             return rx.toast.error("El producto del código QR no fue encontrado.")
         
+    def clean_qr_code(self, code: str) -> str:
+        """
+        Limpia el código escaneado para obtener solo el ID del producto.
+        Soporta tanto IDs simples como URLs completas de compartir.
+        """
+        if not code:
+            return ""
+        
+        # Convertimos a string por seguridad y quitamos espacios
+        cleaned = str(code).strip()
+        
+        # Si es una URL (contiene barras), extraemos la última parte que es el ID
+        if "/" in cleaned:
+            # rstrip("/") evita errores si la URL termina con una barra "/"
+            return cleaned.rstrip("/").split("/")[-1]
+            
+        return cleaned
+
+    @rx.event
+    def handle_scan_result(self, result: list[str] | str):
+        """
+        Procesa el resultado del escáner QR, limpia el ID y redirige al producto.
+        """
+        # El escáner a veces devuelve una lista y a veces un string simple
+        if isinstance(result, list):
+            if not result:
+                return rx.window_alert("No se detectó contenido en el código QR.")
+            code = result[0]
+        else:
+            code = result
+
+        # Usamos la función de limpieza para obtener el ID real
+        product_id = self.clean_qr_code(code)
+
+        if not product_id:
+             return rx.window_alert("El código QR no es válido.")
+
+        # Opcional: Imprimir en consola del servidor para depurar si algo falla
+        print(f"DEBUG - QR Escaneado: {code} | ID Extraído: {product_id}")
+
+        # Redirigimos a la página del producto usando el ID limpio
+        return rx.redirect(f"/producto/{product_id}")
+        
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
     def _decode_qr_from_image(self, image_bytes: bytes) -> str:
         """
