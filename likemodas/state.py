@@ -3610,57 +3610,92 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("El producto del código QR no fue encontrado.")
         
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
-    def _decode_qr_from_image(self, image_bytes: bytes) -> str:
+    def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
         """
-        Decodifica QR usando puramente Pyzbar y Pillow.
-        Eliminamos OpenCV para evitar errores de librerías del sistema (libxcb).
+        [VERSIÓN OPTIMIZADA] Decodifica QR reduciendo primero la imagen para ahorrar RAM.
+        Incluye pipeline de mejora de imagen (Escala de grises -> Contraste -> Nitidez).
         """
-        import io
-        from PIL import Image, ImageEnhance, ImageOps
-        
-        try:
-            # Importación segura
-            from pyzbar.pyzbar import decode, ZBarSymbol
-        except ImportError:
-            print("ERROR CRÍTICO: Pyzbar no está instalado.")
-            return ""
+        import cv2
+        import numpy as np
+        import gc
 
         try:
-            # 1. Cargar la imagen desde los bytes
-            img = Image.open(io.BytesIO(image_bytes))
+            # 1. Cargar bytes en array (bajo consumo)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
             
-            # 2. Pre-procesamiento para mejorar lectura (sin usar cv2)
-            # Convertir a escala de grises
-            img = img.convert('L')
+            # 2. Decodificar a imagen OpenCV
+            image_orig = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             
-            # Aumentar contraste (ayuda si la cámara del celular es mala)
-            enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.5)
+            if image_orig is None:
+                logger.error("OpenCV no pudo decodificar la imagen.")
+                return None
 
-            # 3. Intentar decodificar
-            # symbols=[ZBarSymbol.QRCODE] hace que sea más rápido al buscar solo QRs
-            decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
+            # --- 🚀 OPTIMIZACIÓN CLAVE DE RAM 🚀 ---
+            # Si la imagen es muy grande (más de 1000px), la reducimos.
+            # Esto no afecta la lectura del QR pero ahorra muchísima RAM y CPU.
+            height, width = image_orig.shape[:2]
+            max_dimension = 1000
+            
+            if width > max_dimension or height > max_dimension:
+                scale = max_dimension / max(width, height)
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                # INTER_AREA es el mejor método para reducir tamaño sin perder calidad
+                image_to_process = cv2.resize(image_orig, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            else:
+                image_to_process = image_orig
 
-            if decoded_objects:
-                # Éxito: Devolver el contenido
-                result = decoded_objects[0].data.decode("utf-8")
-                print(f"QR Detectado con éxito: {result}")
-                return result
+            # Liberamos la memoria de la imagen original gigante INMEDIATAMENTE
+            del image_orig
+            del np_arr
+            gc.collect() 
+            # ---------------------------------------
+
+            detector = cv2.QRCodeDetector()
+
+            # --- Pipeline de Detección Secuencial (Usando la imagen reducida) ---
+
+            # Intento 1: Imagen Normal (Redimensionada)
+            logger.info("QR: Intento 1 - Imagen Normal")
+            decoded_text, points, _ = detector.detectAndDecode(image_to_process)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            # Intento 2: Escala de Grises + Mejora de Contraste (CLAHE)
+            logger.info("QR: Intento 2 - Grises + CLAHE")
+            # Convertir a grises
+            if len(image_to_process.shape) == 3:
+                gray_image = cv2.cvtColor(image_to_process, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_image = image_to_process
+
+            # Aplicar CLAHE (Contrast Limited Adaptive Histogram Equalization)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced_image = clahe.apply(gray_image)
             
-            # 4. INTENTO EXTRA: Si falla, probar invirtiendo colores 
-            # (algunos QRs oscuros sobre fondo claro o viceversa fallan)
-            img_inverted = ImageOps.invert(img)
-            decoded_objects_inv = decode(img_inverted, symbols=[ZBarSymbol.QRCODE])
+            decoded_text, points, _ = detector.detectAndDecode(enhanced_image)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            # Intento 3: Binarización (Blanco y Negro puro)
+            logger.info("QR: Intento 3 - Binarización")
+            _, binary_image = cv2.threshold(enhanced_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            decoded_text, points, _ = detector.detectAndDecode(binary_image)
+            if points is not None and decoded_text:
+                return decoded_text
+
+            logger.warning("No se pudo detectar QR después de todos los intentos.")
             
-            if decoded_objects_inv:
-                result = decoded_objects_inv[0].data.decode("utf-8")
-                return result
+            # Limpieza final
+            del image_to_process
+            del gray_image
+            gc.collect()
+            
+            return None
 
         except Exception as e:
-            print(f"Error procesando imagen QR (Pyzbar): {e}")
-            # No lanzamos el error para que la app no colapse, solo retornamos vacío
-            
-        return ""
+            logger.error(f"Error fatal durante la decodificación del QR: {e}")
+            return None
         
     # --- INICIA EL NUEVO BLOQUE DE CÓDIGO ---
 
