@@ -1,49 +1,39 @@
 # nixpacks.toml
+
+# Usamos proveedores automáticos (Evita problemas de pip/python path)
 providers = ["python", "node"]
 
 [phases.setup]
-# Lista "Nuclear" de dependencias para arreglar el error de OpenCV en Python 3.12
+# Librerías del sistema esenciales.
+# Con OpenCV 4.8, esto es suficiente y mucho más ligero.
 aptPkgs = [
-    # Dependencias base
-    "libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender1",
-    "libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", 
-    "ghostscript", "gcc", "curl", "wget",
-
-    # --- EL FIX COMPLETO PARA XCB ---
-    # OpenCV suele fallar si falta ALGUNA de estas, aunque el error solo diga "libxcb"
-    "libxcb1",
-    "libx11-xcb1",
-    "libxcb-cursor0",    # <--- ESTA ES LA CULPABLE EN EL 99% DE LOS CASOS DE PYTHON 3.12
-    "libxcb-xinerama0",  # <--- Otra dependencia común oculta
-    "libxcb-render0",
-    "libxcb-shape0",
-    "libxcb-xfixes0",
-    "libxcb-icccm4",
-    "libxcb-image0",
-    "libxcb-keysyms1",
-    "libxcb-randr0",
-    "libxcb-render-util0",
-    "libxcb-shm0",
-    "libxcb-sync1",
-    "libxcb-util1",
-    "libxkbcommon-x11-0" # A veces requerida por plugins de Qt/OpenCV
+    "libgl1", 
+    "libglib2.0-0", 
+    "libsm6", 
+    "libxext6", 
+    "libxrender1",
+    "libjpeg-dev", 
+    "zlib1g-dev", 
+    "libpng-dev", 
+    "libzbar-dev", 
+    "ghostscript", 
+    "gcc"
 ]
 
 [phases.install]
-# Instalación limpia en entorno virtual
+# Instalación limpia en /opt/venv
 cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
     ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
-    # Aseguramos que la versión gráfica muera y quede la headless
-    ". /opt/venv/bin/activate && pip uninstall -y opencv-python || true",
-    ". /opt/venv/bin/activate && pip install --force-reinstall opencv-python-headless",
     "npm ci"
 ]
 
 [start]
+# Ruta absoluta para garantizar que encuentre los comandos
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
+# Mantenemos las optimizaciones
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
 PORT = "8000"
