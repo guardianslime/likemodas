@@ -1,49 +1,47 @@
 # nixpacks.toml
-
-# Usamos proveedores automáticos para Python y Node
 providers = ["python", "node"]
 
 [phases.setup]
-# Aquí está la solución: Agregamos TODAS las variantes de libxcb que faltaban.
+# Lista "Nuclear" de dependencias para arreglar el error de OpenCV en Python 3.12
 aptPkgs = [
-    # Dependencias gráficas base
-    "libgl1", 
-    "libglib2.0-0", 
-    "libsm6", 
-    "libxext6", 
-    "libxrender1",
-    
-    # Dependencias para procesamiento de imágenes y QR
-    "libjpeg-dev", 
-    "zlib1g-dev", 
-    "libpng-dev", 
-    "libzbar-dev", 
-    "ghostscript", 
-    "gcc",
-    
-    # --- EL FIX PARA EL ERROR ACTUAL (libxcb) ---
+    # Dependencias base
+    "libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender1",
+    "libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", 
+    "ghostscript", "gcc", "curl", "wget",
+
+    # --- EL FIX COMPLETO PARA XCB ---
+    # OpenCV suele fallar si falta ALGUNA de estas, aunque el error solo diga "libxcb"
     "libxcb1",
     "libx11-xcb1",
-    "libxcb-render0",   # Necesaria para Python 3.12 + OpenCV
-    "libxcb-shape0",    # Necesaria para Python 3.12 + OpenCV
-    "libxcb-xfixes0"    # Necesaria para Python 3.12 + OpenCV
+    "libxcb-cursor0",    # <--- ESTA ES LA CULPABLE EN EL 99% DE LOS CASOS DE PYTHON 3.12
+    "libxcb-xinerama0",  # <--- Otra dependencia común oculta
+    "libxcb-render0",
+    "libxcb-shape0",
+    "libxcb-xfixes0",
+    "libxcb-icccm4",
+    "libxcb-image0",
+    "libxcb-keysyms1",
+    "libxcb-randr0",
+    "libxcb-render-util0",
+    "libxcb-shm0",
+    "libxcb-sync1",
+    "libxcb-util1",
+    "libxkbcommon-x11-0" # A veces requerida por plugins de Qt/OpenCV
 ]
 
 [phases.install]
-# Instalación robusta en entorno virtual
+# Instalación limpia en entorno virtual
 cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
     ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
-    
-    # Medida de seguridad: Forzamos la desinstalación de la versión GUI si se coló
+    # Aseguramos que la versión gráfica muera y quede la headless
     ". /opt/venv/bin/activate && pip uninstall -y opencv-python || true",
-    
+    ". /opt/venv/bin/activate && pip install --force-reinstall opencv-python-headless",
     "npm ci"
 ]
 
 [start]
-# Arrancamos usando la ruta absoluta al python del entorno virtual
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
