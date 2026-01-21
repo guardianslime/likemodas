@@ -1,10 +1,10 @@
 # nixpacks.toml
 
-# Usamos los proveedores automáticos (esto evita el error de "pip not found")
+# 1. Mantenemos la estrategia de proveedores que SÍ te funcionó para instalar
 providers = ["python", "node"]
 
 [phases.setup]
-# Mezclamos tus librerías con las necesarias para que OpenCV no tumbe la app
+# 2. Agregamos 'libxcb1', 'libx11-xcb1', 'libice6' que son las que te faltan ahora.
 aptPkgs = [
     "libgl1", 
     "libglib2.0-0", 
@@ -16,12 +16,14 @@ aptPkgs = [
     "libpng-dev", 
     "libzbar-dev", 
     "ghostscript", 
-    "gcc"
+    "gcc",
+    "libxcb1",      # <--- ESTA es la que soluciona el error actual
+    "libx11-xcb1",
+    "libice6"
 ]
 
 [phases.install]
-# Creamos el entorno virtual en /opt/venv e instalamos todo ahí.
-# Importante: Instalamos las deps de Python y también las de Node.
+# 3. Instalación robusta en entorno virtual
 cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
@@ -30,8 +32,7 @@ cmds = [
 ]
 
 [start]
-# EL FIX: Usamos la ruta ABSOLUTA (/opt/venv/bin/...) para iniciar.
-# Esto soluciona el error "reflex: command not found".
+# 4. Usamos la ruta absoluta para que encuentre Reflex sin problemas
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
