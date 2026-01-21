@@ -1,16 +1,39 @@
-# Configuración de Nixpacks para Likemodas (Versión Minimalista)
-# Solo definimos los proveedores, Nixpacks resolverá las versiones compatibles automáticamente.
+# nixpacks.toml
+
+# Usamos los proveedores automáticos (esto evita el error de "pip not found")
 providers = ["python", "node"]
 
 [phases.setup]
-# Instalamos solo las librerías de sistema indispensables para Pillow/OpenCV/ZBar
-# NO especificamos nodejs/npm/python aquí para evitar conflictos con los providers.
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", "ghostscript", "gcc"]
+# Mezclamos tus librerías con las necesarias para que OpenCV no tumbe la app
+aptPkgs = [
+    "libgl1", 
+    "libglib2.0-0", 
+    "libsm6", 
+    "libxext6", 
+    "libxrender1",
+    "libjpeg-dev", 
+    "zlib1g-dev", 
+    "libpng-dev", 
+    "libzbar-dev", 
+    "ghostscript", 
+    "gcc"
+]
 
 [phases.install]
-# Instalamos dependencias de Python
-cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt"]
+# Creamos el entorno virtual en /opt/venv e instalamos todo ahí.
+# Importante: Instalamos las deps de Python y también las de Node.
+cmds = [
+    "python -m venv --copies /opt/venv",
+    ". /opt/venv/bin/activate && pip install --upgrade pip",
+    ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
+    "npm ci"
+]
 
 [start]
-# Comando de inicio
-cmd = "reflex run --env prod"
+# EL FIX: Usamos la ruta ABSOLUTA (/opt/venv/bin/...) para iniciar.
+# Esto soluciona el error "reflex: command not found".
+cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
+
+[variables]
+OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
+PORT = "8000"
