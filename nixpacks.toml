@@ -1,34 +1,44 @@
 # nixpacks.toml
 
-# Usamos proveedores automáticos (Python + Node)
+# Usamos proveedores automáticos para Python y Node
 providers = ["python", "node"]
 
 [phases.setup]
-# Lista EXTENDIDA de librerías del sistema para arreglar "libxcb.so.1"
+# Aquí está la solución: Agregamos TODAS las variantes de libxcb que faltaban.
 aptPkgs = [
-    # Librerías básicas gráficas
-    "libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender1",
-    # Procesamiento de imágenes y ZBar
-    "libjpeg-dev", "zlib1g-dev", "libpng-dev", "libzbar-dev", "ghostscript", "gcc",
-    # --- EL FIX DE OPENCV ---
-    # Instalamos todas las dependencias posibles de XCB
+    # Dependencias gráficas base
+    "libgl1", 
+    "libglib2.0-0", 
+    "libsm6", 
+    "libxext6", 
+    "libxrender1",
+    
+    # Dependencias para procesamiento de imágenes y QR
+    "libjpeg-dev", 
+    "zlib1g-dev", 
+    "libpng-dev", 
+    "libzbar-dev", 
+    "ghostscript", 
+    "gcc",
+    
+    # --- EL FIX PARA EL ERROR ACTUAL (libxcb) ---
     "libxcb1",
     "libx11-xcb1",
-    "libxcb-render0",
-    "libxcb-shape0",
-    "libxcb-xfixes0"
+    "libxcb-render0",   # Necesaria para Python 3.12 + OpenCV
+    "libxcb-shape0",    # Necesaria para Python 3.12 + OpenCV
+    "libxcb-xfixes0"    # Necesaria para Python 3.12 + OpenCV
 ]
 
 [phases.install]
-# Instalación segura en entorno virtual
+# Instalación robusta en entorno virtual
 cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
     ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
-    # --- LIMPIEZA DE SEGURIDAD ---
-    # Desinstalamos la versión gráfica si alguna librería la trajo, y reinstalamos headless
+    
+    # Medida de seguridad: Forzamos la desinstalación de la versión GUI si se coló
     ". /opt/venv/bin/activate && pip uninstall -y opencv-python || true",
-    ". /opt/venv/bin/activate && pip install --force-reinstall opencv-python-headless",
+    
     "npm ci"
 ]
 
@@ -38,5 +48,4 @@ cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
-# Puerto del backend
 PORT = "8000"
