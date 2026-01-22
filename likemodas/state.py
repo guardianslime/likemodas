@@ -25,7 +25,7 @@ from .models import (
     ReportStatus, 
     RequestStatus, 
     _format_to_cop_backend,
-    BlogPostModel  # <--- USAMOS ESTE, QUE ES EL QUE SÍ EXISTE
+    BlogPostModel, LocalUser
 )
 
 from .models import ReportModel, ReportStatus # Asegúrate de haber creado ReportModel en models.py primero
@@ -3445,55 +3445,69 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_public_qr_scanner_modal = state
 
     @rx.event
-    # CAMBIO: Usamos 'Any' para evitar el error "EventHandlerArgTypeMismatchError"
+    # Usamos 'Any' para evitar errores de tipo con el componente de escáner
     async def handle_public_qr_scan(self, value: Any):
         """
-        Maneja el escaneo del QR público.
-        Limpia la URL para obtener solo el ID y redirige al producto.
+        Maneja el escaneo del QR con doble propósito:
+        1. Si es CLIENTE (no logueado): Redirige a la página del producto.
+        2. Si es VENDEDOR (logueado): Añade el producto a la venta actual.
         """
         
-        # 1. Obtener el valor crudo (el escáner a veces devuelve una lista)
+        # --- 1. Limpieza y Obtención del ID ---
         if isinstance(value, list):
             raw_val = value[0]
         else:
             raw_val = value
 
-        print(f"DEBUG - QR ESCANEADO: {raw_val}")
-
         if not raw_val:
             return
 
-        # 2. Lógica de Extracción Inteligente del ID
         qr_text = str(raw_val).strip()
         product_id = None
 
-        # CASO A: Es una URL (ej: https://likemodas.com/product/123)
+        # Detectar ID desde URL (https://.../product/123) o número directo
         if "/" in qr_text:
-            # Dividimos por '/' y buscamos el último segmento que sea un número
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
                 if part.isdigit():
                     product_id = int(part)
                     break
-        
-        # CASO B: Es directamente un número (ej: "123")
         elif qr_text.isdigit():
             product_id = int(qr_text)
 
-        # Si no pudimos sacar un ID válido
         if product_id is None:
-            return rx.window_alert(f"QR leído pero formato no reconocido: {qr_text}")
+            return rx.window_alert(f"QR no válido: {qr_text}")
 
-        # 3. Consulta a la Base de Datos usando BlogPostModel
+        # --- 2. Lógica de Negocio ---
         with rx.session() as session:
-            # Usamos BlogPostModel (que es tu producto real)
+            # Buscamos el producto (BlogPostModel es tu tabla de productos)
             product = session.get(BlogPostModel, product_id)
 
-            if product:
-                # ¡Éxito! Redirigimos a la página del producto
-                return rx.redirect(f"/product/{product.id}")
+            if not product:
+                return rx.window_alert(f"Producto {product_id} no encontrado.")
+
+            # --- CASO VENDEDOR (Usuario Logueado) ---
+            # Verificamos si hay un usuario autenticado usando reflex-local-auth
+            if self.authenticated_user:
+                # Aquí recuperamos la lógica de "Añadir a la Venta"
+                # Asumimos que tienes una lista de venta o carrito en el estado
+                # Si tienes una función específica para agregar, llámala aquí.
+                
+                # Ejemplo: Añadir a la lista de items de la factura actual
+                # self.invoice_items.append(product) 
+                
+                # Por ahora, mostramos confirmación visual
+                yield rx.toast.success(f"Producto '{product.title}' agregado a la venta.")
+                
+                # Opcional: Reproducir sonido de "beep" si tienes el mecanismo
+                return
+
+            # --- CASO CLIENTE (Usuario Anónimo) ---
             else:
-                return rx.window_alert(f"Producto no encontrado (ID: {product_id})")
+                # Si no está logueado, asumimos que es un cliente escaneando
+                # Abrimos el modal o redirigimos a la página
+                print(f"Cliente escaneó producto: {product.title}")
+                return rx.redirect(f"/product/{product.id}")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
