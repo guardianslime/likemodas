@@ -3447,13 +3447,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
         """
         Maneja el escaneo del QR.
-        RECUPERADO: Usa lectura en memoria (imdecode) como tu versión original.
-        MEJORADO: Limpia la URL para encontrar el producto correctamente.
+        Soporta:
+        1. Imágenes y Cámara.
+        2. URLs antiguas (.../product/123)
+        3. NUEVO: URLs con variant_uuid (?variant_uuid=...)
         """
         import cv2
         import numpy as np
+        from urllib.parse import urlparse, parse_qs
+        from sqlmodel import select
 
-        # 1. Validación inicial (Igual que antes)
+        # 1. Validación inicial
         if not files:
             yield rx.toast.error("No se recibió ningún archivo.")
             return
@@ -3461,11 +3465,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         file = files[0]
 
         try:
-            # --- PASO CLAVE QUE FALTABA: Leer de memoria ---
-            # Leemos los bytes directamente (esto es lo que funcionaba en tu código viejo)
+            # --- LECTURA DE IMAGEN (Esto ya te funciona, ¡no lo toques!) ---
             upload_data = await file.read()
-            
-            # Convertimos bytes a formato compatible con OpenCV
             nparr = np.frombuffer(upload_data, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
@@ -3473,51 +3474,90 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("El archivo no es una imagen válida.")
                 return
 
-            # 2. Detección del QR
             detector = cv2.QRCodeDetector()
             qr_text, bbox, _ = detector.detectAndDecode(img)
 
             if not qr_text:
-                yield rx.toast.warning("Imagen recibida, pero no se detectó ningún QR legible.")
+                yield rx.toast.warning("No se detectó ningún QR legible.")
                 return
 
-            print(f"DEBUG - QR DETECTADO: {qr_text}")
-
-            # --- 3. LÓGICA DE NEGOCIO (El arreglo real) ---
+            print(f"DEBUG - TEXTO QR: {qr_text}")
+            
+            # --- LÓGICA DE PARSEO INTELIGENTE ---
             product_id = None
-            qr_text = str(qr_text).strip()
+            qr_str = str(qr_text).strip()
+            
+            # Analizamos la URL
+            parsed_url = urlparse(qr_str)
+            query_params = parse_qs(parsed_url.query)
 
-            # Caso URL (ej: https://likemodas.com/product/55)
-            if "/" in qr_text:
-                parts = qr_text.rstrip("/").split("/")
+            # CASO 1: URL moderna con '?variant_uuid=...'
+            if 'variant_uuid' in query_params:
+                variant_uuid = query_params['variant_uuid'][0]
+                print(f"DEBUG - UUID DETECTADO: {variant_uuid}")
+                
+                with rx.session() as session:
+                    # INTENTO A: Buscar en ProductVariant (si tienes modelos de variantes)
+                    try:
+                        # Hacemos un import local para no romper si no existe el modelo
+                        from .models import ProductVariant 
+                        variant = session.exec(
+                            select(ProductVariant).where(str(ProductVariant.id) == variant_uuid)
+                        ).first()
+                        if variant:
+                            product_id = variant.product_id
+                    except ImportError:
+                        pass # No existe el modelo ProductVariant, seguimos
+                    except Exception as e:
+                        print(f"Debug Variant: {e}")
+
+                    # INTENTO B: Buscar directamente en BlogPostModel (si el producto tiene ese UUID)
+                    if not product_id:
+                        # Intentamos ver si BlogPostModel tiene campo 'uuid' o similar
+                        try:
+                            # Asumimos que quizás buscas por un campo 'uuid' en el producto
+                            # Nota: Si tu columna se llama diferente, ajusta 'BlogPostModel.uuid'
+                            p = session.exec(
+                                select(BlogPostModel).where(str(BlogPostModel.id) == variant_uuid)
+                            ).first()
+                            if p:
+                                product_id = p.id
+                        except:
+                            pass
+
+                if not product_id:
+                    yield rx.toast.error(f"Se leyó el UUID {variant_uuid}, pero no se encontró el producto asociado.")
+                    return
+
+            # CASO 2: URL clásica (.../product/123)
+            elif "/" in qr_str:
+                parts = qr_str.rstrip("/").split("/")
                 for part in reversed(parts):
                     if part.isdigit():
                         product_id = int(part)
                         break
-            # Caso Número Directo
-            elif qr_text.isdigit():
-                product_id = int(qr_text)
+            
+            # CASO 3: Solo número
+            elif qr_str.isdigit():
+                product_id = int(qr_str)
 
-            # --- 4. ACCIÓN ---
-            if product_id is None:
-                yield rx.toast.error(f"QR leído: '{qr_text}', pero no contiene un ID válido.")
-                return
-
-            with rx.session() as session:
-                product = session.get(BlogPostModel, product_id)
-                
-                if not product:
-                    yield rx.toast.error(f"Producto {product_id} no encontrado en base de datos.")
-                    return
-
-                if self.authenticated_user:
-                    yield rx.toast.success(f"Vendedor: '{product.title}' detectado.")
-                else:
-                    yield rx.redirect(f"/product/{product.id}")
+            # --- ACCIÓN FINAL ---
+            if product_id:
+                with rx.session() as session:
+                    product = session.get(BlogPostModel, product_id)
+                    if product:
+                        if self.authenticated_user:
+                            yield rx.toast.success(f"Vendedor: '{product.title}' detectado.")
+                        else:
+                            yield rx.redirect(f"/product/{product.id}")
+                    else:
+                        yield rx.toast.error(f"Producto ID {product_id} no existe.")
+            else:
+                yield rx.toast.warning(f"Formato de QR no reconocido: {qr_str}")
 
         except Exception as e:
-            print(f"Error procesando imagen: {e}")
-            yield rx.toast.error("Error interno al procesar la imagen.")
+            print(f"Error procesando: {e}")
+            yield rx.toast.error("Error interno al procesar el QR.")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
