@@ -3447,58 +3447,83 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_public_qr_scan(self, value: Any):
         """
-        Maneja el escaneo del QR con doble propósito.
-        CORREGIDO: Usa 'yield' en lugar de 'return' para evitar SyntaxError.
+        Maneja el escaneo del QR.
+        Soporta:
+        1. Texto directo (desde cámara web).
+        2. Decodificación de imagen (si se sube un archivo).
         """
-        
-        # --- 1. Limpieza y Obtención del ID ---
-        if isinstance(value, list):
-            raw_val = value[0]
-        else:
-            raw_val = value
+        import cv2
+        import numpy as np
+        import os
 
+        raw_val = value[0] if isinstance(value, list) else value
         if not raw_val:
             return
 
-        qr_text = str(raw_val).strip()
-        product_id = None
+        print(f"DEBUG - INPUT RECIBIDO: {raw_val}")
+        qr_text = ""
 
-        # Detectar ID desde URL o número directo
+        # --- 1. INTENTO DE DECODIFICAR IMAGEN (Si es un archivo) ---
+        # Verificamos si lo que llega es un nombre de archivo que existe en el disco
+        # (Nota: Asegúrate de que el componente 'upload' ya haya guardado el archivo antes de llamar a esto)
+        is_file = False
+        upload_dir = rx.get_upload_dir()
+        file_path = os.path.join(upload_dir, str(raw_val))
+
+        if os.path.exists(file_path):
+            is_file = True
+            try:
+                img = cv2.imread(file_path)
+                detector = cv2.QRCodeDetector()
+                decoded_data, points, _ = detector.detectAndDecode(img)
+                
+                if decoded_data:
+                    qr_text = decoded_data
+                    print(f"DEBUG - IMAGEN DECODIFICADA: {qr_text}")
+                else:
+                    yield rx.window_alert("No se pudo detectar ningún código QR en la imagen.")
+                    return
+            except Exception as e:
+                print(f"Error procesando imagen: {e}")
+                # Si falla cv2, asumimos que no era imagen y seguimos
+        
+        # --- 2. TEXTO DIRECTO (Si no era imagen o falló) ---
+        if not qr_text:
+            qr_text = str(raw_val).strip()
+
+        # --- 3. EXTRACCIÓN DE ID (Lógica de Negocio) ---
+        product_id = None
+        
+        # Caso URL (https://.../123)
         if "/" in qr_text:
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
                 if part.isdigit():
                     product_id = int(part)
                     break
+        # Caso Número Directo ("123")
         elif qr_text.isdigit():
             product_id = int(qr_text)
 
         if product_id is None:
-            # CAMBIO: yield en lugar de return
-            yield rx.window_alert(f"QR no válido: {qr_text}")
+            yield rx.window_alert(f"QR no válido o ilegible: {qr_text}")
             return
 
-        # --- 2. Lógica de Negocio ---
+        # --- 4. CONSULTA A LA BASE DE DATOS ---
         with rx.session() as session:
-            # Buscamos el producto
             product = session.get(BlogPostModel, product_id)
 
             if not product:
-                # CAMBIO: yield en lugar de return
                 yield rx.window_alert(f"Producto {product_id} no encontrado.")
                 return
 
-            # --- CASO VENDEDOR (Usuario Logueado) ---
+            # Acción: Vendedor vs Cliente
             if self.authenticated_user:
-                # Aquí puedes llamar a tu función de agregar al carrito si existe, ej:
-                # self.add_product_to_invoice(product)
-                
-                yield rx.toast.success(f"Producto '{product.title}' detectado (Modo Vendedor).")
-                return
-
-            # --- CASO CLIENTE (Usuario Anónimo) ---
+                # Lógica de Vendedor (Añadir a venta / Mostrar info)
+                yield rx.toast.success(f"Producto '{product.title}' detectado.")
+                # Aquí puedes llamar a self.add_to_cart(product) si tienes la función
             else:
-                # CAMBIO: yield en lugar de return
+                # Lógica de Cliente (Redirigir)
                 yield rx.redirect(f"/product/{product.id}")
 
     @rx.event
