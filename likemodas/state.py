@@ -3445,10 +3445,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_public_qr_scanner_modal = state
 
     @rx.event
-    async def handle_public_qr_scan(self, value: list[str] | str):
-        """Maneja el escaneo del QR público."""
+    # CAMBIO: Usamos 'Any' para evitar el error "EventHandlerArgTypeMismatchError"
+    async def handle_public_qr_scan(self, value: Any):
+        """
+        Maneja el escaneo del QR público.
+        Limpia la URL para obtener solo el ID y redirige al producto.
+        """
         
-        # 1. Obtener valor
+        # 1. Obtener el valor crudo (el escáner a veces devuelve una lista)
         if isinstance(value, list):
             raw_val = value[0]
         else:
@@ -3459,31 +3463,34 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not raw_val:
             return
 
-        # 2. Limpieza de URL para sacar el ID
+        # 2. Lógica de Extracción Inteligente del ID
         qr_text = str(raw_val).strip()
         product_id = None
 
-        # Si es URL (https://.../product/123), sacamos el 123
+        # CASO A: Es una URL (ej: https://likemodas.com/product/123)
         if "/" in qr_text:
+            # Dividimos por '/' y buscamos el último segmento que sea un número
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
                 if part.isdigit():
                     product_id = int(part)
                     break
         
-        # Si es solo número
+        # CASO B: Es directamente un número (ej: "123")
         elif qr_text.isdigit():
             product_id = int(qr_text)
 
+        # Si no pudimos sacar un ID válido
         if product_id is None:
-            return rx.window_alert(f"Formato de QR no reconocido: {qr_text}")
+            return rx.window_alert(f"QR leído pero formato no reconocido: {qr_text}")
 
-        # 3. Consulta a la Base de Datos (CORREGIDO)
+        # 3. Consulta a la Base de Datos usando BlogPostModel
         with rx.session() as session:
-            # CAMBIO IMPORTANTE: Usamos BlogPostModel aquí
+            # Usamos BlogPostModel (que es tu producto real)
             product = session.get(BlogPostModel, product_id)
 
             if product:
+                # ¡Éxito! Redirigimos a la página del producto
                 return rx.redirect(f"/product/{product.id}")
             else:
                 return rx.window_alert(f"Producto no encontrado (ID: {product_id})")
