@@ -3445,80 +3445,83 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_show_public_qr_scanner_modal(self, state: bool):
         self.show_public_qr_scanner_modal = state
 
-    @rx.event
     async def handle_public_qr_scan(self, value: Any):
         """
-        Maneja el escaneo del QR usando Pyzbar (compatible con servidores headless).
+        Maneja el escaneo del QR usando OpenCV (Versión Original Restaurada).
+        Soporta imágenes subidas y escaneo de cámara.
         """
-        # 1. Obtener el valor crudo
+        import cv2
+        import numpy as np
+        import os
+
+        # 1. Obtener datos
         raw_val = value[0] if isinstance(value, list) else value
         if not raw_val:
-            yield rx.toast.error("No se recibió ningún archivo.")
+            yield rx.toast.error("No se recibieron datos.")
             return
 
         print(f"DEBUG - INPUT RECIBIDO: {raw_val}")
         qr_text = ""
 
-        # --- 2. INTENTO DE LEER COMO IMAGEN (Usando Pyzbar + Pillow) ---
+        # --- INTENTO 1: Es una imagen (Archivo subido) ---
         upload_dir = rx.get_upload_dir()
         file_path = os.path.join(upload_dir, str(raw_val))
-        
+
         if os.path.exists(file_path):
             try:
-                # Usamos Pillow para abrir la imagen (no requiere libxcb)
-                img = Image.open(file_path)
+                # Leemos la imagen con OpenCV
+                img = cv2.imread(file_path)
+                if img is None:
+                    yield rx.toast.error("El archivo no es una imagen válida.")
+                    return
+
+                detector = cv2.QRCodeDetector()
+                decoded_text, points, _ = detector.detectAndDecode(img)
                 
-                # Decodificamos con pyzbar
-                decoded_objects = decode(img)
-                
-                if decoded_objects:
-                    # Tomamos el primer código y lo convertimos a string
-                    qr_text = decoded_objects[0].data.decode("utf-8")
-                    print(f"DEBUG - TEXTO QR: {qr_text}")
+                if decoded_text:
+                    qr_text = decoded_text
+                    print(f"DEBUG - TEXTO IMAGEN: {qr_text}")
                 else:
-                    yield rx.toast.warning("No se encontró ningún QR en la imagen.")
+                    yield rx.toast.warning("No se pudo leer el QR de la imagen.")
                     return
             except Exception as e:
-                print(f"Error procesando imagen con Pyzbar: {e}")
-                yield rx.toast.error("Error al procesar el archivo de imagen.")
+                print(f"Error OpenCV: {e}")
+                yield rx.toast.error("Error al procesar la imagen.")
                 return
-        else:
-            # Si no es archivo, asumimos que es texto directo del escáner de cámara
+        
+        # --- INTENTO 2: Es texto directo (Cámara) ---
+        if not qr_text:
             qr_text = str(raw_val).strip()
 
-        # --- 3. EXTRACCIÓN DEL ID DEL PRODUCTO ---
+        # --- PROCESAMIENTO: Extraer ID del enlace ---
         product_id = None
         
-        # Caso URL (ej: https://.../product/123)
+        # Si es URL completa (tu problema original)
         if "/" in qr_text:
+            # Cortamos por '/' y buscamos el último número
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
                 if part.isdigit():
                     product_id = int(part)
                     break
-        # Caso Número Directo ("123")
+        # Si es solo número
         elif qr_text.isdigit():
             product_id = int(qr_text)
 
+        # --- RESULTADO ---
         if product_id is None:
-            yield rx.toast.error(f"QR no válido: {qr_text}")
+            yield rx.toast.error(f"QR no reconocido: {qr_text}")
             return
 
-        # --- 4. CONSULTA Y ACCIÓN ---
         with rx.session() as session:
-            # Usamos BlogPostModel como vimos en tus archivos anteriores
             product = session.get(BlogPostModel, product_id)
-
             if not product:
                 yield rx.toast.error(f"Producto {product_id} no encontrado.")
                 return
 
-            # Acción: Vendedor vs Cliente
             if self.authenticated_user:
-                # CASO VENDEDOR: Aquí puedes añadir tu lógica de venta
-                yield rx.toast.success(f"Vendedor: Producto '{product.title}' detectado.")
+                yield rx.toast.success(f"Vendedor: {product.title} detectado.")
             else:
-                # CASO CLIENTE: Redirigir a la página del producto
                 yield rx.redirect(f"/product/{product.id}")
 
     @rx.event
