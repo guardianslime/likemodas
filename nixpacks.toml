@@ -3,21 +3,12 @@
 providers = ["python", "node"]
 
 [phases.setup]
-# Lista limpia: Solo lo necesario para gráficos y ZBar
+# Mantenemos solo lo esencial para que la descarga sea rápida y no falle
 aptPkgs = [
-    "libgl1", 
-    "libglib2.0-0", 
-    "libsm6", 
-    "libxext6", 
-    "libxrender1",
-    "libjpeg-dev", 
-    "zlib1g-dev", 
-    "libpng-dev", 
-    "ghostscript", 
-    "gcc",
-    # --- ESENCIALES PARA EL QR ---
-    "libzbar0",      # Librería base
-    "libzbar-dev"    # Archivos de desarrollo
+    "libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender1",
+    "libjpeg-dev", "zlib1g-dev", "libpng-dev", 
+    "ghostscript", "gcc",
+    "libzbar0"  # La librería que instalamos
 ]
 
 [phases.install]
@@ -25,6 +16,12 @@ cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
     ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
+    
+    # --- EL FIX DE ORO ---
+    # Creamos un "acceso directo" llamado libzbar.so que apunta al archivo real libzbar.so.0
+    # Esto hace que pyzbar la encuentre inmediatamente.
+    "ln -sf /usr/lib/x86_64-linux-gnu/libzbar.so.0 /usr/lib/libzbar.so",
+    
     "npm ci"
 ]
 
@@ -32,9 +29,7 @@ cmds = [
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
-# ESTO ES LO QUE ARREGLA EL ERROR "Unable to find zbar shared library"
-# Le dice a Python explícitamente dónde buscar la librería que instalamos.
-LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/lib"
-
+# Nos aseguramos de que el sistema busque en las carpetas correctas
+LD_LIBRARY_PATH = "/usr/lib:/usr/lib/x86_64-linux-gnu"
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
 PORT = "8000"
