@@ -1,27 +1,33 @@
 # nixpacks.toml
 
-# Usamos proveedores automáticos (Evita problemas de pip/python path)
+# Usamos proveedores automáticos (la configuración más estable para ti)
 providers = ["python", "node"]
 
 [phases.setup]
-# Librerías del sistema esenciales.
-# Con OpenCV 4.8, esto es suficiente y mucho más ligero.
+# Lista de librerías del sistema.
+# HEMOS AGREGADO 'libzbar0' que es la que te falta para que funcione el escáner.
 aptPkgs = [
+    # Gráficos base (por si acaso OpenCV sigue por ahí)
     "libgl1", 
     "libglib2.0-0", 
     "libsm6", 
     "libxext6", 
     "libxrender1",
+    
+    # Procesamiento de imágenes
     "libjpeg-dev", 
     "zlib1g-dev", 
     "libpng-dev", 
-    "libzbar-dev", 
     "ghostscript", 
-    "gcc"
+    "gcc",
+
+    # --- EL FIX PARA EL ESCÁNER QR ---
+    "libzbar0",      # <--- ESTA ES LA LIBRERÍA QUE FALTABA (Runtime)
+    "libzbar-dev"    # Headers de desarrollo
 ]
 
 [phases.install]
-# Instalación limpia en /opt/venv
+# Instalación estándar y limpia
 cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
@@ -30,10 +36,9 @@ cmds = [
 ]
 
 [start]
-# Ruta absoluta para garantizar que encuentre los comandos
+# Arranque usando ruta absoluta
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
-# Mantenemos las optimizaciones
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
 PORT = "8000"
