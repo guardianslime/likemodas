@@ -3,21 +3,17 @@
 providers = ["python", "node"]
 
 [phases.setup]
-# LIMPIEZA TOTAL: Quitamos las librerías pesadas de OpenCV (libgl, libx*, etc.)
-# Solo dejamos lo necesario para Pillow y ZBar.
+# LIMPIEZA TOTAL: He borrado TODAS las librerías gráficas (libgl, libx*, etc).
+# Solo dejamos lo necesario para Pillow y ZBar. Esto evitará el error de deploy.
 aptPkgs = [
-    # Para procesar imágenes (Pillow)
     "libjpeg-dev", 
     "zlib1g-dev", 
     "libpng-dev", 
-    
-    # Compiladores básicos
     "gcc",
     
     # --- EL FIX DE ZBAR ---
-    # Instalamos la versión DEV. Al haber quitado la basura de OpenCV, 
-    # esto ya NO debería dar error 255 en el deploy.
-    "libzbar-dev" 
+    "libzbar0",      # Librería base
+    "libzbar-dev"    # Esta crea el archivo 'libzbar.so' que Python necesita desesperadamente
 ]
 
 [phases.install]
@@ -32,6 +28,6 @@ cmds = [
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
-# Mantenemos la ruta de búsqueda por seguridad
+# Mantenemos esto por seguridad
 LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/lib"
 PORT = "8000"
