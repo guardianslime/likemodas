@@ -3,7 +3,7 @@
 providers = ["python", "node"]
 
 [phases.setup]
-# Librerías OBLIGATORIAS para OpenCV en Linux
+# Librerías OBLIGATORIAS para que OpenCV funcione y lea imágenes
 aptPkgs = [
     "libgl1", 
     "libglib2.0-0", 
