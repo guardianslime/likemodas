@@ -16,8 +16,18 @@ from sqlalchemy.orm.attributes import flag_modified # <-- AÑADE ESTA LÍNEA
 from sqlalchemy.dialects.postgresql import JSONB
 import unicodedata # <--- IMPORTANTE: Agrega esto junto a los otros imports
 from typing import Any, List, Dict, Optional, Tuple, Union
-from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, ReportModel, ReportStatus, RequestStatus, _format_to_cop_backend, ProductModel,BlogPostModel
-# ... otros imports ...
+from .models import (
+    ActivityLog, 
+    EmpleadoVendedorLink, 
+    EmploymentRequest, 
+    LocalAuthSession, 
+    ReportModel, 
+    ReportStatus, 
+    RequestStatus, 
+    _format_to_cop_backend,
+    BlogPostModel  # <--- USAMOS ESTE, QUE ES EL QUE SÍ EXISTE
+)
+
 from .models import ReportModel, ReportStatus # Asegúrate de haber creado ReportModel en models.py primero
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
@@ -3436,12 +3446,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def handle_public_qr_scan(self, value: list[str] | str):
-        """
-        Maneja el escaneo del QR público.
-        Limpia la URL para obtener solo el ID y redirige al producto.
-        """
+        """Maneja el escaneo del QR público."""
         
-        # 1. Obtener el valor crudo (el escáner a veces devuelve una lista)
+        # 1. Obtener valor
         if isinstance(value, list):
             raw_val = value[0]
         else:
@@ -3452,37 +3459,34 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not raw_val:
             return
 
-        # 2. Lógica de Extracción Inteligente del ID
+        # 2. Limpieza de URL para sacar el ID
         qr_text = str(raw_val).strip()
         product_id = None
 
-        # CASO A: Es una URL (ej: https://likemodas.com/product/123)
+        # Si es URL (https://.../product/123), sacamos el 123
         if "/" in qr_text:
-            # Dividimos por '/' y buscamos el último segmento que sea un número
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
                 if part.isdigit():
                     product_id = int(part)
                     break
         
-        # CASO B: Es directamente un número (ej: "123")
+        # Si es solo número
         elif qr_text.isdigit():
             product_id = int(qr_text)
 
-        # Si no pudimos sacar un ID válido
         if product_id is None:
-            return rx.window_alert(f"QR leído pero formato no reconocido: {qr_text}")
+            return rx.window_alert(f"Formato de QR no reconocido: {qr_text}")
 
-        # 3. Consulta a la Base de Datos usando ProductModel
+        # 3. Consulta a la Base de Datos (CORREGIDO)
         with rx.session() as session:
-            # IMPORTANTE: Aquí usamos el ProductModel que acabamos de importar arriba
-            product = session.get(ProductModel, product_id)
+            # CAMBIO IMPORTANTE: Usamos BlogPostModel aquí
+            product = session.get(BlogPostModel, product_id)
 
             if product:
-                # ¡Éxito! Redirigimos a la página del producto
                 return rx.redirect(f"/product/{product.id}")
             else:
-                return rx.window_alert(f"El producto con ID {product_id} no existe en la base de datos.")
+                return rx.window_alert(f"Producto no encontrado (ID: {product_id})")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
