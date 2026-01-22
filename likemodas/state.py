@@ -3447,54 +3447,56 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_public_qr_scan(self, value: Any):
         """
-        Maneja el escaneo del QR.
-        Soporta:
-        1. Texto directo (desde cámara web).
-        2. Decodificación de imagen (si se sube un archivo).
+        Maneja el escaneo del QR usando Pyzbar (más estable que OpenCV).
+        Detecta si es imagen subida o texto directo de cámara.
         """
-        import cv2
-        import numpy as np
         import os
+        from PIL import Image
+        from pyzbar.pyzbar import decode 
+        
+        # 1. Obtener el valor crudo
+        if isinstance(value, list):
+            raw_val = value[0]
+        else:
+            raw_val = value
 
-        raw_val = value[0] if isinstance(value, list) else value
         if not raw_val:
             return
 
         print(f"DEBUG - INPUT RECIBIDO: {raw_val}")
         qr_text = ""
 
-        # --- 1. INTENTO DE DECODIFICAR IMAGEN (Si es un archivo) ---
-        # Verificamos si lo que llega es un nombre de archivo que existe en el disco
-        # (Nota: Asegúrate de que el componente 'upload' ya haya guardado el archivo antes de llamar a esto)
-        is_file = False
+        # --- 2. INTENTO DE LEER COMO IMAGEN (Si es un archivo subido) ---
         upload_dir = rx.get_upload_dir()
-        file_path = os.path.join(upload_dir, str(raw_val))
-
-        if os.path.exists(file_path):
-            is_file = True
+        possible_file_path = os.path.join(upload_dir, str(raw_val))
+        
+        # Verificamos si existe el archivo en la carpeta de uploads
+        if os.path.exists(possible_file_path) and os.path.isfile(possible_file_path):
             try:
-                img = cv2.imread(file_path)
-                detector = cv2.QRCodeDetector()
-                decoded_data, points, _ = detector.detectAndDecode(img)
+                # Abrir imagen con Pillow (No requiere librerías gráficas pesadas)
+                img = Image.open(possible_file_path)
+                # Decodificar con pyzbar
+                decoded_objects = decode(img)
                 
-                if decoded_data:
-                    qr_text = decoded_data
+                if decoded_objects:
+                    # Tomamos el primer código encontrado
+                    qr_text = decoded_objects[0].data.decode("utf-8")
                     print(f"DEBUG - IMAGEN DECODIFICADA: {qr_text}")
                 else:
-                    yield rx.window_alert("No se pudo detectar ningún código QR en la imagen.")
+                    yield rx.window_alert("No se encontró ningún código QR legible en la imagen.")
                     return
             except Exception as e:
                 print(f"Error procesando imagen: {e}")
-                # Si falla cv2, asumimos que no era imagen y seguimos
+                # Si falla, seguimos intentando tratarlo como texto plano
         
-        # --- 2. TEXTO DIRECTO (Si no era imagen o falló) ---
+        # --- 3. TEXTO DIRECTO (Si no era imagen o falló la lectura) ---
         if not qr_text:
             qr_text = str(raw_val).strip()
 
-        # --- 3. EXTRACCIÓN DE ID (Lógica de Negocio) ---
+        # --- 4. EXTRACCIÓN DEL ID DEL PRODUCTO ---
         product_id = None
         
-        # Caso URL (https://.../123)
+        # Caso URL (ej: https://.../123)
         if "/" in qr_text:
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
@@ -3509,21 +3511,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.window_alert(f"QR no válido o ilegible: {qr_text}")
             return
 
-        # --- 4. CONSULTA A LA BASE DE DATOS ---
+        # --- 5. CONSULTA Y ACCIÓN ---
         with rx.session() as session:
+            # Usamos BlogPostModel como vimos antes
             product = session.get(BlogPostModel, product_id)
 
             if not product:
                 yield rx.window_alert(f"Producto {product_id} no encontrado.")
                 return
 
-            # Acción: Vendedor vs Cliente
+            # Acción diferenciada
             if self.authenticated_user:
-                # Lógica de Vendedor (Añadir a venta / Mostrar info)
-                yield rx.toast.success(f"Producto '{product.title}' detectado.")
-                # Aquí puedes llamar a self.add_to_cart(product) si tienes la función
+                # CASO VENDEDOR: Añadir a venta / Notificar
+                yield rx.toast.success(f"Vendedor: Producto '{product.title}' detectado.")
             else:
-                # Lógica de Cliente (Redirigir)
+                # CASO CLIENTE: Redirigir a la página del producto
+                # (Esto simula abrir el modal llevándolo a la vista de detalle)
                 yield rx.redirect(f"/product/{product.id}")
 
     @rx.event
