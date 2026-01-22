@@ -3445,12 +3445,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_public_qr_scanner_modal = state
 
     @rx.event
-    # Usamos 'Any' para evitar errores de tipo con el componente de escáner
     async def handle_public_qr_scan(self, value: Any):
         """
-        Maneja el escaneo del QR con doble propósito:
-        1. Si es CLIENTE (no logueado): Redirige a la página del producto.
-        2. Si es VENDEDOR (logueado): Añade el producto a la venta actual.
+        Maneja el escaneo del QR con doble propósito.
+        CORREGIDO: Usa 'yield' en lugar de 'return' para evitar SyntaxError.
         """
         
         # --- 1. Limpieza y Obtención del ID ---
@@ -3465,7 +3463,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         qr_text = str(raw_val).strip()
         product_id = None
 
-        # Detectar ID desde URL (https://.../product/123) o número directo
+        # Detectar ID desde URL o número directo
         if "/" in qr_text:
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
@@ -3476,38 +3474,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             product_id = int(qr_text)
 
         if product_id is None:
-            return rx.window_alert(f"QR no válido: {qr_text}")
+            # CAMBIO: yield en lugar de return
+            yield rx.window_alert(f"QR no válido: {qr_text}")
+            return
 
         # --- 2. Lógica de Negocio ---
         with rx.session() as session:
-            # Buscamos el producto (BlogPostModel es tu tabla de productos)
+            # Buscamos el producto
             product = session.get(BlogPostModel, product_id)
 
             if not product:
-                return rx.window_alert(f"Producto {product_id} no encontrado.")
+                # CAMBIO: yield en lugar de return
+                yield rx.window_alert(f"Producto {product_id} no encontrado.")
+                return
 
             # --- CASO VENDEDOR (Usuario Logueado) ---
-            # Verificamos si hay un usuario autenticado usando reflex-local-auth
             if self.authenticated_user:
-                # Aquí recuperamos la lógica de "Añadir a la Venta"
-                # Asumimos que tienes una lista de venta o carrito en el estado
-                # Si tienes una función específica para agregar, llámala aquí.
+                # Aquí puedes llamar a tu función de agregar al carrito si existe, ej:
+                # self.add_product_to_invoice(product)
                 
-                # Ejemplo: Añadir a la lista de items de la factura actual
-                # self.invoice_items.append(product) 
-                
-                # Por ahora, mostramos confirmación visual
-                yield rx.toast.success(f"Producto '{product.title}' agregado a la venta.")
-                
-                # Opcional: Reproducir sonido de "beep" si tienes el mecanismo
+                yield rx.toast.success(f"Producto '{product.title}' detectado (Modo Vendedor).")
                 return
 
             # --- CASO CLIENTE (Usuario Anónimo) ---
             else:
-                # Si no está logueado, asumimos que es un cliente escaneando
-                # Abrimos el modal o redirigimos a la página
-                print(f"Cliente escaneó producto: {product.title}")
-                return rx.redirect(f"/product/{product.id}")
+                # CAMBIO: yield en lugar de return
+                yield rx.redirect(f"/product/{product.id}")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
