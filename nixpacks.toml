@@ -3,13 +3,18 @@
 providers = ["python", "node"]
 
 [phases.setup]
-# Mantenemos la lista ligera para evitar el "Exit Code 255" en el deploy
+# Estas son las librerías OBLIGATORIAS para que OpenCV no falle en Linux
 aptPkgs = [
+    "libgl1", 
+    "libglib2.0-0", 
+    "libsm6", 
+    "libxext6", 
+    "libxrender1", 
     "libjpeg-dev", 
     "zlib1g-dev", 
     "libpng-dev", 
-    "gcc",
-    "libzbar0"  # La librería base necesaria
+    "ghostscript", 
+    "gcc"
 ]
 
 [phases.install]
@@ -17,11 +22,6 @@ cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
     ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
-    
-    # --- LA LÍNEA MÁGICA QUE FALTA EN TU ARCHIVO ---
-    # Esto crea un 'puente' con el nombre exacto que busca Python
-    "ln -sf /usr/lib/x86_64-linux-gnu/libzbar.so.0 /usr/lib/libzbar.so",
-    
     "npm ci"
 ]
 
@@ -29,6 +29,5 @@ cmds = [
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
-# Reforzamos la búsqueda en la carpeta correcta
-LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/lib"
+OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
 PORT = "8000"
