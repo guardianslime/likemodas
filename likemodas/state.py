@@ -43,7 +43,6 @@ import httpx
 import uuid # Asegúrate de importar la biblioteca uuid
 # from pyzbar.pyzbar import decode
 from PIL import Image
-from pyzbar.pyzbar import decode
 import pyotp
 import qrcode
 import base64
@@ -3447,17 +3446,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     async def handle_public_qr_scan(self, value: Any):
         """
-        Maneja el escaneo del QR usando OpenCV (Versión Original Restaurada).
-        Soporta imágenes subidas y escaneo de cámara.
+        Maneja el escaneo del QR usando OpenCV (Versión Restaurada).
         """
-        import cv2
+        import cv2 # Importamos aquí para evitar errores si la librería falla al inicio
         import numpy as np
         import os
 
         # 1. Obtener datos
         raw_val = value[0] if isinstance(value, list) else value
         if not raw_val:
-            yield rx.toast.error("No se recibieron datos.")
             return
 
         print(f"DEBUG - INPUT RECIBIDO: {raw_val}")
@@ -3482,7 +3479,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     qr_text = decoded_text
                     print(f"DEBUG - TEXTO IMAGEN: {qr_text}")
                 else:
-                    yield rx.toast.warning("No se pudo leer el QR de la imagen.")
+                    yield rx.toast.warning("No se pudo leer el QR. Intenta con una imagen más clara.")
                     return
             except Exception as e:
                 print(f"Error OpenCV: {e}")
@@ -3493,26 +3490,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not qr_text:
             qr_text = str(raw_val).strip()
 
-        # --- PROCESAMIENTO: Extraer ID del enlace ---
+        # --- PROCESAMIENTO: Extraer ID ---
         product_id = None
         
-        # Si es URL completa (tu problema original)
+        # Lógica de URL (corrige tu problema original)
         if "/" in qr_text:
-            # Cortamos por '/' y buscamos el último número
             parts = qr_text.rstrip("/").split("/")
             for part in reversed(parts):
                 if part.isdigit():
                     product_id = int(part)
                     break
-        # Si es solo número
         elif qr_text.isdigit():
             product_id = int(qr_text)
 
-        # --- RESULTADO ---
         if product_id is None:
             yield rx.toast.error(f"QR no reconocido: {qr_text}")
             return
 
+        # --- CONSULTA ---
         with rx.session() as session:
             product = session.get(BlogPostModel, product_id)
             if not product:
