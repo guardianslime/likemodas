@@ -16,7 +16,7 @@ from sqlalchemy.orm.attributes import flag_modified # <-- AÑADE ESTA LÍNEA
 from sqlalchemy.dialects.postgresql import JSONB
 import unicodedata # <--- IMPORTANTE: Agrega esto junto a los otros imports
 from typing import Any, List, Dict, Optional, Tuple, Union
-from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, ReportModel, ReportStatus, RequestStatus, _format_to_cop_backend
+from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, ReportModel, ReportStatus, RequestStatus, _format_to_cop_backend, ProductModel,BlogPostModel
 # ... otros imports ...
 from .models import ReportModel, ReportStatus # Asegúrate de haber creado ReportModel en models.py primero
 from datetime import datetime, timedelta, timezone
@@ -3435,92 +3435,54 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_public_qr_scanner_modal = state
 
     @rx.event
-    async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
-        import cv2
+    async def handle_public_qr_scan(self, value: list[str] | str):
         """
-        Manejador robusto para escaneo de QR.
-        Implementa lectura asíncrona, decodificación en memoria y parseo RFC 3986.
+        Maneja el escaneo del QR público.
+        Limpia la URL para obtener solo el ID y redirige al producto.
         """
         
-        # 1. Validación inicial
-        if not files:
-            return rx.toast.error("No se recibió ningún archivo de imagen.")
+        # 1. Obtener el valor crudo (el escáner a veces devuelve una lista)
+        if isinstance(value, list):
+            raw_val = value[0]
+        else:
+            raw_val = value
 
-        file = files[0] # Tomamos el primer archivo
+        print(f"DEBUG - QR ESCANEADO: {raw_val}")
+
+        if not raw_val:
+            return
+
+        # 2. Lógica de Extracción Inteligente del ID
+        qr_text = str(raw_val).strip()
+        product_id = None
+
+        # CASO A: Es una URL (ej: https://likemodas.com/product/123)
+        if "/" in qr_text:
+            # Dividimos por '/' y buscamos el último segmento que sea un número
+            parts = qr_text.rstrip("/").split("/")
+            for part in reversed(parts):
+                if part.isdigit():
+                    product_id = int(part)
+                    break
         
-        try:
-            # 2. Lectura asíncrona y conversión en memoria (Zero-Copy)
-            # Esto evita guardar archivos temporales en el disco del servidor
-            upload_data = await file.read()
-            nparr = np.frombuffer(upload_data, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        # CASO B: Es directamente un número (ej: "123")
+        elif qr_text.isdigit():
+            product_id = int(qr_text)
 
-            if img is None:
-                return rx.toast.error("El archivo no es una imagen válida o está corrupto.")
+        # Si no pudimos sacar un ID válido
+        if product_id is None:
+            return rx.window_alert(f"QR leído pero formato no reconocido: {qr_text}")
 
-            # 3. Detección del QR con OpenCV
-            detector = cv2.QRCodeDetector()
-            decoded_url, bbox, _ = detector.detectAndDecode(img)
+        # 3. Consulta a la Base de Datos usando ProductModel
+        with rx.session() as session:
+            # IMPORTANTE: Aquí usamos el ProductModel que acabamos de importar arriba
+            product = session.get(ProductModel, product_id)
 
-            if not decoded_url:
-                return rx.toast.warning("No se detectó ningún código QR legible en la imagen.")
-
-            print(f"DEBUG: URL Decodificada: {decoded_url}")
-
-            # 4. Lógica de Parseo Híbrida (RFC 3986)
-            try:
-                parsed_url = urlparse(decoded_url)
-                
-                # Validación de seguridad: Solo procesar QRs de nuestro dominio
-                valid_domains = ["likemodas.com", "www.likemodas.com", "localhost", "127.0.0.1"]
-                # Si hay dominio (netloc) y no está en la lista, rechazamos.
-                if parsed_url.netloc and not any(d in parsed_url.netloc for d in valid_domains):
-                    return rx.toast.error(f"El código QR no pertenece a Likemodas.")
-
-                extracted_product_id = None
-                extracted_variant = None
-
-                # ESTRATEGIA A: Parámetros de Consulta (ej. ?product=123)
-                query_params = parse_qs(parsed_url.query)
-                if 'product' in query_params:
-                    extracted_product_id = query_params['product'][0]
-                if 'variant' in query_params:
-                    extracted_variant = query_params['variant'][0]
-
-                # ESTRATEGIA B: Segmentos de Ruta (ej. /product/123)
-                # Solo si falla la estrategia A
-                if not extracted_product_id and '/product/' in parsed_url.path:
-                    path_clean = parsed_url.path.strip('/')
-                    path_parts = path_clean.split('/')
-                    try:
-                        product_idx = path_parts.index('product')
-                        if product_idx + 1 < len(path_parts):
-                            extracted_product_id = path_parts[product_idx + 1]
-                    except ValueError:
-                        pass
-
-                # 5. Acción Final
-                if extracted_product_id and extracted_product_id.isdigit():
-                    self.product_id_to_load = int(extracted_product_id)
-                    if extracted_variant:
-                        self.selected_variant_id = extracted_variant
-                    
-                    self.show_public_qr_scanner_modal = False
-                    
-                    # Llamamos a tu función existente para abrir el modal del producto
-                    # Ajusta el nombre si tu evento se llama diferente
-                    return AppState.open_product_detail_modal(self.product_id_to_load)
-                    
-                else:
-                    return rx.toast.warning("QR válido pero no contiene un producto reconocido.")
-
-            except Exception as e:
-                print(f"Error parseando URL: {e}")
-                return rx.toast.error("Formato de enlace no reconocido.")
-
-        except Exception as e:
-            print(f"Error crítico en escáner: {e}")
-            return rx.toast.error("Error interno al procesar la imagen.")
+            if product:
+                # ¡Éxito! Redirigimos a la página del producto
+                return rx.redirect(f"/product/{product.id}")
+            else:
+                return rx.window_alert(f"El producto con ID {product_id} no existe en la base de datos.")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
