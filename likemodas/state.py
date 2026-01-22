@@ -3444,91 +3444,80 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_show_public_qr_scanner_modal(self, state: bool):
         self.show_public_qr_scanner_modal = state
 
-    async def handle_public_qr_scan(self, value: Any):
+    async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
         """
-        Maneja el escaneo del QR usando OpenCV (Versión Original).
-        Corrección aplicada: Extrae el ID si el QR es una URL completa.
+        Maneja el escaneo del QR.
+        RECUPERADO: Usa lectura en memoria (imdecode) como tu versión original.
+        MEJORADO: Limpia la URL para encontrar el producto correctamente.
         """
         import cv2
         import numpy as np
-        import os
 
-        # 1. Obtener datos
-        raw_val = value[0] if isinstance(value, list) else value
-        if not raw_val:
-            # Si no llega nada, avisamos (antes fallaba en silencio)
-            yield rx.toast.error("No se recibieron datos del archivo.")
+        # 1. Validación inicial (Igual que antes)
+        if not files:
+            yield rx.toast.error("No se recibió ningún archivo.")
             return
 
-        print(f"DEBUG - INPUT RECIBIDO: {raw_val}")
-        qr_text = ""
+        file = files[0]
 
-        # --- INTENTO 1: Es una imagen (Archivo subido) ---
-        upload_dir = rx.get_upload_dir()
-        file_path = os.path.join(upload_dir, str(raw_val))
-
-        if os.path.exists(file_path):
-            try:
-                # Leemos la imagen con OpenCV
-                # Usamos cv2.imread que es lo que te funcionaba antes para detectar
-                img = cv2.imread(file_path)
-                if img is None:
-                    yield rx.toast.error("El archivo no es una imagen válida.")
-                    return
-
-                detector = cv2.QRCodeDetector()
-                decoded_text, points, _ = detector.detectAndDecode(img)
-                
-                if decoded_text:
-                    qr_text = decoded_text
-                    print(f"DEBUG - TEXTO DETECTADO EN IMAGEN: {qr_text}")
-                else:
-                    # Aquí es donde antes te decía que reconocía imagen pero no QR
-                    yield rx.toast.warning("Imagen analizada, pero no se detectó código QR legible.")
-                    return
-            except Exception as e:
-                print(f"Error OpenCV: {e}")
-                yield rx.toast.error("Error técnico al procesar la imagen.")
-                return
-        
-        # --- INTENTO 2: Es texto directo (Cámara web) ---
-        if not qr_text:
-            qr_text = str(raw_val).strip()
-
-        # --- PROCESAMIENTO: La corrección para encontrar el producto ---
-        product_id = None
-        
-        # Lógica: Si es URL (https://likemodas.com/product/55), sacamos el 55
-        if "/" in qr_text:
-            parts = qr_text.rstrip("/").split("/")
-            for part in reversed(parts):
-                if part.isdigit():
-                    product_id = int(part)
-                    break
-        # Si es solo número
-        elif qr_text.isdigit():
-            product_id = int(qr_text)
-
-        # --- RESULTADO ---
-        if product_id is None:
-            # Reconoció el QR, pero no entendió el ID
-            yield rx.toast.error(f"QR detectado: '{qr_text}', pero no tiene un ID de producto válido.")
-            return
-
-        # Buscar en base de datos
-        with rx.session() as session:
-            product = session.get(BlogPostModel, product_id)
+        try:
+            # --- PASO CLAVE QUE FALTABA: Leer de memoria ---
+            # Leemos los bytes directamente (esto es lo que funcionaba en tu código viejo)
+            upload_data = await file.read()
             
-            if not product:
-                # Reconoció el ID, pero no existe en la BD
-                yield rx.toast.error(f"Producto con ID {product_id} no encontrado en el sistema.")
+            # Convertimos bytes a formato compatible con OpenCV
+            nparr = np.frombuffer(upload_data, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+            if img is None:
+                yield rx.toast.error("El archivo no es una imagen válida.")
                 return
 
-            if self.authenticated_user:
-                yield rx.toast.success(f"Vendedor: {product.title} detectado.")
-            else:
-                # Éxito Cliente: Redirige al producto
-                yield rx.redirect(f"/product/{product.id}")
+            # 2. Detección del QR
+            detector = cv2.QRCodeDetector()
+            qr_text, bbox, _ = detector.detectAndDecode(img)
+
+            if not qr_text:
+                yield rx.toast.warning("Imagen recibida, pero no se detectó ningún QR legible.")
+                return
+
+            print(f"DEBUG - QR DETECTADO: {qr_text}")
+
+            # --- 3. LÓGICA DE NEGOCIO (El arreglo real) ---
+            product_id = None
+            qr_text = str(qr_text).strip()
+
+            # Caso URL (ej: https://likemodas.com/product/55)
+            if "/" in qr_text:
+                parts = qr_text.rstrip("/").split("/")
+                for part in reversed(parts):
+                    if part.isdigit():
+                        product_id = int(part)
+                        break
+            # Caso Número Directo
+            elif qr_text.isdigit():
+                product_id = int(qr_text)
+
+            # --- 4. ACCIÓN ---
+            if product_id is None:
+                yield rx.toast.error(f"QR leído: '{qr_text}', pero no contiene un ID válido.")
+                return
+
+            with rx.session() as session:
+                product = session.get(BlogPostModel, product_id)
+                
+                if not product:
+                    yield rx.toast.error(f"Producto {product_id} no encontrado en base de datos.")
+                    return
+
+                if self.authenticated_user:
+                    yield rx.toast.success(f"Vendedor: '{product.title}' detectado.")
+                else:
+                    yield rx.redirect(f"/product/{product.id}")
+
+        except Exception as e:
+            print(f"Error procesando imagen: {e}")
+            yield rx.toast.error("Error interno al procesar la imagen.")
 
     @rx.event
     def handle_camera_error(self, error_message: str):
