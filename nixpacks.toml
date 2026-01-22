@@ -1,33 +1,21 @@
 # nixpacks.toml
 
-# Usamos proveedores automáticos (la configuración más estable para ti)
+# 1. Proveedores automáticos (lo mantenemos igual)
 providers = ["python", "node"]
 
 [phases.setup]
-# Lista de librerías del sistema.
-# HEMOS AGREGADO 'libzbar0' que es la que te falta para que funcione el escáner.
+# 2. Añadimos 'zbar-tools' y 'pkg-config' para ayudar a la detección
 aptPkgs = [
-    # Gráficos base (por si acaso OpenCV sigue por ahí)
-    "libgl1", 
-    "libglib2.0-0", 
-    "libsm6", 
-    "libxext6", 
-    "libxrender1",
-    
-    # Procesamiento de imágenes
-    "libjpeg-dev", 
-    "zlib1g-dev", 
-    "libpng-dev", 
-    "ghostscript", 
-    "gcc",
-
-    # --- EL FIX PARA EL ESCÁNER QR ---
-    "libzbar0",      # <--- ESTA ES LA LIBRERÍA QUE FALTABA (Runtime)
-    "libzbar-dev"    # Headers de desarrollo
+    "libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender1", # Gráficos base
+    "libjpeg-dev", "zlib1g-dev", "libpng-dev", "ghostscript", "gcc", # Imágenes
+    "libzbar0",      # La librería esencial
+    "libzbar-dev",   # Headers de desarrollo
+    "zbar-tools",    # <--- NUEVO: Herramientas extra para asegurar instalación
+    "pkg-config"     # <--- NUEVO: Ayuda a Python a encontrar librerías C
 ]
 
 [phases.install]
-# Instalación estándar y limpia
+# 3. Instalación estándar
 cmds = [
     "python -m venv --copies /opt/venv",
     ". /opt/venv/bin/activate && pip install --upgrade pip",
@@ -36,9 +24,13 @@ cmds = [
 ]
 
 [start]
-# Arranque usando ruta absoluta
+# 4. Comando de inicio (sin cambios)
 cmd = "/opt/venv/bin/python -m reflex run --env prod --backend-only"
 
 [variables]
+# 5. EL FIX DEFINITIVO: Le decimos al sistema dónde buscar 'libzbar.so'
+# Ubuntu/Debian guardan las librerías aquí, y pyzbar a veces se pierde sin esto.
+LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/lib"
+
 OPENCV_VIDEOIO_PRIORITY_MSMF = "0"
 PORT = "8000"
