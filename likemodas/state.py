@@ -3465,7 +3465,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         file = files[0]
 
         try:
-            # --- LECTURA DE IMAGEN (Esto ya te funciona, ¡no lo toques!) ---
+            # --- LECTURA DE IMAGEN (Esto se mantiene igual) ---
             upload_data = await file.read()
             nparr = np.frombuffer(upload_data, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -3491,45 +3491,26 @@ class AppState(reflex_local_auth.LocalAuthState):
             parsed_url = urlparse(qr_str)
             query_params = parse_qs(parsed_url.query)
 
-            # CASO 1: URL moderna con '?variant_uuid=...'
+            # ---------------------------------------------------------
+            # 🛠️ CASO 1 CORREGIDO: URL moderna con '?variant_uuid=...'
+            # ---------------------------------------------------------
             if 'variant_uuid' in query_params:
                 variant_uuid = query_params['variant_uuid'][0]
                 print(f"DEBUG - UUID DETECTADO: {variant_uuid}")
                 
-                with rx.session() as session:
-                    # INTENTO A: Buscar en ProductVariant (si tienes modelos de variantes)
-                    try:
-                        # Hacemos un import local para no romper si no existe el modelo
-                        from .models import ProductVariant 
-                        variant = session.exec(
-                            select(ProductVariant).where(str(ProductVariant.id) == variant_uuid)
-                        ).first()
-                        if variant:
-                            product_id = variant.product_id
-                    except ImportError:
-                        pass # No existe el modelo ProductVariant, seguimos
-                    except Exception as e:
-                        print(f"Debug Variant: {e}")
-
-                    # INTENTO B: Buscar directamente en BlogPostModel (si el producto tiene ese UUID)
-                    if not product_id:
-                        # Intentamos ver si BlogPostModel tiene campo 'uuid' o similar
-                        try:
-                            # Asumimos que quizás buscas por un campo 'uuid' en el producto
-                            # Nota: Si tu columna se llama diferente, ajusta 'BlogPostModel.uuid'
-                            p = session.exec(
-                                select(BlogPostModel).where(str(BlogPostModel.id) == variant_uuid)
-                            ).first()
-                            if p:
-                                product_id = p.id
-                        except:
-                            pass
-
+                # CORRECCIÓN: Usamos tu función 'find_variant_by_uuid' que ya sabe
+                # buscar correctamente dentro de la columna JSON de la base de datos.
+                result = self.find_variant_by_uuid(variant_uuid)
+                
+                if result:
+                    post, variant = result
+                    product_id = post.id
+                
                 if not product_id:
                     yield rx.toast.error(f"Se leyó el UUID {variant_uuid}, pero no se encontró el producto asociado.")
                     return
 
-            # CASO 2: URL clásica (.../product/123)
+            # CASO 2: URL clásica (.../product/123) (Se mantiene igual)
             elif "/" in qr_str:
                 parts = qr_str.rstrip("/").split("/")
                 for part in reversed(parts):
@@ -3537,21 +3518,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                         product_id = int(part)
                         break
             
-            # CASO 3: Solo número
+            # CASO 3: Solo número (Se mantiene igual)
             elif qr_str.isdigit():
                 product_id = int(qr_str)
 
-            # --- ACCIÓN FINAL ---
+            # --- ACCIÓN FINAL (Se mantiene igual) ---
             if product_id:
-                with rx.session() as session:
-                    product = session.get(BlogPostModel, product_id)
-                    if product:
-                        if self.authenticated_user:
-                            yield rx.toast.success(f"Vendedor: '{product.title}' detectado.")
-                        else:
-                            yield rx.redirect(f"/product/{product.id}")
-                    else:
-                        yield rx.toast.error(f"Producto ID {product_id} no existe.")
+                # Usamos yield para llamar al evento que abre el modal
+                yield AppState.open_product_detail_modal(product_id)
             else:
                 yield rx.toast.warning(f"Formato de QR no reconocido: {qr_str}")
 
