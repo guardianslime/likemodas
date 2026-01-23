@@ -3558,25 +3558,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     def find_variant_by_uuid(self, uuid_to_find: str) -> Optional[Tuple[BlogPostModel, dict]]:
         """
         Busca un producto y su variante específica usando un variant_uuid.
-        Utiliza una consulta optimizada con el operador de contención (@>) de JSONB
-        y un índice GIN para un rendimiento máximo.
+        CORRECCIÓN: Convierte explícitamente la columna 'variants' a JSONB para que
+        el operador de búsqueda '@>' funcione correctamente en PostgreSQL.
         """
         with rx.session() as session:
+            # Preparamos el criterio de búsqueda
             containment_payload = [{"variant_uuid": uuid_to_find}]
 
-            # Se usa cast() para la conversión a JSONB, compatible con tu entorno
-            post = session.exec(
-                sqlmodel.select(BlogPostModel).where(
-                    BlogPostModel.variants.op("@>")(cast(containment_payload, JSONB))
-                )
-            ).first()
+            # --- CORRECCIÓN AQUÍ ---
+            # Usamos cast(BlogPostModel.variants, JSONB) para asegurar que Postgres
+            # trate la columna como binaria (JSONB) y permita usar el operador '@>'.
+            query = select(BlogPostModel).where(
+                cast(BlogPostModel.variants, JSONB).op("@>")(cast(containment_payload, JSONB))
+            )
+            
+            post = session.exec(query).first()
 
             if not post:
                 return None
 
-            for variant in post.variants:
-                if variant.get("variant_uuid") == uuid_to_find:
-                    return post, variant
+            # Buscamos la variante específica dentro del producto encontrado
+            if post.variants:
+                for variant in post.variants:
+                    if variant.get("variant_uuid") == uuid_to_find:
+                        return post, variant
 
             return None
 
