@@ -8,7 +8,8 @@ from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
 import pytz
-
+from sqlalchemy import cast  # <--- AGREGAR ESTO
+from sqlalchemy.dialects.postgresql import JSONB # <--- AGREGAR ESTO
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
 import sqlalchemy
@@ -734,17 +735,45 @@ async def fix_shipping_logic(
     }
 
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
-async def get_product_detail(product_id: int, user_id: Optional[int] = None, session: Session = Depends(get_session)):
+async def get_product_detail(
+    product_id: str,  # <--- CAMBIO: Ahora es 'str' para aceptar UUIDs
+    user_id: Optional[int] = None, 
+    session: Session = Depends(get_session)
+):
     try:
-        p = session.exec(
-            select(BlogPostModel)
-            .options(joinedload(BlogPostModel.userinfo))
-            .where(BlogPostModel.id == product_id)
-        ).first()
+        # --- 1. LÓGICA DE RESOLUCIÓN DE ID/UUID (NUEVO) ---
+        real_id = None
+        pid_str = str(product_id).strip()
+
+        if pid_str.isdigit():
+            # CASO A: Es un ID normal (ej: "15")
+            real_id = int(pid_str)
+            p = session.exec(
+                select(BlogPostModel)
+                .options(joinedload(BlogPostModel.userinfo))
+                .where(BlogPostModel.id == real_id)
+            ).first()
+        else:
+            # CASO B: Es un UUID de QR (ej: "7fda79...")
+            # Usamos la misma lógica blindada que en state.py
+            try:
+                containment_payload = [{"variant_uuid": pid_str}]
+                query = select(BlogPostModel).where(
+                    cast(BlogPostModel.variants, JSONB).op("@>")(cast(containment_payload, JSONB))
+                )
+                p = session.exec(query).first()
+                if p:
+                    real_id = p.id
+            except Exception as e:
+                print(f"Error buscando UUID en mobile: {e}")
+                p = None
 
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
 
+        # --- A PARTIR DE AQUÍ EL CÓDIGO SE MANTIENE IGUAL ---
+        # (Solo asegúrate de usar 'p' que ya recuperamos arriba)
+        
         normalized_buyer_city = ""
         buyer_city = None
         buyer_barrio = None # ✨ Variable necesaria para el cálculo
