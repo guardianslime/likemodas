@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
 import pytz
+from urllib.parse import urlparse, parse_qs  # <--- AGREGAR ESTO
 from sqlalchemy import cast  # <--- AGREGAR ESTO
 from sqlalchemy.dialects.postgresql import JSONB # <--- AGREGAR ESTO
 import bcrypt
@@ -736,34 +737,64 @@ async def fix_shipping_logic(
 
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(
-    product_id: str,  # <--- CAMBIO: Ahora es 'str' para aceptar UUIDs
+    product_id: str,
     user_id: Optional[int] = None, 
     session: Session = Depends(get_session)
 ):
     try:
-        # --- 1. LÓGICA DE RESOLUCIÓN DE ID/UUID (NUEVO) ---
+        # --- LÓGICA DE LIMPIEZA Y PARSEO (IGUAL QUE EN LA WEB) ---
         real_id = None
-        pid_str = str(product_id).strip()
+        uuid_to_search = None
+        
+        # 1. Limpiamos la entrada
+        qr_str = str(product_id).strip()
+        
+        # 2. Intentamos parsear como URL para ver si tiene parámetros o ID en la ruta
+        try:
+            # Si tiene ?variant_uuid=... (Caso QR Nuevo)
+            if "variant_uuid" in qr_str:
+                parsed_url = urlparse(qr_str)
+                query_params = parse_qs(parsed_url.query)
+                if 'variant_uuid' in query_params:
+                    uuid_to_search = query_params['variant_uuid'][0]
 
-        if pid_str.isdigit():
-            # CASO A: Es un ID normal (ej: "15")
-            real_id = int(pid_str)
+            # Si no es UUID, miramos si es una URL clásica (.../product/123)
+            elif "/" in qr_str and not uuid_to_search:
+                parts = qr_str.rstrip("/").split("/")
+                for part in reversed(parts):
+                    if part.isdigit():
+                        real_id = int(part)
+                        break
+        except Exception:
+            pass # Si falla el parseo de URL, seguimos tratándolo como texto plano
+
+        # 3. Si no encontramos nada arriba, analizamos el texto directo
+        if not real_id and not uuid_to_search:
+            if qr_str.isdigit():
+                real_id = int(qr_str)
+            else:
+                # Asumimos que el texto plano ES el UUID
+                uuid_to_search = qr_str
+
+        # --- BÚSQUEDA EN BASE DE DATOS ---
+        p = None
+        
+        # CASO A: Tenemos un ID numérico (Directo)
+        if real_id:
             p = session.exec(
                 select(BlogPostModel)
                 .options(joinedload(BlogPostModel.userinfo))
                 .where(BlogPostModel.id == real_id)
             ).first()
-        else:
-            # CASO B: Es un UUID de QR (ej: "7fda79...")
-            # Usamos la misma lógica blindada que en state.py
+
+        # CASO B: Tenemos un UUID (Búsqueda en JSON)
+        elif uuid_to_search:
             try:
-                containment_payload = [{"variant_uuid": pid_str}]
+                containment_payload = [{"variant_uuid": uuid_to_search}]
                 query = select(BlogPostModel).where(
                     cast(BlogPostModel.variants, JSONB).op("@>")(cast(containment_payload, JSONB))
                 )
                 p = session.exec(query).first()
-                if p:
-                    real_id = p.id
             except Exception as e:
                 print(f"Error buscando UUID en mobile: {e}")
                 p = None
