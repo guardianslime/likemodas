@@ -738,48 +738,52 @@ async def fix_shipping_logic(
 @router.get("/products/{product_id}", response_model=ProductDetailDTO)
 async def get_product_detail(
     product_id: str,
+    # --- TRUCO MAESTRO: Capturamos el UUID si el protocolo HTTP lo separó ---
+    variant_uuid: Optional[str] = Query(None), 
     user_id: Optional[int] = None, 
     session: Session = Depends(get_session)
 ):
     try:
-        # --- LÓGICA DE LIMPIEZA Y PARSEO (IGUAL QUE EN LA WEB) ---
         real_id = None
         uuid_to_search = None
         
-        # 1. Limpiamos la entrada
-        qr_str = str(product_id).strip()
-        
-        # 2. Intentamos parsear como URL para ver si tiene parámetros o ID en la ruta
-        try:
-            # Si tiene ?variant_uuid=... (Caso QR Nuevo)
-            if "variant_uuid" in qr_str:
-                parsed_url = urlparse(qr_str)
-                query_params = parse_qs(parsed_url.query)
-                if 'variant_uuid' in query_params:
-                    uuid_to_search = query_params['variant_uuid'][0]
+        # 1. ESTRATEGIA DE BÚSQUEDA PRIORITARIA
+        # Si el sistema detectó el parámetro ?variant_uuid=... separado, ÚSALO.
+        if variant_uuid:
+            uuid_to_search = variant_uuid
+            # print(f"DEBUG: UUID capturado vía Query Param: {uuid_to_search}")
 
-            # Si no es UUID, miramos si es una URL clásica (.../product/123)
-            elif "/" in qr_str and not uuid_to_search:
+        # 2. Si no llegó por separado, analizamos el texto 'product_id'
+        if not uuid_to_search:
+            qr_str = str(product_id).strip()
+            
+            # Intento A: ¿Es una URL con parámetros pegados? (Caso raro si no se codificó)
+            if "variant_uuid" in qr_str:
+                try:
+                    parsed_url = urlparse(qr_str)
+                    query_params = parse_qs(parsed_url.query)
+                    if 'variant_uuid' in query_params:
+                        uuid_to_search = query_params['variant_uuid'][0]
+                except: pass
+
+            # Intento B: ¿Es una URL clásica tipo .../product/123?
+            if not uuid_to_search and "/" in qr_str:
                 parts = qr_str.rstrip("/").split("/")
                 for part in reversed(parts):
                     if part.isdigit():
                         real_id = int(part)
                         break
-        except Exception:
-            pass # Si falla el parseo de URL, seguimos tratándolo como texto plano
+            
+            # Intento C: ¿Es texto plano (ID o UUID directo)?
+            if not uuid_to_search and not real_id:
+                if qr_str.isdigit():
+                    real_id = int(qr_str)
+                else:
+                    uuid_to_search = qr_str
 
-        # 3. Si no encontramos nada arriba, analizamos el texto directo
-        if not real_id and not uuid_to_search:
-            if qr_str.isdigit():
-                real_id = int(qr_str)
-            else:
-                # Asumimos que el texto plano ES el UUID
-                uuid_to_search = qr_str
-
-        # --- BÚSQUEDA EN BASE DE DATOS ---
+        # --- BÚSQUEDA EN BASE DE DATOS (Igual que antes) ---
         p = None
         
-        # CASO A: Tenemos un ID numérico (Directo)
         if real_id:
             p = session.exec(
                 select(BlogPostModel)
@@ -787,9 +791,9 @@ async def get_product_detail(
                 .where(BlogPostModel.id == real_id)
             ).first()
 
-        # CASO B: Tenemos un UUID (Búsqueda en JSON)
         elif uuid_to_search:
             try:
+                # Búsqueda optimizada con JSONB
                 containment_payload = [{"variant_uuid": uuid_to_search}]
                 query = select(BlogPostModel).where(
                     cast(BlogPostModel.variants, JSONB).op("@>")(cast(containment_payload, JSONB))
@@ -801,7 +805,7 @@ async def get_product_detail(
 
         if not p or not p.publish_active: 
             raise HTTPException(404, "Producto no encontrado")
-
+        
         # --- A PARTIR DE AQUÍ EL CÓDIGO SE MANTIENE IGUAL ---
         # (Solo asegúrate de usar 'p' que ya recuperamos arriba)
         
