@@ -8,6 +8,9 @@ from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import math
 import pytz
+import base64
+import cv2
+import numpy as np
 from urllib.parse import urlparse, parse_qs  # <--- AGREGAR ESTO
 from sqlalchemy import cast  # <--- AGREGAR ESTO
 from sqlalchemy.dialects.postgresql import JSONB # <--- AGREGAR ESTO
@@ -1510,3 +1513,90 @@ async def clear_all_notifications(user_id: int, session: Session = Depends(get_s
     session.exec(sqlalchemy.delete(NotificationModel).where(NotificationModel.userinfo_id == user_info.id))
     session.commit()
     return {"message": "Notificaciones borradas"}
+
+# --- DTOs PARA ESCANEO DE IMAGEN ---
+class ScanQrRequest(BaseModel):
+    image_base64: str
+
+class ScanQrResponse(BaseModel):
+    product_id: int
+    variant_uuid: Optional[str] = None
+    success: bool
+    message: str
+
+@router.post("/scan-qr-image", response_model=ScanQrResponse)
+async def scan_qr_from_image(req: ScanQrRequest, session: Session = Depends(get_session)):
+    try:
+        # 1. Decodificar Base64 a Imagen
+        try:
+            image_data = base64.b64decode(req.image_base64)
+            nparr = np.frombuffer(image_data, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                return ScanQrResponse(product_id=0, success=False, message="No es una imagen válida")
+        except Exception:
+            return ScanQrResponse(product_id=0, success=False, message="Error decodificando imagen")
+
+        # 2. Detectar QR con OpenCV
+        detector = cv2.QRCodeDetector()
+        qr_text, bbox, _ = detector.detectAndDecode(img)
+
+        if not qr_text:
+            return ScanQrResponse(product_id=0, success=False, message="No se detectó ningún código QR")
+
+        # 3. Lógica de "Limpieza" (Idéntica a get_product_detail)
+        qr_str = str(qr_text).strip()
+        real_id = None
+        uuid_to_search = None
+
+        # Intento A: Parsear URL
+        if "variant_uuid" in qr_str:
+            try:
+                parsed_url = urlparse(qr_str)
+                query_params = parse_qs(parsed_url.query)
+                if 'variant_uuid' in query_params:
+                    uuid_to_search = query_params['variant_uuid'][0]
+            except: pass
+        
+        # Intento B: URL clásica
+        if not uuid_to_search and "/" in qr_str:
+            parts = qr_str.rstrip("/").split("/")
+            for part in reversed(parts):
+                if part.isdigit():
+                    real_id = int(part)
+                    break
+        
+        # Intento C: Texto plano
+        if not uuid_to_search and not real_id:
+            if qr_str.isdigit():
+                real_id = int(qr_str)
+            else:
+                uuid_to_search = qr_str
+
+        # 4. Buscar en BD
+        p = None
+        if real_id:
+            p = session.exec(select(BlogPostModel).where(BlogPostModel.id == real_id)).first()
+        elif uuid_to_search:
+            try:
+                containment_payload = [{"variant_uuid": uuid_to_search}]
+                query = select(BlogPostModel).where(
+                    cast(BlogPostModel.variants, JSONB).op("@>")(cast(containment_payload, JSONB))
+                )
+                p = session.exec(query).first()
+                if p: real_id = p.id
+            except: pass
+
+        if p and p.publish_active:
+            return ScanQrResponse(
+                product_id=p.id, 
+                variant_uuid=uuid_to_search, 
+                success=True, 
+                message="Producto encontrado"
+            )
+        else:
+            return ScanQrResponse(product_id=0, success=False, message="Producto no encontrado en el sistema")
+
+    except Exception as e:
+        logger.error(f"Error procesando imagen QR: {e}")
+        return ScanQrResponse(product_id=0, success=False, message=f"Error interno: {str(e)}")
