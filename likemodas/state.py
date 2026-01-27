@@ -1097,7 +1097,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 send_verification_email(recipient_email=email, token=token_str)
                 self.success = True
                 
-                # --- ✨ AGREGAR ESTAS LÍNEAS PARA AVISAR AL USUARIO ✨ ---
+                # --- ✨ AGREGAR ESTAS LÍNEAS PARA AVISAR AL USUARIO ✨ --
                 yield rx.toast.warning(
                     "¡Cuenta creada con éxito! Por favor ve a tu Gmail y confirma tu cuenta antes de iniciar sesión.",
                     duration=9000, # Dura 9 segundos para que lo lean bien
