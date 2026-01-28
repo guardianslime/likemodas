@@ -60,7 +60,6 @@ def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.C
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """Muestra los detalles de una compra activa, con opción de Guía o Manual."""
     
-    # Formulario con Pestañas: Guía vs Manual
     set_delivery_and_shipping_form = rx.tabs.root(
         rx.tabs.list(
             rx.tabs.trigger("Guía Nacional", value="guide"),
@@ -90,14 +89,11 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     width="100%",
                     margin_top="1em"
                 ),
-                spacing="3",
-                padding="1em",
-                border="1px solid #EAEAEA",
-                border_radius="0 0 8px 8px"
+                spacing="3", padding="1em", border="1px solid #EAEAEA", border_radius="0 0 8px 8px"
             ),
             value="guide"
         ),
-        # --- OPCIÓN 2: ENTREGA MANUAL (Tu código anterior) ---
+        # --- OPCIÓN 2: ENTREGA MANUAL ---
         rx.tabs.content(
             rx.vstack(
                 rx.text("Tiempo estimado de entrega:", size="2", weight="bold"),
@@ -115,26 +111,18 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 rx.button(
                     "Confirmar Entrega Manual",
-                    # Asegúrate de que esta función 'confirm_delivery_time' exista en tu State original
-                    # o reemplázala por la lógica que usabas antes.
                     on_click=lambda: AppState.confirm_delivery_time(purchase.id),
                     color_scheme="gray",
                     width="100%",
                     margin_top="1em"
                 ),
-                spacing="3",
-                padding="1em",
-                border="1px solid #EAEAEA",
-                border_radius="0 0 8px 8px"
+                spacing="3", padding="1em", border="1px solid #EAEAEA", border_radius="0 0 8px 8px"
             ),
             value="manual"
         ),
-        default_value="guide",
-        width="100%",
-        margin_top="1em"
+        default_value="guide", width="100%", margin_top="1em"
     )
 
-    # El resto de la tarjeta se mantiene igual...
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -145,14 +133,21 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     align_items="start", spacing="1"
                 ),
                 rx.spacer(),
-                rx.badge(purchase.status, color_scheme="blue" if purchase.status == PurchaseStatus.CONFIRMED else "green"),
+                # --- ✨ AQUÍ ESTABA EL ERROR: USAMOS rx.cond ✨ ---
+                rx.badge(
+                    purchase.status, 
+                    color_scheme=rx.cond(
+                        purchase.status == "confirmed", 
+                        "blue", 
+                        "green"
+                    )
+                ),
+                # --------------------------------------------------
                 width="100%", align_items="start"
             ),
             rx.divider(),
-            # Lista de Items
             rx.foreach(purchase.purchase_items, lambda item: purchase_item_display_admin(item)),
             rx.divider(),
-            # Info de Envío
             rx.vstack(
                 rx.text("Datos de Envío:", weight="bold", size="2"),
                 rx.text(purchase.shipping_name or "N/A", size="2"),
@@ -160,13 +155,10 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.text(purchase.shipping_phone or "N/A", size="2"),
                 spacing="1", width="100%", bg="gray.50", padding="0.5em", border_radius="md"
             ),
-            # AQUÍ INSERTAMOS EL NUEVO FORMULARIO
             set_delivery_and_shipping_form,
-            
             spacing="4", width="100%"
         ),
-        width="100%",
-        box_shadow="lg"
+        width="100%", box_shadow="lg"
     )
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:

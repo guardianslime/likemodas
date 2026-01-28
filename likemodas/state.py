@@ -6654,76 +6654,30 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
             # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
-    # Almacena temporalmente los datos de guía por cada ID de compra
-    # Estructura: { 101: {"carrier": "Servientrega", "guide": "12345"} }
+    # Diccionarios para guardar temporalmente los datos de entrega manual por pedido
+    admin_delivery_times: Dict[int, Dict[str, int]] = {}
+    admin_final_shipping_costs: Dict[int, str] = {}
+
+    # Diccionario para guardar datos de GUÍA por pedido (Servientrega, etc.)
     admin_tracking_info: Dict[int, Dict[str, str]] = {}
 
     def set_admin_tracking_carrier(self, purchase_id: int, value: str):
-        """Actualiza la empresa seleccionada para un pedido específico."""
+        """Actualiza la empresa seleccionada para un pedido específico (Guía)."""
         if purchase_id not in self.admin_tracking_info:
             self.admin_tracking_info[purchase_id] = {}
         self.admin_tracking_info[purchase_id]["carrier"] = value
 
     def set_admin_tracking_guide(self, purchase_id: int, value: str):
-        """Actualiza el número de guía para un pedido específico."""
+        """Actualiza el número de guía para un pedido específico (Guía)."""
         if purchase_id not in self.admin_tracking_info:
             self.admin_tracking_info[purchase_id] = {}
         self.admin_tracking_info[purchase_id]["guide"] = value
 
-    def ship_order_with_guide(self, purchase_id: int):
-        """
-        Confirma el envío usando la información de la guía (Opción Guía Nacional).
-        """
-        # Recuperamos los datos de los inputs
-        info = self.admin_tracking_info.get(purchase_id, {})
-        carrier = info.get("carrier", "Servientrega") # Valor por defecto si no selecciona nada
-        guide = info.get("guide", "").strip()
-
-        if not guide:
-            return rx.toast.error("Por favor, ingresa el número de guía.")
-
-        with rx.session() as session:
-            purchase = session.get(PurchaseModel, purchase_id)
-            if not purchase:
-                return rx.toast.error("Pedido no encontrado.")
-
-            # 1. Guardamos la info de la guía
-            purchase.shipping_carrier = carrier
-            purchase.tracking_number = guide
-            purchase.shipping_type = "carrier"
-            
-            # 2. Actualizamos estado a ENVIADO (SHIPPED)
-            purchase.status = PurchaseStatus.SHIPPED
-            
-            # 3. Registramos quién hizo la acción
-            if self.authenticated_user_info:
-                purchase.action_by_id = self.authenticated_user_info.id
-            
-            session.add(purchase)
-            session.commit()
-            
-            # Limpiamos los datos temporales
-            if purchase_id in self.admin_tracking_info:
-                del self.admin_tracking_info[purchase_id]
-            
-            # Recargar la lista de pedidos (importante para refrescar la UI)
-            # Asegúrate de que esta función exista y recargue 'active_purchases'
-            # yield AppState.load_admin_sales 
-            
-            return rx.toast.success(f"Pedido #{purchase_id} enviado por {carrier}.")
-        
-    # --- AGREGAR ESTO EN AppState (Para manejar la Entrega Manual) ---
-
-    # Diccionarios para guardar temporalmente los datos de cada pedido (ID -> Datos)
-    admin_delivery_times: Dict[int, Dict[str, int]] = {}
-    admin_final_shipping_costs: Dict[int, str] = {}
-
     def set_admin_delivery_time(self, purchase_id: int, field: str, value: str):
-        """Actualiza días/horas/minutos para un pedido específico."""
+        """Actualiza días/horas/minutos para entrega manual."""
         if purchase_id not in self.admin_delivery_times:
             self.admin_delivery_times[purchase_id] = {"days": 0, "hours": 0, "minutes": 0}
         try:
-            # field puede ser "days", "hours" o "minutes"
             val_int = int(value) if value else 0
             self.admin_delivery_times[purchase_id][field] = val_int
         except ValueError:
@@ -6735,54 +6689,78 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def confirm_delivery_time(self, purchase_id: int):
         """
-        Confirma el despacho manual calculando la fecha estimada 
-        y actualizando el estado a SHIPPED.
+        Confirma el despacho MANUAL (sin empresa de transporte).
+        Calcula fecha estimada y cambia estado a SHIPPED.
         """
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if not purchase:
                 return rx.toast.error("Pedido no encontrado.")
 
-            # 1. Calcular Fecha Estimada de Entrega
+            # 1. Calcular Fecha Estimada
             times = self.admin_delivery_times.get(purchase_id, {"days": 0, "hours": 0, "minutes": 0})
             total_minutes = (times["days"] * 24 * 60) + (times["hours"] * 60) + times["minutes"]
             
             if total_minutes > 0:
-                # Si ingresaron tiempo, calculamos la fecha futura
-                # Usamos datetime.now(timezone.utc) para consistencia
                 estimated_date = datetime.now(timezone.utc) + timedelta(minutes=total_minutes)
                 purchase.estimated_delivery_date = estimated_date
 
-            # 2. Actualizar Costo de Envío Real (si lo cambiaron)
+            # 2. Actualizar Costo Real (Opcional)
             cost_str = self.admin_final_shipping_costs.get(purchase_id)
             if cost_str:
                 try:
                     purchase.actual_shipping_cost = float(cost_str)
                 except ValueError:
-                    pass # Ignoramos si no es número válido
+                    pass
 
-            # 3. Actualizar Estado y Tipo
+            # 3. Actualizar Estado
             purchase.status = PurchaseStatus.SHIPPED
             purchase.shipping_type = "manual"
-            purchase.shipping_carrier = "Entrega Personal" # Opcional, para que salga algo en la UI
+            purchase.shipping_carrier = "Entrega Personal/Manual"
             
-            # Registrar quién hizo la acción
             if self.authenticated_user_info:
                 purchase.action_by_id = self.authenticated_user_info.id
 
             session.add(purchase)
             session.commit()
 
-            # Limpiar datos temporales
-            if purchase_id in self.admin_delivery_times:
-                del self.admin_delivery_times[purchase_id]
-            if purchase_id in self.admin_final_shipping_costs:
-                del self.admin_final_shipping_costs[purchase_id]
-
-            # Recargar lista (asegúrate de que esta función exista en tu state)
-            # yield AppState.load_active_purchases 
+            # Limpiar memoria
+            if purchase_id in self.admin_delivery_times: del self.admin_delivery_times[purchase_id]
+            if purchase_id in self.admin_final_shipping_costs: del self.admin_final_shipping_costs[purchase_id]
             
             return rx.toast.success(f"Entrega manual confirmada para pedido #{purchase_id}")
+
+    def ship_order_with_guide(self, purchase_id: int):
+        """
+        Confirma el despacho con GUÍA (Servientrega, etc).
+        """
+        info = self.admin_tracking_info.get(purchase_id, {})
+        carrier = info.get("carrier", "Servientrega")
+        guide = info.get("guide", "").strip()
+
+        if not guide:
+            return rx.toast.error("Por favor, ingresa el número de guía.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if not purchase:
+                return rx.toast.error("Pedido no encontrado.")
+
+            purchase.shipping_carrier = carrier
+            purchase.tracking_number = guide
+            purchase.shipping_type = "carrier"
+            purchase.status = PurchaseStatus.SHIPPED
+            
+            if self.authenticated_user_info:
+                purchase.action_by_id = self.authenticated_user_info.id
+            
+            session.add(purchase)
+            session.commit()
+            
+            if purchase_id in self.admin_tracking_info:
+                del self.admin_tracking_info[purchase_id]
+            
+            return rx.toast.success(f"Pedido #{purchase_id} enviado por {carrier}.")
 
     @rx.var
     def subtotal_cop(self) -> str:
