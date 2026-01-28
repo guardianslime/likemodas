@@ -6711,6 +6711,78 @@ class AppState(reflex_local_auth.LocalAuthState):
             # yield AppState.load_admin_sales 
             
             return rx.toast.success(f"Pedido #{purchase_id} enviado por {carrier}.")
+        
+    # --- AGREGAR ESTO EN AppState (Para manejar la Entrega Manual) ---
+
+    # Diccionarios para guardar temporalmente los datos de cada pedido (ID -> Datos)
+    admin_delivery_times: Dict[int, Dict[str, int]] = {}
+    admin_final_shipping_costs: Dict[int, str] = {}
+
+    def set_admin_delivery_time(self, purchase_id: int, field: str, value: str):
+        """Actualiza días/horas/minutos para un pedido específico."""
+        if purchase_id not in self.admin_delivery_times:
+            self.admin_delivery_times[purchase_id] = {"days": 0, "hours": 0, "minutes": 0}
+        try:
+            # field puede ser "days", "hours" o "minutes"
+            val_int = int(value) if value else 0
+            self.admin_delivery_times[purchase_id][field] = val_int
+        except ValueError:
+            pass
+
+    def set_admin_final_shipping_cost(self, purchase_id: int, value: str):
+        """Actualiza el costo de envío manual."""
+        self.admin_final_shipping_costs[purchase_id] = value
+
+    def confirm_delivery_time(self, purchase_id: int):
+        """
+        Confirma el despacho manual calculando la fecha estimada 
+        y actualizando el estado a SHIPPED.
+        """
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if not purchase:
+                return rx.toast.error("Pedido no encontrado.")
+
+            # 1. Calcular Fecha Estimada de Entrega
+            times = self.admin_delivery_times.get(purchase_id, {"days": 0, "hours": 0, "minutes": 0})
+            total_minutes = (times["days"] * 24 * 60) + (times["hours"] * 60) + times["minutes"]
+            
+            if total_minutes > 0:
+                # Si ingresaron tiempo, calculamos la fecha futura
+                # Usamos datetime.now(timezone.utc) para consistencia
+                estimated_date = datetime.now(timezone.utc) + timedelta(minutes=total_minutes)
+                purchase.estimated_delivery_date = estimated_date
+
+            # 2. Actualizar Costo de Envío Real (si lo cambiaron)
+            cost_str = self.admin_final_shipping_costs.get(purchase_id)
+            if cost_str:
+                try:
+                    purchase.actual_shipping_cost = float(cost_str)
+                except ValueError:
+                    pass # Ignoramos si no es número válido
+
+            # 3. Actualizar Estado y Tipo
+            purchase.status = PurchaseStatus.SHIPPED
+            purchase.shipping_type = "manual"
+            purchase.shipping_carrier = "Entrega Personal" # Opcional, para que salga algo en la UI
+            
+            # Registrar quién hizo la acción
+            if self.authenticated_user_info:
+                purchase.action_by_id = self.authenticated_user_info.id
+
+            session.add(purchase)
+            session.commit()
+
+            # Limpiar datos temporales
+            if purchase_id in self.admin_delivery_times:
+                del self.admin_delivery_times[purchase_id]
+            if purchase_id in self.admin_final_shipping_costs:
+                del self.admin_final_shipping_costs[purchase_id]
+
+            # Recargar lista (asegúrate de que esta función exista en tu state)
+            # yield AppState.load_active_purchases 
+            
+            return rx.toast.success(f"Entrega manual confirmada para pedido #{purchase_id}")
 
     @rx.var
     def subtotal_cop(self) -> str:
