@@ -511,6 +511,33 @@ class PurchaseModel(rx.Model, table=True):
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
     user_confirmed_delivery_at: Optional[datetime] = Field(default=None)
 
+    # NUEVOS CAMPOS PARA RASTREO
+    shipping_carrier: Optional[str] = Field(default=None)  # Ej: "Servientrega"
+    tracking_number: Optional[str] = Field(default=None)   # Ej: "205011..."
+    shipping_type: str = Field(default="manual") # "manual" (Entrega personal) o "carrier" (Guía)
+
+    @property
+    def tracking_url_link(self) -> str:
+        """Genera el link de rastreo automáticamente basado en la empresa."""
+        if not self.tracking_number:
+            return ""
+        
+        carrier = (self.shipping_carrier or "").lower()
+        guide = self.tracking_number.strip()
+
+        if "servientrega" in carrier:
+            return f"https://www.servientrega.com/wps/portal/rastreo-envio-detalle?Guia={guide}"
+        elif "interrapidi" in carrier or "interrapidísimo" in carrier:
+            return f"https://www.interrapidisimo.com/sigue-tu-envio/?guia={guide}"
+        elif "coordinadora" in carrier:
+            return f"https://www.coordinadora.com/portale/rastreo/rastreo_guia.php?guia={guide}"
+        elif "deprisa" in carrier:
+            return f"https://www.deprisa.com/rastreo?guia={guide}"
+        elif "envia" in carrier or "envía" in carrier:
+            return "https://envia.co/"
+        
+        return ""
+
     userinfo: "UserInfo" = Relationship(
         back_populates="purchases",
         sa_relationship_kwargs={"foreign_keys": "[PurchaseModel.userinfo_id]"}
