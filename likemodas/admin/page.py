@@ -60,12 +60,12 @@ def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.C
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """Muestra los detalles de una compra activa, con opción de Guía o Manual."""
     
+    # Formulario de pestañas (Se mantiene igual que antes)
     set_delivery_and_shipping_form = rx.tabs.root(
         rx.tabs.list(
             rx.tabs.trigger("Guía Nacional", value="guide"),
             rx.tabs.trigger("Entrega Manual", value="manual"),
         ),
-        # --- OPCIÓN 1: ENVÍO CON GUÍA ---
         rx.tabs.content(
             rx.vstack(
                 rx.text("Empresa de Envíos:", size="2", weight="bold"),
@@ -93,7 +93,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             value="guide"
         ),
-        # --- OPCIÓN 2: ENTREGA MANUAL ---
         rx.tabs.content(
             rx.vstack(
                 rx.text("Tiempo estimado de entrega:", size="2", weight="bold"),
@@ -133,7 +132,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     align_items="start", spacing="1"
                 ),
                 rx.spacer(),
-                # --- ✨ AQUÍ ESTABA EL ERROR: USAMOS rx.cond ✨ ---
+                # CORRECCIÓN 1: Usar rx.cond para el color del badge
                 rx.badge(
                     purchase.status, 
                     color_scheme=rx.cond(
@@ -142,17 +141,26 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                         "green"
                     )
                 ),
-                # --------------------------------------------------
                 width="100%", align_items="start"
             ),
             rx.divider(),
             rx.foreach(purchase.purchase_items, lambda item: purchase_item_display_admin(item)),
             rx.divider(),
+            
+            # CORRECCIÓN 2: Usar rx.cond en lugar de 'or' para los textos
             rx.vstack(
                 rx.text("Datos de Envío:", weight="bold", size="2"),
-                rx.text(purchase.shipping_name or "N/A", size="2"),
-                rx.text(purchase.shipping_full_address or "N/A", size="2"),
-                rx.text(purchase.shipping_phone or "N/A", size="2"),
+                
+                # ANTES: rx.text(purchase.shipping_name or "N/A") -> ERROR
+                # AHORA: rx.cond(purchase.shipping_name, purchase.shipping_name, "N/A")
+                rx.text(rx.cond(purchase.shipping_name, purchase.shipping_name, "N/A"), size="2"),
+                
+                # Lo mismo para la dirección
+                rx.text(rx.cond(purchase.shipping_full_address, purchase.shipping_full_address, "N/A"), size="2"),
+                
+                # Lo mismo para el teléfono
+                rx.text(rx.cond(purchase.shipping_phone, purchase.shipping_phone, "N/A"), size="2"),
+                
                 spacing="1", width="100%", bg="gray.50", padding="0.5em", border_radius="md"
             ),
             set_delivery_and_shipping_form,
