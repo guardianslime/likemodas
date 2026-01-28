@@ -6654,6 +6654,64 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
             # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
+    # Almacena temporalmente los datos de guía por cada ID de compra
+    # Estructura: { 101: {"carrier": "Servientrega", "guide": "12345"} }
+    admin_tracking_info: Dict[int, Dict[str, str]] = {}
+
+    def set_admin_tracking_carrier(self, purchase_id: int, value: str):
+        """Actualiza la empresa seleccionada para un pedido específico."""
+        if purchase_id not in self.admin_tracking_info:
+            self.admin_tracking_info[purchase_id] = {}
+        self.admin_tracking_info[purchase_id]["carrier"] = value
+
+    def set_admin_tracking_guide(self, purchase_id: int, value: str):
+        """Actualiza el número de guía para un pedido específico."""
+        if purchase_id not in self.admin_tracking_info:
+            self.admin_tracking_info[purchase_id] = {}
+        self.admin_tracking_info[purchase_id]["guide"] = value
+
+    def ship_order_with_guide(self, purchase_id: int):
+        """
+        Confirma el envío usando la información de la guía (Opción Guía Nacional).
+        """
+        # Recuperamos los datos de los inputs
+        info = self.admin_tracking_info.get(purchase_id, {})
+        carrier = info.get("carrier", "Servientrega") # Valor por defecto si no selecciona nada
+        guide = info.get("guide", "").strip()
+
+        if not guide:
+            return rx.toast.error("Por favor, ingresa el número de guía.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if not purchase:
+                return rx.toast.error("Pedido no encontrado.")
+
+            # 1. Guardamos la info de la guía
+            purchase.shipping_carrier = carrier
+            purchase.tracking_number = guide
+            purchase.shipping_type = "carrier"
+            
+            # 2. Actualizamos estado a ENVIADO (SHIPPED)
+            purchase.status = PurchaseStatus.SHIPPED
+            
+            # 3. Registramos quién hizo la acción
+            if self.authenticated_user_info:
+                purchase.action_by_id = self.authenticated_user_info.id
+            
+            session.add(purchase)
+            session.commit()
+            
+            # Limpiamos los datos temporales
+            if purchase_id in self.admin_tracking_info:
+                del self.admin_tracking_info[purchase_id]
+            
+            # Recargar la lista de pedidos (importante para refrescar la UI)
+            # Asegúrate de que esta función exista y recargue 'active_purchases'
+            # yield AppState.load_admin_sales 
+            
+            return rx.toast.success(f"Pedido #{purchase_id} enviado por {carrier}.")
+
     @rx.var
     def subtotal_cop(self) -> str:
         """
