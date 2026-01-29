@@ -58,9 +58,9 @@ def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.C
 
 # --- ✨ INICIO: COMPONENTES DE COMPRA CORREGIDOS CON AUDITORÍA ✨ ---
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra activa, con opción de Guía o Manual."""
+    """Tarjeta de pedido para el panel de administración."""
     
-    # Formulario de pestañas (Se mantiene igual que antes)
+    # Formulario de Envío (Guía vs Manual)
     set_delivery_and_shipping_form = rx.tabs.root(
         rx.tabs.list(
             rx.tabs.trigger("Guía Nacional", value="guide"),
@@ -69,26 +69,10 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
         rx.tabs.content(
             rx.vstack(
                 rx.text("Empresa de Envíos:", size="2", weight="bold"),
-                rx.select(
-                    ["Servientrega", "Interrapidísimo", "Coordinadora", "Envia", "Deprisa"],
-                    placeholder="Selecciona empresa",
-                    default_value="Servientrega",
-                    on_change=lambda val: AppState.set_admin_tracking_carrier(purchase.id, val),
-                    width="100%"
-                ),
+                rx.select(["Servientrega", "Interrapidísimo", "Coordinadora", "Envia", "Deprisa"], placeholder="Selecciona empresa", default_value="Servientrega", on_change=lambda val: AppState.set_admin_tracking_carrier(purchase.id, val), width="100%"),
                 rx.text("Número de Guía:", size="2", weight="bold"),
-                rx.input(
-                    placeholder="Ej: 2050123...",
-                    on_change=lambda val: AppState.set_admin_tracking_guide(purchase.id, val),
-                    width="100%"
-                ),
-                rx.button(
-                    "Confirmar Envío con Guía",
-                    on_click=lambda: AppState.ship_order_with_guide(purchase.id),
-                    color_scheme="violet",
-                    width="100%",
-                    margin_top="1em"
-                ),
+                rx.input(placeholder="Ej: 2050123...", on_change=lambda val: AppState.set_admin_tracking_guide(purchase.id, val), width="100%"),
+                rx.button("Confirmar Envío con Guía", on_click=lambda: AppState.ship_order_with_guide(purchase.id), color_scheme="violet", width="100%", margin_top="1em"),
                 spacing="3", padding="1em", border="1px solid #EAEAEA", border_radius="0 0 8px 8px"
             ),
             value="guide"
@@ -103,18 +87,8 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     spacing="2", width="100%",
                 ),
                 rx.text("Costo Final (Opcional):", size="2", weight="bold"),
-                rx.input(
-                    placeholder=f"Inicial: {purchase.shipping_applied_cop}",
-                    type="number",
-                    on_change=lambda val: AppState.set_admin_final_shipping_cost(purchase.id, val)
-                ),
-                rx.button(
-                    "Confirmar Entrega Manual",
-                    on_click=lambda: AppState.confirm_delivery_time(purchase.id),
-                    color_scheme="gray",
-                    width="100%",
-                    margin_top="1em"
-                ),
+                rx.input(placeholder=f"Inicial: {purchase.shipping_applied_cop}", type="number", on_change=lambda val: AppState.set_admin_final_shipping_cost(purchase.id, val)),
+                rx.button("Confirmar Entrega Manual", on_click=lambda: AppState.confirm_delivery_time(purchase.id), color_scheme="gray", width="100%", margin_top="1em"),
                 spacing="3", padding="1em", border="1px solid #EAEAEA", border_radius="0 0 8px 8px"
             ),
             value="manual"
@@ -132,38 +106,43 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     align_items="start", spacing="1"
                 ),
                 rx.spacer(),
-                # CORRECCIÓN 1: Usar rx.cond para el color del badge
-                rx.badge(
-                    purchase.status, 
-                    color_scheme=rx.cond(
-                        purchase.status == "confirmed", 
-                        "blue", 
-                        "green"
-                    )
-                ),
+                rx.badge(purchase.status, color_scheme=rx.cond(purchase.status == "confirmed", "blue", "green")),
                 width="100%", align_items="start"
             ),
             rx.divider(),
-            rx.foreach(purchase.purchase_items, lambda item: purchase_item_display_admin(item)),
+            rx.foreach(purchase.items, purchase_item_display_admin),
             rx.divider(),
-            
-            # CORRECCIÓN 2: Usar rx.cond en lugar de 'or' para los textos
             rx.vstack(
                 rx.text("Datos de Envío:", weight="bold", size="2"),
-                
-                # ANTES: rx.text(purchase.shipping_name or "N/A") -> ERROR
-                # AHORA: rx.cond(purchase.shipping_name, purchase.shipping_name, "N/A")
                 rx.text(rx.cond(purchase.shipping_name, purchase.shipping_name, "N/A"), size="2"),
-                
-                # Lo mismo para la dirección
                 rx.text(rx.cond(purchase.shipping_full_address, purchase.shipping_full_address, "N/A"), size="2"),
-                
-                # Lo mismo para el teléfono
                 rx.text(rx.cond(purchase.shipping_phone, purchase.shipping_phone, "N/A"), size="2"),
-                
                 spacing="1", width="100%", bg="gray.50", padding="0.5em", border_radius="md"
             ),
-            set_delivery_and_shipping_form,
+            
+            # --- FORMULARIO DE ENVÍO (Solo si está confirmado o pendiente) ---
+            rx.cond(
+                (purchase.status == PurchaseStatus.CONFIRMED.value) | (purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value),
+                set_delivery_and_shipping_form
+            ),
+
+            # --- GESTIÓN DE PAGO (CORREGIDO PARA MANUAL) ---
+            # Aparece si es Venta Directa O si es Envío Manual
+            rx.cond(
+                ((purchase.is_direct_sale) | (purchase.shipping_type == "manual")) & 
+                ((purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value)),
+                rx.vstack(
+                    rx.divider(),
+                    rx.text("Gestión de Pago (Contra Entrega / Manual)", weight="bold", color_scheme="orange"),
+                    rx.text("Confirma cuando hayas recibido el dinero.", size="2"),
+                    rx.button(
+                        "CONFIRMAR PAGO RECIBIDO",
+                        on_click=AppState.confirm_direct_payment(purchase.id),
+                        color_scheme="green", width="100%", size="3"
+                    ),
+                    spacing="3", width="100%", padding="1em", bg="orange.50", border_radius="md"
+                )
+            ),
             spacing="4", width="100%"
         ),
         width="100%", box_shadow="lg"

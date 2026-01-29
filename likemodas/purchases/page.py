@@ -1,4 +1,4 @@
-# likemodas/purchases/page.py (VERSIÓN COMPLETA Y DEFINITIVA)
+# likemodas/purchases/page.py (VISTA COMPRADOR CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
@@ -9,14 +9,7 @@ from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
 
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
-    """
-    [VERSIÓN FINAL Y CORREGIDA]
-    Muestra un solo artículo comprado. Usa un hstack con propiedades flex
-    para asegurar que la imagen siempre sea visible y que el texto
-    se alinee correctamente en cualquier tamaño de pantalla.
-    """
     return rx.hstack(
-        # Columna 1: Imagen del producto
         rx.box(
             rx.image(
                 src=rx.get_upload_url(item.image_url),
@@ -26,39 +19,26 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="md",
             ),
-            # Se asegura que la imagen no se encoja
             flex_shrink=0,
-            # Redirige a la página principal para abrir el modal correctamente
             on_click=rx.redirect(f"/?product_id_to_load={item.id}"),
             cursor="pointer",
             _hover={"opacity": 0.8},
         ),
-        # Columna 2: Título y detalles (ocupa el espacio flexible)
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
-            align_items="start",
-            spacing="1",
-            flex_grow=1,  # Permite que este elemento ocupe el espacio del medio
+            rx.hstack(
+                rx.text(f"Cant: {item.quantity}", size="2", weight="bold"),
+                rx.text(item.price_at_purchase_cop, size="2", color_scheme="violet"),
+                spacing="3",
+            ),
+            align_items="start", spacing="1", flex_grow=1, min_width="0",
         ),
-        # Columna 3: Cantidad y precio
-        rx.vstack(
-            rx.text(f"{item.quantity}x {item.price_at_purchase_cop}", size="3"),
-            align_items="end",
-            spacing="1",
-            flex_shrink=0,  # Evita que esta columna se encoja
-        ),
-        spacing="4",
-        align_items="center",
-        width="100%",
+        align_items="start", width="100%", spacing="3", padding="0.5em",
+        border="1px solid #EAEAEA", border_radius="md",
     )
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """
-    [VERSIÓN FINAL Y CORREGIDA] 
-    Muestra dirección y teléfono SIEMPRE.
-    Lógica inteligente para Guía vs Tiempo Estimado.
-    """
     return rx.card(
         rx.vstack(
             # --- Encabezado ---
@@ -83,10 +63,9 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
                 rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"), 
                 
-                # --- ✨ LÓGICA DE VISUALIZACIÓN DE ENVÍO ✨ ---
+                # Lógica de Guía vs Manual
                 rx.cond(
                     purchase.tracking_number,
-                    # CASO 1: TIENE GUÍA -> Mostrar Guía y Botón
                     rx.box(
                         rx.callout(
                             rx.vstack(
@@ -99,34 +78,24 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                                 ),
                                 spacing="1", width="100%"
                             ),
-                            icon="truck",
-                            color_scheme="blue",
-                            size="2",
-                            width="100%"
+                            icon="truck", color_scheme="blue", size="2", width="100%"
                         ),
                         width="100%", margin_top="0.5em"
                     ),
-                    # CASO 2: NO TIENE GUÍA -> Verificar si tiene fecha estimada (Manual)
+                    # Si no hay guía, verificamos si hay fecha estimada (Manual)
                     rx.cond(
                         purchase.estimated_delivery_date_formatted != "N/A",
                         rx.callout(
                             f"Entrega Manual Estimada: {purchase.estimated_delivery_date_formatted}",
-                            icon="clock",
-                            color_scheme="orange",
-                            width="100%",
-                            margin_top="0.5em"
-                        ),
-                        # CASO 3: AÚN NO ENVIADO
-                        rx.text("El vendedor está preparando tu pedido.", size="2", color_scheme="gray", margin_top="0.5em")
+                            icon="clock", color_scheme="orange", width="100%", margin_top="0.5em"
+                        )
                     )
                 ),
-                # ---------------------------------------------
-                
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
             
-            # --- Artículos y Totales (Se mantienen igual) ---
+            # --- Artículos ---
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.vstack(
@@ -135,6 +104,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
+            
+            # --- Totales ---
             rx.hstack(
                 rx.spacer(),
                 rx.grid(
@@ -146,53 +117,46 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 width="100%", margin_top="1em",
             ),
-            
-            # --- Botones de Acción ---
             rx.divider(margin_y="1em"),
-             rx.cond(
+            
+            # --- ACCIONES PRINCIPALES (Orden corregido) ---
+            
+            # 1. BOTÓN DE CONFIRMAR RECIBIDO (Prioridad Alta)
+            # Aparece apenas el estado es SHIPPED (Enviado)
+            rx.cond(
+                purchase.status == PurchaseStatus.SHIPPED.value, 
+                rx.vstack(
+                    rx.callout("El vendedor ha marcado tu pedido como enviado.", icon="info", color_scheme="blue", width="100%"),
+                    rx.button(
+                        "¡He Recibido mi Pedido!", 
+                        on_click=AppState.user_confirm_delivery(purchase.id), 
+                        width="100%", 
+                        size="3",
+                        color_scheme="green",
+                        margin_top="0.5em"
+                    ), 
+                    spacing="3", width="100%", margin_bottom="1em"
+                )
+            ),
+
+            # 2. BOTONES DE FACTURA / DEVOLUCIÓN (Solo si ya fue entregado)
+            rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                 rx.flex(
                     rx.link(rx.button("Imprimir Factura", variant="outline", width="100%"), href=f"/invoice?id={purchase.id}", is_external=False, target="_blank", width="100%"),
                     rx.button("Devolución o Cambio", on_click=AppState.go_to_return_page(purchase.id), variant="solid", color_scheme="orange", width="100%"),
                     direction={"initial": "column", "sm": "row"},
-                    spacing="3", margin_top="1em", width="100%",
+                    spacing="3", width="100%",
                 ),
             ),
-            # SECCIÓN DE CONFIRMACIÓN DE PAGO (Para Contra Entrega / Manual)
-            rx.cond(
-                # Mostrar SI: (Es venta directa) Y (Estado es ENVIADO o ENTREGADO)
-                (purchase.is_direct_sale) & 
-                ((purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value)),
-                
-                rx.vstack(
-                    rx.divider(),
-                    rx.text("Gestión de Pago (Contra Entrega / Manual)", weight="bold", color_scheme="orange"),
-                    rx.text("Confirma cuando hayas recibido el dinero del cliente.", size="2"),
-                    rx.button(
-                        "CONFIRMAR PAGO RECIBIDO",
-                        # Esta función debe cambiar el estado a COMPLETED o similar para moverlo al historial
-                        on_click=AppState.confirm_direct_payment(purchase.id),
-                        color_scheme="green",
-                        width="100%",
-                        size="3"
-                    ),
-                    spacing="3",
-                    width="100%",
-                    padding="1em",
-                    bg="orange.50",
-                    border_radius="md"
-                )
-            ),
+            
             spacing="4", width="100%",
         ),
-        width="100%",
-        min_width="370px",
-        padding="1.5em",
+        width="100%", min_width="370px", padding="1.5em",
     )
 
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
-    """Página del historial de compras del usuario."""
     page_content = rx.vstack(
         rx.heading("Mi Historial de Compras", size="8", text_align="center"),
         rx.text("Aquí puedes ver el estado y los detalles de todos tus pedidos.", color_scheme="gray", size="4", text_align="center"),
@@ -205,18 +169,8 @@ def purchase_history_content() -> rx.Component:
         rx.cond(
             AppState.filtered_user_purchases,
             rx.foreach(AppState.filtered_user_purchases, purchase_detail_card),
-            rx.center(
-                rx.text("No se encontraron compras para tu búsqueda."),
-                padding_y="2em",
-            )
+            rx.center(rx.text("No se encontraron compras para tu búsqueda."), padding_y="2em")
         ),
-        align="center",
-        spacing="6",
-        width="100%",
-        max_width="960px",
+        align="center", spacing="6", width="100%", max_width="960px", padding="2em",
     )
-
-    return rx.fragment(
-        account_layout(page_content),
-        product_detail_modal(),
-    )
+    return account_layout(page_content)
