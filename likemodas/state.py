@@ -392,6 +392,9 @@ class PurchaseItemCardData(rx.Base):
 
 class UserPurchaseHistoryCardData(rx.Base):
     id: int
+    # --- ✨ AGREGAR ESTA LÍNEA ---
+    userinfo_id: int 
+    # -----------------------------
     purchase_date_formatted: str
     total_price_cop: str
     status: str
