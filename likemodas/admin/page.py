@@ -264,6 +264,13 @@ def admin_confirm_content() -> rx.Component:
     """Página de admin para gestionar órdenes activas."""
     page_content = rx.center(
         rx.vstack(
+            # --- BOTÓN TEMPORAL DE REPARACIÓN ---
+            rx.button("⚠️ REPARAR BASE DE DATOS (Click 1 vez) ⚠️", 
+                      on_click=AppState.fix_database_enum, 
+                      color_scheme="red", 
+                      size="3"),
+            # ------------------------------------
+            
             rx.heading("Gestionar Órdenes Activas", size="8"),
             rx.cond(
                 AppState.active_purchases,

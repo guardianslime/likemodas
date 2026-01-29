@@ -8005,6 +8005,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     # likemodas/state.py
 
     @rx.event
+    def fix_database_enum(self):
+        """Ejecuta este comando UNA SOLA VEZ para arreglar el error del Enum."""
+        with rx.session() as session:
+            try:
+                # Este comando le dice a Postgres que acepte 'completed' como estado
+                session.exec(text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'completed'"))
+                session.commit()
+                return rx.toast.success("¡Base de datos reparada! Ahora puedes confirmar pagos.")
+            except Exception as e:
+                return rx.toast.error(f"Error o ya estaba arreglado: {str(e)}")
+
+    @rx.event
     async def handle_checkout(self):
         """
         [VERSIÓN FINAL CORREGIDA] Procesa la compra, añadiendo una validación robusta
@@ -8929,6 +8941,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                     )
 
+                # GENERAR URL DE RASTREO TAMBIÉN AQUÍ
+                tracking_link = generate_tracking_url(p.shipping_carrier, p.tracking_number)
+
                 history_list.append(
                     AdminPurchaseCardData(
                         id=p.id,
@@ -8944,6 +8959,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         net_base_cop=_format_to_cop_backend(net_base_val),
                         iva_cop=_format_to_cop_backend(iva_val),
                         # -------------------------------------
+
+                        # DATOS DE RASTREO EN HISTORIAL
+                        shipping_carrier=p.shipping_carrier,
+                        tracking_number=p.tracking_number,
+                        tracking_url=tracking_link,
                         
                         payment_method=p.payment_method,
                         shipping_applied=shipping_val,
@@ -9034,6 +9054,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # 1. Calcular Subtotal (Total - Envío)
                 shipping_val = p.shipping_applied or 0.0
                 subtotal_val = p.total_price - shipping_val
+                # GENERAR URL DE RASTREO
+                tracking_link = generate_tracking_url(p.shipping_carrier, p.tracking_number)
 
                 active_purchases_list.append(
                     AdminPurchaseCardData(
@@ -9058,6 +9080,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         is_direct_sale=p.is_direct_sale,
                         shipping_carrier=p.shipping_carrier,
                         tracking_number=p.tracking_number,
+                        tracking_url=tracking_link,  # <--- AQUÍ SE GUARDA EL LINK
                         shipping_type=p.shipping_type,
                         shipping_applied_cop=_format_to_cop_backend(p.shipping_applied or 0.0)
                     )
@@ -11563,3 +11586,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             
         # Recargar la lista
         yield AppState.load_admin_reports
+
+def generate_tracking_url(carrier: str, guide: str) -> str:
+    """Genera el link de rastreo según la empresa."""
+    if not carrier or not guide:
+        return ""
+    
+    c = carrier.lower()
+    g = guide.strip()
+    
+    if "servientrega" in c:
+        return f"https://www.servientrega.com/wps/portal/rastreo-envio-detalle?Guia={g}"
+    elif "interrapid" in c: # Interrapidísimo
+        return f"https://www.interrapidisimo.com/sigue-tu-envio/?guia={g}"
+    elif "coordinadora" in c:
+        return f"https://www.coordinadora.com/rastreo/rastreo-en-linea/detalle-rastreo/?guia={g}"
+    elif "envia" in c:
+        return f"https://envia.co/" # Envia suele requerir captcha, mandamos a la home
+    elif "deprisa" in c:
+        return f"https://www.deprisa.com/"
+    
+    return "" # Si es manual o desconocida
