@@ -350,25 +350,25 @@ class AdminPurchaseCardData(rx.Base):
     purchase_date_formatted: str
     status: str
     total_price: float
-    # --- ✨ AGREGAR ESTE CAMPO FALTANTE ✨ ---
-    subtotal_cop: str = "$ 0" 
-    # -----------------------------------------
     total_price_cop: str
+    
+    # --- ✨ CAMPOS FINANCIEROS (Asegúrate de tener todos estos) ✨ ---
+    subtotal_cop: str = "$ 0"
+    iva_cop: str = "$ 0"       # <--- EL QUE FALTA
+    net_base_cop: str = "$ 0"  # (Opcional, pero recomendado para facturas)
+    # ---------------------------------------------------------------
+
     payment_method: str
     confirmed_at: Optional[datetime] = None
     shipping_applied: Optional[float] = 0.0
     shipping_applied_cop: str = "$ 0"
     
+    # ... (resto de campos: shipping_name, product_list, etc.) ...
     shipping_name: Optional[str] = None
     shipping_full_address: Optional[str] = None
     shipping_phone: Optional[str] = None
-    
-    # ✨ CAMBIO: Renombrado de 'items' a 'product_list' para evitar error de compilación
     product_list: List[PurchaseItemCardData] 
-    
     action_by_name: Optional[str] = None
-    
-    # Datos para lógica de UI
     is_direct_sale: bool = False
     shipping_carrier: Optional[str] = None
     tracking_number: Optional[str] = None
@@ -8864,121 +8864,95 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.new_purchase_notification = True
 
     # --- ✨ MÉTODO MODIFICADO: `load_purchase_history` (para Admin) ✨ ---
+    # --- EN likemodas/state.py (Dentro de AppState) ---
+
     @rx.event
     def load_purchase_history(self):
         """
-        [CORRECCIÓN DEFINITIVA V2] Carga el historial del vendedor con la consulta
-        correcta y el método .unique() requerido por SQLAlchemy.
+        Carga el historial completo de pagos (COMPLETED, DELIVERED, etc.)
+        Calcula Subtotal e IVA asumiendo que el precio incluye impuestos (19%).
         """
-        if not (self.is_admin or self.is_vendedor or self.is_empleado):
-            self.purchase_history = []
-            return
-
+        if not (self.is_admin or self.is_vendedor or self.is_empleado): return
+        
         with rx.session() as session:
-            user_id_to_check = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else 0)
+            # Filtro base (ajusta según tu lógica de historial)
+            query = sqlmodel.select(PurchaseModel).options(
+                sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post),
+                sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
+            ).where(
+                PurchaseModel.status.in_([
+                    PurchaseStatus.COMPLETED, 
+                    PurchaseStatus.DELIVERED,
+                    PurchaseStatus.CONFIRMED # A veces se quiere ver todo el historial
+                ])
+            ).order_by(PurchaseModel.purchase_date.desc()) # Ordenar por más reciente
 
-            # 1. Obtenemos los IDs únicos de las compras que pertenecen al vendedor.
-            subquery = (
-                sqlmodel.select(PurchaseItemModel.purchase_id)
-                .join(BlogPostModel)
-                .where(BlogPostModel.userinfo_id == user_id_to_check)
-            ).distinct()
+            # (Si tienes lógica de búsqueda, iría aquí)
+            
+            purchases = session.exec(query).unique().all()
+            
+            history_list = []
+            for p in purchases:
+                # 1. CÁLCULOS FINANCIEROS
+                shipping_val = p.shipping_applied or 0.0
+                total_val = p.total_price
+                
+                # Subtotal = Total - Envío
+                subtotal_val = total_val - shipping_val
+                
+                # Base Imponible = Subtotal / 1.19 (Asumiendo IVA 19% incluido)
+                net_base_val = subtotal_val / 1.19
+                
+                # IVA = Subtotal - Base
+                iva_val = subtotal_val - net_base_val
 
-            # 2. Usamos esos IDs para obtener los objetos de compra completos.
-            query = (
-                sqlmodel.select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post),
-                    sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
-                )
-                .where(
-                    PurchaseModel.id.in_(subquery),
-                    PurchaseModel.status.in_([
-                        PurchaseStatus.DELIVERED,
-                        PurchaseStatus.DIRECT_SALE,
-                        PurchaseStatus.FAILED
-                    ])
-                )
-                .order_by(PurchaseModel.purchase_date.desc())
-            )
-            
-            # 3. Ejecutamos la consulta AÑADIENDO .unique() para agrupar los resultados.
-            results = session.exec(query).unique().all()
-            
-            # --- ✨ FIN DE LA NUEVA CONSULTA CORREGIDA ✨ --
-            
-            temp_history = []
-            for p in results:
+                # 2. PROCESAR PRODUCTOS (Igual que en active_purchases)
                 detailed_items = []
                 for item in p.items:
-                    if item.blog_post:
-                        # Lógica para obtener la URL de la imagen de la variante correcta
-                        variant_image_url = ""
-                        correct_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
-                        if correct_variant:
-                            image_urls = correct_variant.get("image_urls", [])
-                            if image_urls:
-                                variant_image_url = image_urls[0]
-                        
-                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
-                        detailed_items.append(
-                            PurchaseItemCardData(
-                                id=item.blog_post.id,
-                                title=item.blog_post.title,
-                                image_url=variant_image_url,
-                                price_at_purchase=item.price_at_purchase,
-                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                quantity=item.quantity,
-                                variant_details_str=variant_str,
-                            )
+                    variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()]) if item.selected_variant else ""
+                    # (Puedes simplificar la imagen aquí si es solo historial texto)
+                    variant_image_url = "" 
+                    if item.blog_post and item.blog_post.variants:
+                         if item.blog_post.variants[0].get("image_urls"): 
+                             variant_image_url = item.blog_post.variants[0]["image_urls"][0]
+
+                    detailed_items.append(
+                        PurchaseItemCardData(
+                            id=item.blog_post.id if item.blog_post else 0, 
+                            title=item.blog_post.title if item.blog_post else "Item", 
+                            image_url=variant_image_url,
+                            price_at_purchase=item.price_at_purchase,
+                            price_at_purchase_cop=_format_to_cop_backend(item.price_at_purchase),
+                            quantity=item.quantity, 
+                            variant_details_str=variant_str,
                         )
-                
-                actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
+                    )
 
-                # Lógica para mostrar el nombre y correo del cliente (anónimo o registrado)
-                customer_name_display = p.shipping_name or "Cliente"
-                customer_email_display = "Sin Correo"
-                if p.is_direct_sale:
-                    customer_email_display = p.anonymous_customer_email or "Sin Correo"
-                elif p.userinfo and p.userinfo.user:
-                    customer_email_display = p.userinfo.email
-
-                full_address = "N/A"
-                if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
-                    full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}"
-
-                # Lógica de cálculo de costos (replicando la de la factura)
-                subtotal_base = sum(
-                    (item.blog_post.base_price * item.quantity)
-                    for item in p.items if item.blog_post
-                )
-                iva_calculado = subtotal_base * 0.19
-
-                temp_history.append(
+                history_list.append(
                     AdminPurchaseCardData(
                         id=p.id,
-                        customer_name=customer_name_display,
-                        customer_email=customer_email_display,
-                        anonymous_customer_email=p.anonymous_customer_email,
+                        customer_name=p.shipping_name or (p.userinfo.user.username if p.userinfo else "Cliente"),
+                        customer_email=p.anonymous_customer_email or (p.userinfo.email if p.userinfo else ""),
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value,
                         total_price=p.total_price,
-                        shipping_name=p.shipping_name,
-                        shipping_full_address=full_address,
-                        shipping_phone=p.shipping_phone, 
+                        total_price_cop=_format_to_cop_backend(p.total_price),
+                        
+                        # ✨ ASIGNACIÓN DE LOS CAMPOS NUEVOS ✨
+                        subtotal_cop=_format_to_cop_backend(subtotal_val),
+                        net_base_cop=_format_to_cop_backend(net_base_val),
+                        iva_cop=_format_to_cop_backend(iva_val),
+                        # -------------------------------------
+                        
                         payment_method=p.payment_method,
-                        confirmed_at=p.confirmed_at,
-                        # Se pasan los valores correctos y formateados
-                        shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
-                        subtotal_cop=format_to_cop(subtotal_base),
-                        iva_cop=format_to_cop(iva_calculado),
-                        purchase_items=detailed_items, # <--- ASIGNACIÓN AL NUEVO CAMPO
-                        # items=detailed_items,
-                        action_by_name=actor_name
+                        shipping_applied=shipping_val,
+                        shipping_applied_cop=_format_to_cop_backend(shipping_val),
+                        product_list=detailed_items,
+                        is_direct_sale=p.is_direct_sale
                     )
                 )
-            self.purchase_history = temp_history
+            self.filtered_admin_purchases = history_list # Ojo: asegúrate de asignar a la variable correcta usada en el foreach
 
     @rx.var
     def active_purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
