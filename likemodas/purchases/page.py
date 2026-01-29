@@ -99,7 +99,11 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.vstack(
-                    rx.foreach(AppState.purchase_items_map.get(purchase.id, []), purchase_item_card),
+                    # ✨ CAMBIO AQUÍ: Usar 'purchase.product_list' en lugar de 'purchase.items' ✨
+                    # OJO: Si usabas el mapa 'AppState.purchase_items_map', puedes seguir usándolo, 
+                    # pero usar 'product_list' directo es más limpio y rápido.
+                    rx.foreach(purchase.product_list, purchase_item_card),
+                    
                     spacing="3", width="100%",
                 ),
                 spacing="2", align_items="start", width="100%",

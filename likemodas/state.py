@@ -397,9 +397,7 @@ class PurchaseItemCardData(rx.Base):
 
 class UserPurchaseHistoryCardData(rx.Base):
     id: int
-    # --- ✨ AGREGAR ESTA LÍNEA ---
-    userinfo_id: int 
-    # -----------------------------
+    userinfo_id: int
     purchase_date_formatted: str
     total_price_cop: str
     status: str
@@ -411,13 +409,15 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_applied_cop: str
     estimated_delivery_date_formatted: str
     
-    # --- ✨ AGREGAR ESTOS 3 CAMPOS NUEVOS ✨ ---
+    # --- ✨ CAMBIO OBLIGATORIO: items -> product_list ✨ ---
+    # Igual que hicimos con el admin, 'items' está prohibido en Reflex
+    product_list: List[PurchaseItemCardData] 
+    # -----------------------------------------------------
+
     shipping_carrier: Optional[str] = None
     tracking_number: Optional[str] = None
     tracking_url: Optional[str] = None
-    # --- ✨ AGREGAR ESTO AHORA MISMO ✨ ---
     is_direct_sale: bool = False
-    # ------------------------------------------
 
 # --- ✨ INICIO DE LA SOLUCIÓN ✨ ---
 # Se añaden estas líneas para resolver las referencias anidadas
@@ -9380,8 +9380,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_purchases(self):
         """
-        [CORREGIDO] Carga el historial de compras del usuario, asegurando que la imagen
-        de cada artículo corresponda a la variante exacta que se compró.
+        Carga las compras del usuario con imágenes correctas y links de rastreo.
         """
         if not self.authenticated_user_info:
             self.user_purchases = []
@@ -9399,33 +9398,29 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_purchases = []
             for p in results:
+                # --- PROCESAMIENTO DE PRODUCTOS ---
                 purchase_items_data = []
                 if p.items:
                     for item in p.items:
                         if item.blog_post:
-                            # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                            # Lógica de Imagen (Variante exacta o fallback)
                             variant_image_url = ""
-                            # 1. Intenta encontrar la variante exacta que se compró
-                            for variant in item.blog_post.variants:
-                                if variant.get("attributes") == item.selected_variant:
-                                    image_urls = variant.get("image_urls", [])
-                                    if image_urls:
-                                        variant_image_url = image_urls[0]
-                                    break
-                            
-                            # 2. Si no la encuentra (pudo ser borrada), usa la primera imagen del producto como respaldo
-                            if not variant_image_url and item.blog_post.variants:
-                                image_urls = item.blog_post.variants[0].get("image_urls", [])
-                                if image_urls:
-                                    variant_image_url = image_urls[0]
-                            # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                            if item.blog_post.variants:
+                                for variant in item.blog_post.variants:
+                                    if variant.get("attributes") == item.selected_variant:
+                                        image_urls = variant.get("image_urls", [])
+                                        if image_urls: variant_image_url = image_urls[0]
+                                        break
+                                if not variant_image_url and item.blog_post.variants[0].get("image_urls"):
+                                    variant_image_url = item.blog_post.variants[0]["image_urls"][0]
 
-                            variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                            variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()]) if item.selected_variant else ""
+                            
                             purchase_items_data.append(
                                 PurchaseItemCardData(
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
-                                    image_url=variant_image_url, # Se pasa la URL correcta
+                                    image_url=variant_image_url,
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                     quantity=item.quantity,
@@ -9433,6 +9428,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 )
                             )
                 
+                # --- ✨ GENERAR LINK DE RASTREO ✨ ---
+                # Usamos la función auxiliar que definimos antes
+                tracking_link = generate_tracking_url(p.shipping_carrier, p.tracking_number)
+
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
                         id=p.id, 
@@ -9441,15 +9440,28 @@ class AppState(reflex_local_auth.LocalAuthState):
                         status=p.status.value, 
                         total_price_cop=p.total_price_cop,
                         shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
+                        
+                        # Datos de Envío
                         shipping_name=p.shipping_name, 
                         shipping_address=p.shipping_address,
                         shipping_neighborhood=p.shipping_neighborhood, 
                         shipping_city=p.shipping_city,
                         shipping_phone=p.shipping_phone, 
-                        items=purchase_items_data,
-                        estimated_delivery_date_formatted=format_utc_to_local(p.estimated_delivery_date)
+                        estimated_delivery_date_formatted=format_utc_to_local(p.estimated_delivery_date),
+                        
+                        # ✨ CAMPO RENOMBRADO (items -> product_list) ✨
+                        product_list=purchase_items_data,
+                        
+                        # Datos de Rastreo
+                        shipping_carrier=p.shipping_carrier,
+                        tracking_number=p.tracking_number,
+                        tracking_url=tracking_link,
+                        is_direct_sale=p.is_direct_sale
                     )
                 )
+            # Actualizamos también el mapa auxiliar por si acaso
+            self.purchase_items_map = {p.id: p.items for p in results} # Este mapa puede seguir usando items si son modelos puros, pero mejor usar la lista procesada si la necesitas en otro lado.
+            
             self.user_purchases = temp_purchases
 
     
