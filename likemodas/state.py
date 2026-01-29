@@ -9238,6 +9238,36 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
 
     @rx.event
+    def confirm_direct_payment(self, purchase_id: int):
+        """
+        [NUEVO] El vendedor confirma que recibió el dinero (Efectivo/Transferencia).
+        El pedido pasa a estado 'completed' y sale de la lista de activos.
+        """
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if not purchase:
+                return rx.toast.error("Pedido no encontrado.")
+
+            # 1. Cambiamos el estado a COMPLETED
+            # Al ser 'completed', ya no aparecerá en load_active_purchases
+            # porque esa función solo busca [PENDING, CONFIRMED, SHIPPED, DELIVERED]
+            purchase.status = PurchaseStatus.COMPLETED
+            
+            # 2. Registramos la fecha de confirmación final (pago recibido)
+            purchase.confirmed_at = datetime.now(timezone.utc)
+            
+            # 3. Guardamos quién confirmó el pago (el vendedor actual)
+            if self.authenticated_user_info:
+                purchase.action_by_id = self.authenticated_user_info.id
+
+            session.add(purchase)
+            session.commit()
+            
+            # Recargamos la lista para que el pedido desaparezca de la vista actual
+            yield AppState.load_active_purchases
+            return rx.toast.success("Pago registrado. Pedido movido al Historial.")
+
+    @rx.event
     def confirm_online_payment(self, purchase_id: int):
         """
         Confirma un pago online. Cambia el estado de PENDING a CONFIRMED.

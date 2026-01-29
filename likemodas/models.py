@@ -83,8 +83,10 @@ class PurchaseStatus(str, enum.Enum):
     SHIPPED = "shipped"
     DELIVERED = "delivered"
     FAILED = "failed"
-    # --- AÑADE ESTA NUEVA OPCIÓN ---
-    DIRECT_SALE = "Venta Directa" 
+    DIRECT_SALE = "Venta Directa"
+    # --- ✨ AGREGAR ESTA LÍNEA ✨ ---
+    COMPLETED = "completed" 
+    # --------------------------------
 
 class VoteType(str, enum.Enum):
     LIKE = "like"
