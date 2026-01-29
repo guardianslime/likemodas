@@ -415,6 +415,8 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_carrier: Optional[str] = None
     tracking_number: Optional[str] = None
     tracking_url: Optional[str] = None
+    # --- ✨ AGREGAR ESTO AHORA MISMO ✨ ---
+    is_direct_sale: bool = False
     # ------------------------------------------
 
 # --- ✨ INICIO DE LA SOLUCIÓN ✨ ---
