@@ -347,29 +347,26 @@ class AdminPurchaseCardData(rx.Base):
     id: int
     customer_name: str
     customer_email: str
-    anonymous_customer_email: Optional[str] = None
     purchase_date_formatted: str
     status: str
     total_price: float
-    # --- ✨ INICIO: AÑADE ESTAS LÍNEAS ✨ ---
-    subtotal_cop: str = "$ 0"
-    iva_cop: str = "$ 0"
-    # --- ✨ FIN ✨ ---
-    shipping_name: Optional[str] = None
-    shipping_full_address: Optional[str] = None
-    shipping_phone: Optional[str] = None
-    # --- ✨ FIN: CAMPOS OPCIONALES CORREGIDOS ✨ ---
+    total_price_cop: str
     payment_method: str
     confirmed_at: Optional[datetime] = None
     shipping_applied: Optional[float] = 0.0
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Ya no es una propiedad, es un campo de texto simple.
     shipping_applied_cop: str = "$ 0"
-    # items: list[PurchaseItemCardData] = []  <--- ASEGÚRESE DE QUE ESTA LÍNEA NO ESTÉ
-    purchase_items: list[PurchaseItemCardData] = []  # <--- ESTA ES LA SOLUCIÓN
+    
+    shipping_name: Optional[str] = None
+    shipping_full_address: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    
+    # ✨ CAMBIO: Renombrado de 'items' a 'product_list' para evitar error de compilación
+    product_list: List[PurchaseItemCardData] 
+    
     action_by_name: Optional[str] = None
+    
+    # Datos para lógica de UI
     is_direct_sale: bool = False
-    shipping_applied_cop: str = "$ 0"
     shipping_carrier: Optional[str] = None
     tracking_number: Optional[str] = None
     shipping_type: Optional[str] = None
@@ -9000,12 +8997,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_active_purchases(self):
+        """Carga las compras activas (incluyendo entregadas para cobrar)."""
         if not (self.is_admin or self.is_vendedor or self.is_empleado): return
         
         with rx.session() as session:
             user_id_to_check = self.context_user_id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
             
-            # Cargar pedidos incluyendo DELIVERED para poder cobrar
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -9018,7 +9015,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         PurchaseStatus.PENDING_CONFIRMATION,
                         PurchaseStatus.CONFIRMED,
                         PurchaseStatus.SHIPPED,
-                        PurchaseStatus.DELIVERED, # IMPORTANTE: Para que no desaparezca antes de cobrar
+                        PurchaseStatus.DELIVERED, 
                     ]),
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
@@ -9027,18 +9024,33 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             active_purchases_list = []
             for p in purchases:
-                # (Lógica de items e imágenes igual que antes...)
                 detailed_items = []
                 for item in p.items:
-                    # ... (copia tu lógica de imágenes corregida aquí) ...
-                    variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                    # Lógica de imagen
+                    variant_image_url = ""
+                    if item.blog_post and item.blog_post.variants:
+                        # 1. Buscar variante exacta
+                        for variant in item.blog_post.variants:
+                            if variant.get("attributes") == item.selected_variant:
+                                image_urls = variant.get("image_urls", [])
+                                if image_urls: variant_image_url = image_urls[0]
+                                break
+                        # 2. Fallback a primera imagen
+                        if not variant_image_url:
+                            first_var = item.blog_post.variants[0]
+                            if first_var.get("image_urls"): variant_image_url = first_var["image_urls"][0]
+
+                    variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()]) if item.selected_variant else ""
+                    
                     detailed_items.append(
                         PurchaseItemCardData(
-                            id=item.blog_post.id, title=item.blog_post.title, 
-                            image_url=item.blog_post.variants[0].get("image_urls", [""])[0] if item.blog_post.variants else "",
+                            id=item.blog_post.id if item.blog_post else 0, 
+                            title=item.blog_post.title if item.blog_post else "Producto eliminado", 
+                            image_url=variant_image_url,
                             price_at_purchase=item.price_at_purchase,
                             price_at_purchase_cop=_format_to_cop_backend(item.price_at_purchase),
-                            quantity=item.quantity, variant_details_str=variant_str,
+                            quantity=item.quantity, 
+                            variant_details_str=variant_str,
                         )
                     )
 
@@ -9048,21 +9060,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                         customer_name=p.shipping_name or "Cliente",
                         customer_email=p.userinfo.email if p.userinfo else "Sin Email",
                         purchase_date_formatted=p.purchase_date_formatted,
-                        status=p.status.value, # Asegúrate de pasar el valor string
+                        status=p.status.value,
                         total_price=p.total_price,
                         total_price_cop=_format_to_cop_backend(p.total_price),
                         payment_method=p.payment_method,
                         shipping_name=p.shipping_name,
                         shipping_phone=p.shipping_phone,
-                        shipping_full_address=p.shipping_address,
-                        items=detailed_items,
+                        shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                         
-                        # DATOS CLAVE PARA LA UI
+                        # ✨ AQUÍ USAMOS EL NUEVO NOMBRE 'product_list'
+                        product_list=detailed_items,
+                        
                         is_direct_sale=p.is_direct_sale,
                         shipping_carrier=p.shipping_carrier,
                         tracking_number=p.tracking_number,
-                        shipping_type=p.shipping_type, # Necesario para la condición corregida
-                        shipping_applied_cop=_format_to_cop_backend(p.shipping_applied)
+                        shipping_type=p.shipping_type,
+                        shipping_applied_cop=_format_to_cop_backend(p.shipping_applied or 0.0)
                     )
                 )
             self.active_purchases = active_purchases_list

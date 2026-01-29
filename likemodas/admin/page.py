@@ -110,7 +110,8 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 width="100%", align_items="start"
             ),
             rx.divider(),
-            rx.foreach(purchase.items, purchase_item_display_admin),
+            # ✨ CAMBIO: Usar 'purchase.product_list' en lugar de 'purchase.items'
+            rx.foreach(purchase.product_list, purchase_item_display_admin),
             rx.divider(),
             rx.vstack(
                 rx.text("Datos de Envío:", weight="bold", size="2"),
