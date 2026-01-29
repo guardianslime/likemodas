@@ -350,6 +350,9 @@ class AdminPurchaseCardData(rx.Base):
     purchase_date_formatted: str
     status: str
     total_price: float
+    # --- ✨ AGREGAR ESTE CAMPO FALTANTE ✨ ---
+    subtotal_cop: str = "$ 0" 
+    # -----------------------------------------
     total_price_cop: str
     payment_method: str
     confirmed_at: Optional[datetime] = None
@@ -9054,6 +9057,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                     )
 
+                # 1. Calcular Subtotal (Total - Envío)
+                shipping_val = p.shipping_applied or 0.0
+                subtotal_val = p.total_price - shipping_val
+
                 active_purchases_list.append(
                     AdminPurchaseCardData(
                         id=p.id,
@@ -9063,6 +9070,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         status=p.status.value,
                         total_price=p.total_price,
                         total_price_cop=_format_to_cop_backend(p.total_price),
+                        # --- ✨ ASIGNAR EL NUEVO CAMPO AQUÍ ✨ ---
+                        subtotal_cop=_format_to_cop_backend(subtotal_val),
+                        # ----------------------------------------
                         payment_method=p.payment_method,
                         shipping_name=p.shipping_name,
                         shipping_phone=p.shipping_phone,
