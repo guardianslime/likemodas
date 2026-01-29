@@ -6704,78 +6704,63 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def confirm_delivery_time(self, purchase_id: int):
         """
-        Confirma el despacho MANUAL (sin empresa de transporte).
-        Calcula fecha estimada y cambia estado a SHIPPED.
+        Confirma entrega MANUAL. 
+        IMPORTANTE: Marca la venta como Venta Directa (Contra Entrega) para habilitar el cobro.
         """
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if not purchase:
-                return rx.toast.error("Pedido no encontrado.")
+            if not purchase: return
 
-            # 1. Calcular Fecha Estimada
+            # 1. Calcular fecha (tu lógica existente...)
             times = self.admin_delivery_times.get(purchase_id, {"days": 0, "hours": 0, "minutes": 0})
             total_minutes = (times["days"] * 24 * 60) + (times["hours"] * 60) + times["minutes"]
-            
             if total_minutes > 0:
-                estimated_date = datetime.now(timezone.utc) + timedelta(minutes=total_minutes)
-                purchase.estimated_delivery_date = estimated_date
+                purchase.estimated_delivery_date = datetime.now(timezone.utc) + timedelta(minutes=total_minutes)
 
-            # 2. Actualizar Costo Real (Opcional)
-            cost_str = self.admin_final_shipping_costs.get(purchase_id)
-            if cost_str:
-                try:
-                    purchase.actual_shipping_cost = float(cost_str)
-                except ValueError:
-                    pass
-
-            # 3. Actualizar Estado
+            # 2. Actualizar estado a ENVIADO
             purchase.status = PurchaseStatus.SHIPPED
             purchase.shipping_type = "manual"
-            purchase.shipping_carrier = "Entrega Personal/Manual"
+            purchase.shipping_carrier = "Domiciliario Propio"
             
-            if self.authenticated_user_info:
-                purchase.action_by_id = self.authenticated_user_info.id
-
+            # ✨ CAMBIO CLAVE: Si es manual, asumimos que es gestión directa del vendedor
+            # Esto habilitará el botón "Confirmar Pago" en el panel.
+            purchase.is_direct_sale = True 
+            
             session.add(purchase)
             session.commit()
-
-            # Limpiar memoria
-            if purchase_id in self.admin_delivery_times: del self.admin_delivery_times[purchase_id]
-            if purchase_id in self.admin_final_shipping_costs: del self.admin_final_shipping_costs[purchase_id]
             
-            return rx.toast.success(f"Entrega manual confirmada para pedido #{purchase_id}")
+            # Limpiar temporales
+            if purchase_id in self.admin_delivery_times: del self.admin_delivery_times[purchase_id]
+            
+            return rx.toast.success("Entrega manual programada. Ahora gestiona el pago.")
 
     def ship_order_with_guide(self, purchase_id: int):
         """
-        Confirma el despacho con GUÍA (Servientrega, etc).
+        Confirma envío por GUÍA.
         """
+        # (Recuperar datos de carrier_input/guide_input...)
         info = self.admin_tracking_info.get(purchase_id, {})
         carrier = info.get("carrier", "Servientrega")
         guide = info.get("guide", "").strip()
 
-        if not guide:
-            return rx.toast.error("Por favor, ingresa el número de guía.")
-
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if not purchase:
-                return rx.toast.error("Pedido no encontrado.")
+            if not purchase: return
 
             purchase.shipping_carrier = carrier
             purchase.tracking_number = guide
             purchase.shipping_type = "carrier"
             purchase.status = PurchaseStatus.SHIPPED
             
-            if self.authenticated_user_info:
-                purchase.action_by_id = self.authenticated_user_info.id
+            # La guía NO cambia is_direct_sale automáticamente, 
+            # eso depende de si el pago fue online o contra entrega originalmente.
             
             session.add(purchase)
             session.commit()
             
-            if purchase_id in self.admin_tracking_info:
-                del self.admin_tracking_info[purchase_id]
+            if purchase_id in self.admin_tracking_info: del self.admin_tracking_info[purchase_id]
             
-            return rx.toast.success(f"Pedido #{purchase_id} enviado por {carrier}.")
+            return rx.toast.success(f"Guía {guide} registrada.")
 
     @rx.var
     def subtotal_cop(self) -> str:

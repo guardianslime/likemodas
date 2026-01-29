@@ -56,11 +56,12 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """
     [VERSIÓN FINAL Y CORREGIDA] 
-    Muestra dirección y teléfono SIEMPRE. Si hay guía, muestra el rastreo abajo.
+    Muestra dirección y teléfono SIEMPRE.
+    Lógica inteligente para Guía vs Tiempo Estimado.
     """
     return rx.card(
         rx.vstack(
-            # --- Encabezado (Igual que antes) ---
+            # --- Encabezado ---
             rx.flex(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -71,24 +72,21 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 rx.badge(purchase.status.replace("_", " ").title(), color_scheme="violet", variant="soft", size="2"),
                 direction={"initial": "column", "sm": "row"},
                 align={"initial": "start", "sm": "center"},
-                justify="between",
-                width="100%",
+                justify="between", width="100%",
             ),
             rx.divider(),
             
-            # --- Detalles de Envío (CORREGIDO) ---
+            # --- Detalles de Envío ---
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
-                
-                # 1. INFORMACIÓN DE CONTACTO (Siempre visible)
-                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
+                rx.text(f"Recibe: {purchase.shipping_name}", size="3"),
                 rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
-                # AQUÍ ESTÁ LA LÍNEA DEL TELÉFONO QUE PEDISTE MANTENER:
                 rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"), 
                 
-                # 2. INFORMACIÓN DE GUÍA (Solo si existe, aparece abajo)
+                # --- ✨ LÓGICA DE VISUALIZACIÓN DE ENVÍO ✨ ---
                 rx.cond(
                     purchase.tracking_number,
+                    # CASO 1: TIENE GUÍA -> Mostrar Guía y Botón
                     rx.box(
                         rx.callout(
                             rx.vstack(
@@ -96,8 +94,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                                 rx.text(f"Guía: {purchase.tracking_number}"),
                                 rx.link(
                                     rx.button("Rastrear Pedido", size="2", variant="outline", color_scheme="blue", margin_top="0.5em", width="100%"),
-                                    # Usamos .to(str) para asegurar que Python 3.12 lo entienda como texto simple
-                                    href=purchase.tracking_url.to(str), 
+                                    href=purchase.tracking_url.to(str),
                                     is_external=True
                                 ),
                                 spacing="1", width="100%"
@@ -108,25 +105,36 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                             width="100%"
                         ),
                         width="100%", margin_top="0.5em"
+                    ),
+                    # CASO 2: NO TIENE GUÍA -> Verificar si tiene fecha estimada (Manual)
+                    rx.cond(
+                        purchase.estimated_delivery_date_formatted != "N/A",
+                        rx.callout(
+                            f"Entrega Manual Estimada: {purchase.estimated_delivery_date_formatted}",
+                            icon="clock",
+                            color_scheme="orange",
+                            width="100%",
+                            margin_top="0.5em"
+                        ),
+                        # CASO 3: AÚN NO ENVIADO
+                        rx.text("El vendedor está preparando tu pedido.", size="2", color_scheme="gray", margin_top="0.5em")
                     )
                 ),
+                # ---------------------------------------------
                 
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
             
-            # --- Artículos Comprados (Igual que antes) ---
+            # --- Artículos y Totales (Se mantienen igual) ---
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
-                rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
                 rx.vstack(
                     rx.foreach(AppState.purchase_items_map.get(purchase.id, []), purchase_item_card),
                     spacing="3", width="100%",
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
-            
-            # --- Sección de Totales (Igual que antes) ---
             rx.hstack(
                 rx.spacer(),
                 rx.grid(
@@ -138,9 +146,9 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 width="100%", margin_top="1em",
             ),
-            rx.divider(margin_y="1em"),
             
-            # --- Botones de Acción (Igual que antes) ---
+            # --- Botones de Acción ---
+            rx.divider(margin_y="1em"),
              rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                 rx.flex(
@@ -150,18 +158,35 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     spacing="3", margin_top="1em", width="100%",
                 ),
             ),
-             rx.cond(
-                purchase.status == PurchaseStatus.SHIPPED.value, 
+            # SECCIÓN DE CONFIRMACIÓN DE PAGO (Para Contra Entrega / Manual)
+            rx.cond(
+                # Mostrar SI: (Es venta directa) Y (Estado es ENVIADO o ENTREGADO)
+                (purchase.is_direct_sale) & 
+                ((purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value)),
+                
                 rx.vstack(
-                    rx.callout(f"Tu pedido llegará aproximadamente el: {purchase.estimated_delivery_date_formatted}", icon="truck", color_scheme="blue", width="100%"), 
-                    rx.button("He Recibido mi Pedido", on_click=AppState.user_confirm_delivery(purchase.id), width="100%", margin_top="0.5em", color_scheme="green"), 
-                    spacing="3", width="100%"
+                    rx.divider(),
+                    rx.text("Gestión de Pago (Contra Entrega / Manual)", weight="bold", color_scheme="orange"),
+                    rx.text("Confirma cuando hayas recibido el dinero del cliente.", size="2"),
+                    rx.button(
+                        "CONFIRMAR PAGO RECIBIDO",
+                        # Esta función debe cambiar el estado a COMPLETED o similar para moverlo al historial
+                        on_click=AppState.confirm_direct_payment(purchase.id),
+                        color_scheme="green",
+                        width="100%",
+                        size="3"
+                    ),
+                    spacing="3",
+                    width="100%",
+                    padding="1em",
+                    bg="orange.50",
+                    border_radius="md"
                 )
             ),
             spacing="4", width="100%",
         ),
         width="100%",
-        min_width="370px", # Diseño responsivo mantenido
+        min_width="370px",
         padding="1.5em",
     )
 
