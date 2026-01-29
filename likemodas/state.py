@@ -8960,7 +8960,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         Crea un diccionario que mapea el ID de una compra ACTIVA a su lista de artículos.
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
-        return {p.id: p.items for p in self.active_purchases}
+        return {p.id: p.product_list for p in self.active_purchases}
     
     # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA PARA EL HISTORIAL ✨ ---
     @rx.var
