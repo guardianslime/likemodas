@@ -2,7 +2,14 @@
 
 from fastapi import FastAPI
 import reflex as rx
-import reflex_local_auth
+
+# --- 🛠️ PARCHE DE COMPATIBILIDAD (AÑADIR ESTO) 🛠️ ---
+# Esto engaña a reflex-local-auth para que funcione con tu versión actual de Reflex
+if not hasattr(rx, "cached_var"):
+    rx.cached_var = rx.var
+# ----------------------------------------------------
+
+import reflex_local_auth  # <--- Este import debe ir DESPUÉS del parche
 
 # Módulos internos de la aplicación
 from .api import webhooks, tasks as api_tasks
