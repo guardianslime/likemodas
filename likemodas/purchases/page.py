@@ -96,7 +96,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                                 rx.text(f"Guía: {purchase.tracking_number}"),
                                 rx.link(
                                     rx.button("Rastrear Pedido", size="2", variant="outline", color_scheme="blue", margin_top="0.5em", width="100%"),
-                                    href=purchase.tracking_url,
+                                    # Usamos .to(str) para asegurar que Python 3.12 lo entienda como texto simple
+                                    href=purchase.tracking_url.to(str), 
                                     is_external=True
                                 ),
                                 spacing="1", width="100%"
