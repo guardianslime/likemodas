@@ -368,6 +368,11 @@ class AdminPurchaseCardData(rx.Base):
     # items: list[PurchaseItemCardData] = []  <--- ASEGÚRESE DE QUE ESTA LÍNEA NO ESTÉ
     purchase_items: list[PurchaseItemCardData] = []  # <--- ESTA ES LA SOLUCIÓN
     action_by_name: Optional[str] = None
+    is_direct_sale: bool = False
+    shipping_applied_cop: str = "$ 0"
+    shipping_carrier: Optional[str] = None
+    tracking_number: Optional[str] = None
+    shipping_type: Optional[str] = None
     
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
@@ -8994,8 +8999,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_active_purchases(self):
         """
-        [CORREGIDO] Carga las compras activas para el panel de admin/vendedor,
-        incluyendo el nombre del actor y la imagen correcta de la variante.
+        [CORREGIDO Y ACTUALIZADO] Carga las compras activas para el panel de admin/vendedor.
+        Incluye estados SHIPPED y DELIVERED para permitir la gestión de pagos contra entrega.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado): 
             return
@@ -9017,6 +9022,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         PurchaseStatus.PENDING_CONFIRMATION,
                         PurchaseStatus.CONFIRMED,
                         PurchaseStatus.SHIPPED,
+                        # ✨ AGREGADO: Necesario para que el vendedor vea el pedido y confirme el pago contra entrega
+                        PurchaseStatus.DELIVERED, 
                     ]),
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
@@ -9028,29 +9035,28 @@ class AppState(reflex_local_auth.LocalAuthState):
                 detailed_items = []
                 for item in p.items:
                     if item.blog_post:
-                        # --- ✅ LÓGICA DE IMAGEN CORREGIDA Y ROBUSTA ---
+                        # --- LÓGICA DE IMAGEN (Tu versión corregida) ---
                         variant_image_url = ""
-                        # 1. Intenta encontrar la variante exacta que se compró
                         for variant in item.blog_post.variants:
                             if variant.get("attributes") == item.selected_variant:
                                 image_urls = variant.get("image_urls", [])
                                 if image_urls:
                                     variant_image_url = image_urls[0]
                                 break
-                        # 2. Si no la encuentra (pudo ser borrada), usa la primera imagen del producto como respaldo
                         if not variant_image_url and item.blog_post.variants:
                             image_urls = item.blog_post.variants[0].get("image_urls", [])
                             if image_urls:
                                 variant_image_url = image_urls[0]
-                        # --- FIN DE LA CORRECCIÓN DE IMAGEN ---
+                        # ---------------------------------------------
 
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                         detailed_items.append(
                             PurchaseItemCardData(
                                 id=item.blog_post.id, title=item.blog_post.title, 
-                                image_url=variant_image_url, # Se pasa la imagen correcta
+                                image_url=variant_image_url,
                                 price_at_purchase=item.price_at_purchase,
-                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                # Asegúrate de que _format_to_cop_backend esté importado o usa una función de formato disponible
+                                price_at_purchase_cop=_format_to_cop_backend(item.price_at_purchase),
                                 quantity=item.quantity, 
                                 variant_details_str=variant_str,
                             )
@@ -9074,9 +9080,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value, 
                         total_price=p.total_price,
+                        # total_price_cop debe estar definido en AdminPurchaseCardData
+                        total_price_cop=_format_to_cop_backend(p.total_price), 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
                         shipping_applied=p.shipping_applied,
+                        
+                        # ✨ AGREGADOS: Datos vitales para la UI de Guía y Manual ✨
+                        shipping_applied_cop=_format_to_cop_backend(p.shipping_applied or 0.0),
+                        is_direct_sale=p.is_direct_sale,
+                        shipping_carrier=p.shipping_carrier,
+                        tracking_number=p.tracking_number,
+                        shipping_type=p.shipping_type,
+                        # ---------------------------------------------------------
+
                         shipping_name=p.shipping_name, 
                         shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                         shipping_phone=p.shipping_phone,
