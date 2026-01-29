@@ -55,13 +55,12 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """
-    [VERSIÓN FINAL] La tarjeta de detalle de compra, con un ancho mínimo
-    para asegurar la legibilidad y estética en móvil.
+    [VERSIÓN FINAL Y CORREGIDA] 
+    Muestra dirección y teléfono SIEMPRE. Si hay guía, muestra el rastreo abajo.
     """
     return rx.card(
         rx.vstack(
-            # --- El resto de los componentes internos se mantienen igual que en la versión anterior ---
-            # Encabezado (Fecha y estado)
+            # --- Encabezado (Igual que antes) ---
             rx.flex(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -77,17 +76,45 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # Detalles de Envío
+            # --- Detalles de Envío (CORREGIDO) ---
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
+                
+                # 1. INFORMACIÓN DE CONTACTO (Siempre visible)
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
                 rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
-                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
+                # AQUÍ ESTÁ LA LÍNEA DEL TELÉFONO QUE PEDISTE MANTENER:
+                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"), 
+                
+                # 2. INFORMACIÓN DE GUÍA (Solo si existe, aparece abajo)
+                rx.cond(
+                    purchase.tracking_number,
+                    rx.box(
+                        rx.callout(
+                            rx.vstack(
+                                rx.text(f"Empresa: {purchase.shipping_carrier}", weight="bold"),
+                                rx.text(f"Guía: {purchase.tracking_number}"),
+                                rx.link(
+                                    rx.button("Rastrear Pedido", size="2", variant="outline", color_scheme="blue", margin_top="0.5em", width="100%"),
+                                    href=purchase.tracking_url,
+                                    is_external=True
+                                ),
+                                spacing="1", width="100%"
+                            ),
+                            icon="truck",
+                            color_scheme="blue",
+                            size="2",
+                            width="100%"
+                        ),
+                        width="100%", margin_top="0.5em"
+                    )
+                ),
+                
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
             
-            # Artículos Comprados
+            # --- Artículos Comprados (Igual que antes) ---
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
@@ -98,7 +125,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2", align_items="start", width="100%",
             ),
             
-            # Sección de Totales
+            # --- Sección de Totales (Igual que antes) ---
             rx.hstack(
                 rx.spacer(),
                 rx.grid(
@@ -112,7 +139,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(margin_y="1em"),
             
-            # Botones de Acción
+            # --- Botones de Acción (Igual que antes) ---
              rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                 rx.flex(
@@ -133,10 +160,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             spacing="4", width="100%",
         ),
         width="100%",
-        # --- ✨ ESTA ES LA CORRECCIÓN CLAVE ✨ ---
-        # Se establece un ancho mínimo para la tarjeta. En pantallas muy estrechas,
-        # esto evitará que el contenido se aplaste, permitiendo un ligero scroll horizontal.
-        min_width="370px",
+        min_width="370px", # Diseño responsivo mantenido
         padding="1.5em",
     )
 

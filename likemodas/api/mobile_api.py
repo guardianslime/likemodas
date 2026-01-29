@@ -252,6 +252,11 @@ class PurchaseHistoryDTO(BaseModel):
     return_path: Optional[str] = None
     can_return: bool = False
 
+    # --- ✨ NUEVOS CAMPOS PARA LA APP ✨ ---
+    shipping_carrier: Optional[str] = None
+    tracking_number: Optional[str] = None
+    tracking_url: Optional[str] = None
+
 class InvoiceItemDTO(BaseModel):
     name: str
     quantity: int
@@ -1340,11 +1345,28 @@ async def get_mobile_purchases(user_id: int, session: Session = Depends(get_sess
                 if p.purchase_date: purchase_date_str = p.purchase_date.strftime('%d-%m-%Y')
 
                 history.append(PurchaseHistoryDTO(
-                    id=p.id, date=purchase_date_str, status=status_val, total=fmt_price(p.total_price), items=items_dto, 
-                    estimated_delivery=estimated_str, can_confirm_delivery=can_confirm, tracking_message=tracking_msg, 
-                    retry_payment_url=retry_url, invoice_path=invoice_path, return_path=return_path, can_return=can_return, 
-                    shipping_name=p.shipping_name or "N/A", shipping_address=shipping_full_address, shipping_phone=p.shipping_phone or "N/A", 
-                    shipping_cost=fmt_price(p.shipping_applied or 0.0)
+                    id=p.id, 
+                    date=purchase_date_str, 
+                    status=status_val, 
+                    total=fmt_price(p.total_price), 
+                    items=items_dto, 
+                    estimated_delivery=estimated_str, 
+                    can_confirm_delivery=can_confirm, 
+                    tracking_message=tracking_msg, 
+                    retry_payment_url=retry_url, 
+                    invoice_path=invoice_path, 
+                    return_path=return_path, 
+                    can_return=can_return, 
+                    shipping_name=p.shipping_name or "N/A", 
+                    shipping_address=shipping_full_address, 
+                    shipping_phone=p.shipping_phone or "N/A", 
+                    shipping_cost=fmt_price(p.shipping_applied or 0.0),
+                    
+                    # --- ✨ ASIGNAR LOS DATOS AQUÍ ✨ ---
+                    shipping_carrier=p.shipping_carrier,
+                    tracking_number=p.tracking_number,
+                    tracking_url=p.tracking_url_link 
+                    # ----------------------------------
                 ))
             except Exception as inner_e:
                 logger.error(f"Error procesando compra {p.id}: {inner_e}")

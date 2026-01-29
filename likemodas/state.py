@@ -391,11 +391,23 @@ class PurchaseItemCardData(rx.Base):
         return format_to_cop(self.price_at_purchase * self.quantity)
 
 class UserPurchaseHistoryCardData(rx.Base):
-    id: int; userinfo_id: int; purchase_date_formatted: str; status: str
-    total_price_cop: str; shipping_applied_cop: str; shipping_name: str
-    shipping_address: str; shipping_neighborhood: str; shipping_city: str
-    shipping_phone: str; items: list[PurchaseItemCardData]
+    id: int
+    purchase_date_formatted: str
+    total_price_cop: str
+    status: str
+    shipping_name: str
+    shipping_address: str
+    shipping_neighborhood: str
+    shipping_city: str
+    shipping_phone: str
+    shipping_applied_cop: str
     estimated_delivery_date_formatted: str
+    
+    # --- ✨ AGREGAR ESTOS 3 CAMPOS NUEVOS ✨ ---
+    shipping_carrier: Optional[str] = None
+    tracking_number: Optional[str] = None
+    tracking_url: Optional[str] = None
+    # ------------------------------------------
 
 # --- ✨ INICIO DE LA SOLUCIÓN ✨ ---
 # Se añaden estas líneas para resolver las referencias anidadas
