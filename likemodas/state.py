@@ -7951,79 +7951,72 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def delete_post(self, post_id: int):
-        """
-        [BORRADO LÓGICO CORRECTO] 
-        Solo marca el producto como eliminado. 
-        NO toca el historial de compras (mantiene las IDs intactas), evitando el error de integridad.
-        """
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
 
-            # Verificar quién está borrando
-            is_admin = self.is_admin # Asumiendo que tienes esta propiedad helper
-            # O usa: is_admin = self.authenticated_user_info.is_superuser if self.authenticated_user_info else False
+            # Detectar si soy Admin (Superusuario)
+            is_admin = False
+            if self.authenticated_user_info and self.authenticated_user_info.is_superuser:
+                is_admin = True
 
             if is_admin:
-                # CASO ADMIN: Baneo / Castigo
-                post.publish_active = False   # Se oculta de la tienda
-                post.is_admin_banned = True   # ✨ SE PONE EL CANDADO
-                # post.is_deleted = True      # (Opcional: Si lo descomentas, desaparece también para el vendedor)
+                # --- CASO ADMIN: CASTIGO 👮‍♂️ ---
+                post.publish_active = False  # Apagar visibilidad
+                post.is_admin_banned = True  # Poner el candado
+                # post.is_deleted = True     # (Opcional: Si quieres que desaparezca de la lista del vendedor también)
+                
                 session.add(post)
                 session.commit()
-                yield AppState.load_posts
+                yield AppState.on_load
                 return rx.toast.warning("Publicación BLOQUEADA por Administración.")
-            
+
             else:
-                # CASO VENDEDOR: Borrado normal
-                # Solo puede borrarlo si es suyo
+                # --- CASO VENDEDOR: BORRADO NORMAL 🗑️ ---
+                # Verificar que sea el dueño
                 if post.userinfo_id != self.authenticated_user_info.id:
-                    return rx.toast.error("No tienes permiso.")
-                
+                    return rx.toast.error("No tienes permiso para borrar esto.")
+
                 post.is_deleted = True
                 post.publish_active = False
+                
                 session.add(post)
                 session.commit()
-                yield AppState.load_posts
-                return rx.toast.success("Publicación eliminada.")
-            
+                
+                yield AppState.on_load
+                yield AppState.load_mis_publicaciones
+                return rx.toast.success("Publicación eliminada correctamente.")
+
     @rx.event
-    def toggle_product_active(self, post_id: int, current_value: bool):
-        """Función para activar/desactivar producto."""
+    def toggle_publish_status(self, post_id: int, current_value: bool):
+        """Alterna la visibilidad, PERO impide activar si el admin lo baneó."""
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
-            if not post: return
-
-            # ✨ AQUÍ ESTÁ LA REGLA DE ORO ✨
+            if not post:
+                return rx.toast.error("Publicación no encontrada.")
+            
+            # --- 🔒 BLOQUEO DE SEGURIDAD ---
             if post.is_admin_banned:
                 return rx.toast.error(
-                    "⛔ No puedes reactivar este producto.",
-                    "Fue bloqueado por un Administrador por incumplir las normas.",
+                    "⛔ ACCIÓN DENEGADA",
+                    "Esta publicación fue bloqueada por un Administrador por incumplir las normas.",
                     duration=5000,
-                    position="top-center"
+                    position="top-center",
+                    is_closable=True
                 )
-            
-            # Si no está baneado, procede normal
+            # -------------------------------
+
+            # Si no está baneado, funciona normal
             post.publish_active = not current_value
             session.add(post)
             session.commit()
             
-            yield AppState.load_my_products # O la función que refresque la lista del vendedor
-            return rx.toast.success("Estado actualizado.")
+            # Recargar la lista del vendedor
+            yield AppState.load_mis_publicaciones # O load_my_products según tengas
+            return rx.toast.success("Estado de publicación actualizado.")
 
-    @rx.event
-    def toggle_publish_status(self, post_id: int):
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
-        with rx.session() as session:
-            post_to_update = session.get(BlogPostModel, post_id)
-            if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
-                post_to_update.publish_active = not post_to_update.publish_active
-                session.add(post_to_update)
-                session.commit()
-                yield rx.toast.info(f"Estado de publicación cambiado.")
-                
+    
                 
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
