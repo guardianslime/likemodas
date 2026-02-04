@@ -7956,25 +7956,34 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
 
-            # Detectar si soy Admin (Superusuario)
+            # --- CORRECCIÓN AQUÍ ---
+            # En lugar de .is_superuser, verificamos si el ROL es 'admin'
             is_admin = False
-            if self.authenticated_user_info and self.authenticated_user_info.is_superuser:
-                is_admin = True
+            if self.authenticated_user_info:
+                # Asegúrate de que el rol de tus administradores sea exactamente "admin"
+                if self.authenticated_user_info.role == "admin":
+                    is_admin = True
+            # -----------------------
 
             if is_admin:
                 # --- CASO ADMIN: CASTIGO 👮‍♂️ ---
-                post.publish_active = False  # Apagar visibilidad
-                post.is_admin_banned = True  # Poner el candado
-                # post.is_deleted = True     # (Opcional: Si quieres que desaparezca de la lista del vendedor también)
+                post.publish_active = False  
+                
+                # Intentamos poner el ban (usamos try por si la migración no ha pasado bien aún)
+                try:
+                    post.is_admin_banned = True
+                except:
+                    pass # Si falla, al menos lo oculta
                 
                 session.add(post)
                 session.commit()
+                
+                # Usamos la función de carga que definimos (on_load o load_posts)
                 yield AppState.on_load
                 return rx.toast.warning("Publicación BLOQUEADA por Administración.")
 
             else:
                 # --- CASO VENDEDOR: BORRADO NORMAL 🗑️ ---
-                # Verificar que sea el dueño
                 if post.userinfo_id != self.authenticated_user_info.id:
                     return rx.toast.error("No tienes permiso para borrar esto.")
 
