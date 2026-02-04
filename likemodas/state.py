@@ -7998,41 +7998,55 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.success("Publicación eliminada correctamente.")
 
     @rx.event
-    def toggle_publish_status(self, post_id: int): 
-        # 👆 ELIMINAMOS "current_value: bool" DE AQUÍ
-        
-        """Alterna la visibilidad. Busca el valor en la BD en lugar de pedirlo."""
+    def toggle_publish_status(self, post_id: int):
+        """
+        Alterna la visibilidad de la publicación.
+        - Si está BANEADA y soy ADMIN -> La desbloquea.
+        - Si está BANEADA y soy VENDEDOR -> Muestra error.
+        - Si está NORMAL -> Activa/Desactiva normalmente.
+        """
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
-            
-            # --- 🔒 BLOQUEO DE SEGURIDAD ---
-            # (Nota: Esto fallará hasta que hagas el PASO 2, pero dejémoslo listo)
+
+            # 1. Detectar si el usuario actual es ADMINISTRADOR
+            is_admin = False
+            if self.authenticated_user_info and self.authenticated_user_info.role == "admin":
+                is_admin = True
+
+            # 2. Verificar si la publicación tiene CANDADO (Ban)
             try:
                 if post.is_admin_banned:
-                    return rx.toast.error(
-                        "⛔ ACCIÓN DENEGADA",
-                        "Esta publicación fue bloqueada por un Administrador.",
-                        duration=5000,
-                        is_closable=True
-                    )
+                    if is_admin:
+                        # --- CASO ADMIN: DESBLOQUEAR 🔓 ---
+                        post.is_admin_banned = False  # Quitamos el candado
+                        post.publish_active = True    # La activamos
+                        session.add(post)
+                        session.commit()
+                        
+                        # Recargar listas
+                        yield AppState.on_load
+                        yield AppState.load_mis_publicaciones
+                        return rx.toast.success("✅ Publicación DESBLOQUEADA y activada exitosamente.")
+                    else:
+                        # --- CASO VENDEDOR: DENEGADO ⛔ ---
+                        # [CORREGIDO] Pasamos un solo texto largo para evitar el TypeError
+                        return rx.toast.error("⛔ ACCIÓN DENEGADA: Esta publicación fue bloqueada por un Administrador.")
             except AttributeError:
-                # Si la columna aún no existe, ignoramos el bloqueo temporalmente
+                # Si la columna is_admin_banned no existe aún por error de migración, pasamos
                 pass
-            # -------------------------------
 
-            # LÓGICA DE INTERRUPTOR (TOGGLE)
-            # Invertimos el valor que tenga la base de datos
+            # 3. Lógica Normal (Sin candado)
+            # El vendedor o admin simplemente la apagan/encienden
             post.publish_active = not post.publish_active
             
             session.add(post)
             session.commit()
             
             # Recargar listas
-            yield AppState.load_mis_publicaciones # Asegúrate que esta función exista
-            # O usa yield AppState.on_load si esa es la que usas
-            
+            yield AppState.on_load
+            yield AppState.load_mis_publicaciones
             return rx.toast.success("Estado actualizado.")
 
     
