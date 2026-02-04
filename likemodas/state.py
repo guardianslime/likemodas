@@ -7989,32 +7989,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.success("Publicación eliminada correctamente.")
 
     @rx.event
-    def toggle_publish_status(self, post_id: int, current_value: bool):
-        """Alterna la visibilidad, PERO impide activar si el admin lo baneó."""
+    def toggle_publish_status(self, post_id: int): 
+        # 👆 ELIMINAMOS "current_value: bool" DE AQUÍ
+        
+        """Alterna la visibilidad. Busca el valor en la BD en lugar de pedirlo."""
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
             
             # --- 🔒 BLOQUEO DE SEGURIDAD ---
-            if post.is_admin_banned:
-                return rx.toast.error(
-                    "⛔ ACCIÓN DENEGADA",
-                    "Esta publicación fue bloqueada por un Administrador por incumplir las normas.",
-                    duration=5000,
-                    position="top-center",
-                    is_closable=True
-                )
+            # (Nota: Esto fallará hasta que hagas el PASO 2, pero dejémoslo listo)
+            try:
+                if post.is_admin_banned:
+                    return rx.toast.error(
+                        "⛔ ACCIÓN DENEGADA",
+                        "Esta publicación fue bloqueada por un Administrador.",
+                        duration=5000,
+                        is_closable=True
+                    )
+            except AttributeError:
+                # Si la columna aún no existe, ignoramos el bloqueo temporalmente
+                pass
             # -------------------------------
 
-            # Si no está baneado, funciona normal
-            post.publish_active = not current_value
+            # LÓGICA DE INTERRUPTOR (TOGGLE)
+            # Invertimos el valor que tenga la base de datos
+            post.publish_active = not post.publish_active
+            
             session.add(post)
             session.commit()
             
-            # Recargar la lista del vendedor
-            yield AppState.load_mis_publicaciones # O load_my_products según tengas
-            return rx.toast.success("Estado de publicación actualizado.")
+            # Recargar listas
+            yield AppState.load_mis_publicaciones # Asegúrate que esta función exista
+            # O usa yield AppState.on_load si esa es la que usas
+            
+            return rx.toast.success("Estado actualizado.")
 
     
                 
