@@ -7952,46 +7952,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def delete_post(self, post_id: int):
         """
-        Elimina una publicación.
-        [CORREGIDO] Primero desvincula el producto de las compras y reportes para evitar
-        el error de 'Foreign Key Violation'.
+        [BORRADO LÓGICO CORRECTO] 
+        Solo marca el producto como eliminado. 
+        NO toca el historial de compras (mantiene las IDs intactas), evitando el error de integridad.
         """
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
 
-            # PASO 1: Desvincular de historial de compras (PurchaseItemModel)
-            # Buscamos todas las veces que se vendió este producto
-            linked_sales = session.exec(
-                sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
-            ).all()
+            # --- ❌ ELIMINA TODO EL CÓDIGO QUE HABÍA AQUÍ SOBRE linked_sales Y linked_reports ❌ ---
             
-            for item in linked_sales:
-                # Quitamos el ID del producto, pero dejamos el registro de venta
-                item.blog_post_id = None 
-                session.add(item)
-
-            # PASO 2: Desvincular de Reportes (ReportModel) - Si tienes sistema de reportes
-            linked_reports = session.exec(
-                sqlmodel.select(ReportModel).where(ReportModel.blog_post_id == post_id)
-            ).all()
-            
-            for report in linked_reports:
-                report.blog_post_id = None
-                session.add(report)
-
-            # PASO 3: Ahora sí es seguro borrar el post
-            # EN LUGAR DE BORRAR, LO OCULTAMOS PARA SIEMPRE
-            post.is_deleted = True       # Marca como borrado
-            post.publish_active = False  # Asegura que no se publique más
+            # SOLO DEJAMOS ESTO:
+            post.is_deleted = True       # Marca como borrado (Soft Delete)
+            post.publish_active = False  # Lo oculta de la tienda
             
             session.add(post)
             session.commit()
             
-            # Recargar la lista para que desaparezca visualmente de inmediato
+            # Recargar listas
             yield AppState.load_posts 
-            yield AppState.load_my_products # Si tienes una vista de vendedor
+            yield AppState.load_my_products 
+            yield AppState.load_mis_publicaciones
             
             return rx.toast.success("Publicación eliminada correctamente.")
 
