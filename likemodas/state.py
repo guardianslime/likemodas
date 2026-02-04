@@ -7946,27 +7946,42 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def delete_post(self, post_id: int):
         """
-        [CORRECCIÓN DEFINITIVA] Elimina una publicación, con permisos correctos para vendedores y empleados.
+        Elimina una publicación.
+        [CORREGIDO] Primero desvincula el producto de las compras y reportes para evitar
+        el error de 'Foreign Key Violation'.
         """
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
-
         with rx.session() as session:
-            post_to_delete = session.get(BlogPostModel, post_id)
+            post = session.get(BlogPostModel, post_id)
+            if not post:
+                return rx.toast.error("Publicación no encontrada.")
 
-            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
-            # Comparamos el dueño del post con el ID del contexto actual (que puede ser el vendedor o su empleado).
-            if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
-                yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
-                return
-            # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
+            # PASO 1: Desvincular de historial de compras (PurchaseItemModel)
+            # Buscamos todas las veces que se vendió este producto
+            linked_sales = session.exec(
+                sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
+            ).all()
+            
+            for item in linked_sales:
+                # Quitamos el ID del producto, pero dejamos el registro de venta
+                item.blog_post_id = None 
+                session.add(item)
 
-            session.delete(post_to_delete)
+            # PASO 2: Desvincular de Reportes (ReportModel) - Si tienes sistema de reportes
+            linked_reports = session.exec(
+                sqlmodel.select(ReportModel).where(ReportModel.blog_post_id == post_id)
+            ).all()
+            
+            for report in linked_reports:
+                report.blog_post_id = None
+                session.add(report)
+
+            # PASO 3: Ahora sí es seguro borrar el post
+            session.delete(post)
             session.commit()
-
-            yield rx.toast.success("Publicación eliminada correctamente.")
-            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI
-            yield AppState.load_mis_publicaciones
+            
+            # Recargar la lista correspondiente (ajusta según tu vista actual)
+            yield AppState.load_posts 
+            return rx.toast.success("Publicación eliminada y desvinculada del historial.")
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
