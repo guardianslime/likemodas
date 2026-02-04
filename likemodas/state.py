@@ -4673,7 +4673,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.current_category = category if category else "todos"
 
         with rx.session() as session:
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            query = sqlmodel.select(BlogPostModel).where(
+                BlogPostModel.publish_active == True,
+                # ✨ AGREGAR ESTO: Que NO esté eliminado
+                BlogPostModel.is_deleted == False
+            ).order_by(BlogPostModel.created_at.desc())
+            
+            self.posts = session.exec(query).all()
             
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
@@ -7976,12 +7982,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(report)
 
             # PASO 3: Ahora sí es seguro borrar el post
-            session.delete(post)
+            # EN LUGAR DE BORRAR, LO OCULTAMOS PARA SIEMPRE
+            post.is_deleted = True       # Marca como borrado
+            post.publish_active = False  # Asegura que no se publique más
+            
+            session.add(post)
             session.commit()
             
-            # Recargar la lista correspondiente (ajusta según tu vista actual)
+            # Recargar la lista para que desaparezca visualmente de inmediato
             yield AppState.load_posts 
-            return rx.toast.success("Publicación eliminada y desvinculada del historial.")
+            yield AppState.load_my_products # Si tienes una vista de vendedor
+            
+            return rx.toast.success("Publicación eliminada correctamente.")
 
     @rx.event
     def toggle_publish_status(self, post_id: int):

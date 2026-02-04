@@ -401,6 +401,9 @@ class BlogPostModel(rx.Model, table=True):
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
+    # ✨ AGREGAR ESTO: La marca de borrado lógico
+    is_deleted: bool = Field(default=False)
+
     # ✅ COPIA ESTA LÓGICA (Basada en Moda Completa)
     @property
     def is_combined_shipping_eligible(self) -> bool:
