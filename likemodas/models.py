@@ -403,6 +403,8 @@ class BlogPostModel(rx.Model, table=True):
 
     # ✨ AGREGAR ESTO: La marca de borrado lógico
     is_deleted: bool = Field(default=False)
+    # ✨ AGREGAR ESTO:
+    is_admin_banned: bool = Field(default=False)
 
     # ✅ COPIA ESTA LÓGICA (Basada en Moda Completa)
     @property

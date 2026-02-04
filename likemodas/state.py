@@ -7961,20 +7961,56 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
 
-            # --- ❌ ELIMINA TODO EL CÓDIGO QUE HABÍA AQUÍ SOBRE linked_sales Y linked_reports ❌ ---
+            # Verificar quién está borrando
+            is_admin = self.is_admin # Asumiendo que tienes esta propiedad helper
+            # O usa: is_admin = self.authenticated_user_info.is_superuser if self.authenticated_user_info else False
+
+            if is_admin:
+                # CASO ADMIN: Baneo / Castigo
+                post.publish_active = False   # Se oculta de la tienda
+                post.is_admin_banned = True   # ✨ SE PONE EL CANDADO
+                # post.is_deleted = True      # (Opcional: Si lo descomentas, desaparece también para el vendedor)
+                session.add(post)
+                session.commit()
+                yield AppState.load_posts
+                return rx.toast.warning("Publicación BLOQUEADA por Administración.")
             
-            # SOLO DEJAMOS ESTO:
-            post.is_deleted = True       # Marca como borrado (Soft Delete)
-            post.publish_active = False  # Lo oculta de la tienda
+            else:
+                # CASO VENDEDOR: Borrado normal
+                # Solo puede borrarlo si es suyo
+                if post.userinfo_id != self.authenticated_user_info.id:
+                    return rx.toast.error("No tienes permiso.")
+                
+                post.is_deleted = True
+                post.publish_active = False
+                session.add(post)
+                session.commit()
+                yield AppState.load_posts
+                return rx.toast.success("Publicación eliminada.")
             
+    @rx.event
+    def toggle_product_active(self, post_id: int, current_value: bool):
+        """Función para activar/desactivar producto."""
+        with rx.session() as session:
+            post = session.get(BlogPostModel, post_id)
+            if not post: return
+
+            # ✨ AQUÍ ESTÁ LA REGLA DE ORO ✨
+            if post.is_admin_banned:
+                return rx.toast.error(
+                    "⛔ No puedes reactivar este producto.",
+                    "Fue bloqueado por un Administrador por incumplir las normas.",
+                    duration=5000,
+                    position="top-center"
+                )
+            
+            # Si no está baneado, procede normal
+            post.publish_active = not current_value
             session.add(post)
             session.commit()
             
-            # Recargar listas
-            yield AppState.on_load
-            yield AppState.load_mis_publicaciones
-            
-            return rx.toast.success("Publicación eliminada correctamente.")
+            yield AppState.load_my_products # O la función que refresque la lista del vendedor
+            return rx.toast.success("Estado actualizado.")
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
@@ -7987,8 +8023,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(post_to_update)
                 session.commit()
                 yield rx.toast.info(f"Estado de publicación cambiado.")
-
-    
+                
                 
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
