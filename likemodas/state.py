@@ -4614,7 +4614,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     _raw_posts: list[ProductCardData] = []
     posts: list[ProductCardData] = []
-    posts: List[BlogPostModel] = []  # <--- Debe existir esta línea
     is_loading: bool = True
     
 
@@ -7973,7 +7972,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             # Recargar listas
             yield AppState.on_load
-            yield AppState.load_my_products 
             yield AppState.load_mis_publicaciones
             
             return rx.toast.success("Publicación eliminada correctamente.")
