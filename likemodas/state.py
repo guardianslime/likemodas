@@ -4652,54 +4652,53 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ FIN: NUEVAS VARIABLES COMPUTADAS ✨ ---
 
     @rx.event
-    def load_posts(self):
-        """
-        Carga los productos para el feed principal.
-        [OPTIMIZADO] Carga solo los necesarios, filtra borrados y convierte a tarjetas.
-        """
+    def on_load(self):
         self.is_loading = True
         yield
-        
-        # Lógica de Categoría (si la usas desde la URL)
-        full_url = self.router.url
+
         category = None
+        full_url = ""
+        try:
+            full_url = self.router.url
+        except Exception:
+            pass
+
         if full_url and "?" in full_url:
-            try:
-                parsed_url = urlparse(full_url)
-                query_params = parse_qs(parsed_url.query)
-                category_list = query_params.get("category")
-                if category_list:
-                    category = category_list[0]
-            except Exception:
-                pass
-        
-        self.current_category = category if category else "todos"
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            
+            category_list = query_params.get("category")
+            if category_list:
+                category = category_list[0]
+            
+            self.current_category = category if category else "todos"
 
         with rx.session() as session:
-            # 1. Construir la consulta BASE
             query = sqlmodel.select(BlogPostModel).where(
                 BlogPostModel.publish_active == True,
-                # ✨ FILTRO CRÍTICO: Ocultar los eliminados (Soft Delete)
+                # ✨ AGREGAR ESTO: Que NO esté eliminado
                 BlogPostModel.is_deleted == False
-            )
+            ).order_by(BlogPostModel.created_at.desc())
             
-            # 2. Aplicar filtro de categoría si es necesario
+            self.posts = session.exec(query).all()
+            
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            # 3. Ordenar y Limitar (Paginación inicial)
-            # Solo traemos los 20 más recientes para que la página cargue rápido
+            # --- OPTIMIZACIÓN: PAGINACIÓN ---
+            # En lugar de .all(), usamos limit().
+            # Esto carga solo los 20 más recientes.
             results = session.exec(
-                query.order_by(BlogPostModel.created_at.desc()).limit(20)
+                query.order_by(BlogPostModel.created_at.desc()).limit(20) 
             ).all()
             
-            # 4. Convertir Modelos a Tarjetas (Data Transfer Objects)
             temp_posts = []
             for p in results:
-                # Textos auxiliares
                 moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
 
+                # --- ✨ INICIO: CORRECCIÓN CLAVE AQUÍ ✨ ---
+                # Ahora se pasan TODOS los campos requeridos y opcionales.
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
@@ -4719,10 +4718,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         is_imported=p.is_imported,
                         moda_completa_tooltip_text=moda_completa_text,
                         envio_combinado_tooltip_text=combinado_text,
-                        # Asegúrate de que esta función auxiliar exista o importala
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        
-                        # Estilos personalizados
                         use_default_style=p.use_default_style,
                         light_card_bg_color=p.light_card_bg_color,
                         light_title_color=p.light_title_color,
@@ -4732,8 +4728,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         dark_price_color=p.dark_price_color,
                     )
                 )
-            
-            # 5. Asignar la lista final
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             self.posts = temp_posts
         
         self.is_loading = False
@@ -7977,7 +7972,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             
             # Recargar listas
-            yield AppState.load_posts 
+            yield AppState.on_load
             yield AppState.load_my_products 
             yield AppState.load_mis_publicaciones
             
