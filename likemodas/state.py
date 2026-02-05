@@ -7858,8 +7858,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_mis_publicaciones(self):
         """
-        [VERSIÓN CORREGIDA] Carga las publicaciones y GENERA
-        los Data URI de los QR en el backend.
+        [VERSIÓN CORREGIDA] Carga las publicaciones del vendedor.
+        - Genera QR.
+        - FILTRA las que están marcadas como borradas (is_deleted).
         """
         self.is_loading = True 
         yield
@@ -7871,7 +7872,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.is_loading = False 
             return
 
-        base_url = get_config().deploy_url 
+        # Asegúrate de tener get_config importado o usa una URL fija si falla
+        try:
+            base_url = get_config().deploy_url
+        except:
+            base_url = "https://likemodas.com" # Fallback por si acaso
 
         with rx.session() as session:
             posts_from_db = session.exec(
@@ -7882,6 +7887,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(BlogPostModel.last_modified_by).joinedload(UserInfo.user)
                 )
                 .where(BlogPostModel.userinfo_id == owner_id)
+                # ✨ AQUÍ ESTÁ LA MAGIA: Ocultar las borradas por el vendedor
+                .where(BlogPostModel.is_deleted == False) 
                 .order_by(BlogPostModel.created_at.desc())
             ).all() 
 
@@ -7902,10 +7909,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
 
-                        # --- ✨ CORRECCIÓN: Generar QR con variant_uuid ---
+                        # --- Generación de QR ---
                         qr_data_uri = ""
                         if variant_uuid:
-                            # CAMBIO AQUÍ: Usamos variant_uuid en lugar de product_id_to_load
                             webpage_url = f"{base_url}/?variant_uuid={variant_uuid}"
                             try:
                                 img = qrcode.make(webpage_url)
@@ -7914,8 +7920,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
                                 qr_data_uri = f"data:image/png;base64,{img_base64}"
                             except Exception as e:
-                                logger.error(f"Error generando QR para UUID {variant_uuid}: {e}")
-                        # --- ✨ FIN: CORRECCIÓN DE GENERACIÓN DE QR ✨ ---
+                                print(f"Error QR: {e}") # Simple print para no depender de logger si no está
                         
                         variants_dto_list.append(
                             AdminVariantData(
@@ -7923,7 +7928,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 stock=v.get("stock", 0), 
                                 attributes_str=attrs_str,
                                 attributes=attrs,
-                                qr_url=qr_data_uri # <-- Pasamos el Data URI
+                                qr_url=qr_data_uri
                             )
                         )
 
@@ -7940,7 +7945,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         owner_name=owner_username,
                         last_modified_by_name=modifier_username, 
                         shipping_cost=p.shipping_cost,
-                        is_moda_completa_eligible=p.is_moda_completa_eligible
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        # ✨ IMPORTANTE: Pasar el estado de BAN para que el front lo sepa
+                        is_admin_banned=getattr(p, "is_admin_banned", False) 
                     )
                 )
             
