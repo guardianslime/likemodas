@@ -7958,51 +7958,56 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def delete_post(self, post_id: int):
+        """
+        Maneja la eliminación/baneo de publicaciones.
+        - ADMIN: Solo BANEA (pone candado). El vendedor SIGUE viendo la publicación (is_deleted=False).
+        - VENDEDOR: ELIMINA (Soft Delete). La publicación desaparece de su lista (is_deleted=True).
+        """
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if not post:
                 return rx.toast.error("Publicación no encontrada.")
 
-            # --- CORRECCIÓN AQUÍ ---
-            # En lugar de .is_superuser, verificamos si el ROL es 'admin'
+            # 1. Verificar si soy ADMIN
             is_admin = False
-            if self.authenticated_user_info:
-                # Asegúrate de que el rol de tus administradores sea exactamente "admin"
-                if self.authenticated_user_info.role == "admin":
-                    is_admin = True
-            # -----------------------
+            if self.authenticated_user_info and self.authenticated_user_info.role == "admin":
+                is_admin = True
 
             if is_admin:
-                # --- CASO ADMIN: CASTIGO 👮‍♂️ ---
-                post.publish_active = False  
+                # --- CASO ADMIN: BANEO / CASTIGO 👮‍♂️ ---
+                # Objetivo: Que el vendedor VEA que se la bloquearon.
                 
-                # Intentamos poner el ban (usamos try por si la migración no ha pasado bien aún)
+                post.publish_active = False   # Se deja de vender al público
+                post.is_deleted = False       # ✨ IMPORTANTE: NO la borramos, así el vendedor la ve en su lista
+                
+                # Intentamos poner el candado (try/except por si la migración falló antes)
                 try:
                     post.is_admin_banned = True
-                except:
-                    pass # Si falla, al menos lo oculta
-                
+                except AttributeError:
+                    return rx.toast.error("Error de base de datos: Falta columna is_admin_banned")
+
                 session.add(post)
                 session.commit()
                 
-                # Usamos la función de carga que definimos (on_load o load_posts)
                 yield AppState.on_load
-                return rx.toast.warning("Publicación BLOQUEADA por Administración.")
+                return rx.toast.warning("🚫 Publicación BANEADA. El vendedor aún podrá verla en su lista.")
 
             else:
-                # --- CASO VENDEDOR: BORRADO NORMAL 🗑️ ---
+                # --- CASO VENDEDOR: BORRADO VOLUNTARIO 🗑️ ---
+                # Objetivo: Limpiar su inventario.
+                
                 if post.userinfo_id != self.authenticated_user_info.id:
                     return rx.toast.error("No tienes permiso para borrar esto.")
 
-                post.is_deleted = True
-                post.publish_active = False
+                post.is_deleted = True       # ✨ AQUÍ SÍ BORRAMOS (Soft Delete)
+                post.publish_active = False  # Apagamos venta
                 
                 session.add(post)
                 session.commit()
                 
                 yield AppState.on_load
                 yield AppState.load_mis_publicaciones
-                return rx.toast.success("Publicación eliminada correctamente.")
+                return rx.toast.success("Publicación eliminada de tu inventario.")
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
