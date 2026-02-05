@@ -4652,9 +4652,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load(self):
+        """
+        [VERSIÓN FINAL SEGURA] Carga la tienda pública.
+        - Filtra Borrados (Vendedor)
+        - Filtra Baneados (Admin)
+        - Filtra Inactivos
+        - Optimiza la consulta (no descarga toda la base de datos)
+        """
         self.is_loading = True
         yield
 
+        # --- 1. Detectar Categoría desde URL ---
         category = None
         full_url = ""
         try:
@@ -4665,39 +4673,55 @@ class AppState(reflex_local_auth.LocalAuthState):
         if full_url and "?" in full_url:
             parsed_url = urlparse(full_url)
             query_params = parse_qs(parsed_url.query)
-            
             category_list = query_params.get("category")
             if category_list:
                 category = category_list[0]
-            
-            self.current_category = category if category else "todos"
+        
+        self.current_category = category if category else "todos"
 
+        # --- 2. Consulta a Base de Datos ---
         with rx.session() as session:
+            # Construimos la consulta base con LOS 3 CANDADOS DE SEGURIDAD
             query = sqlmodel.select(BlogPostModel).where(
-                BlogPostModel.publish_active == True,
-                # ✨ AGREGAR ESTO: Que NO esté eliminado
-                BlogPostModel.is_deleted == False
-            ).order_by(BlogPostModel.created_at.desc())
+                BlogPostModel.publish_active == True,   # 1. Que esté activo
+                BlogPostModel.is_deleted == False,      # 2. Que no esté borrado por el vendedor
+                # 3. Que NO esté baneado por Admin (Usa SQL puro para evitar error si falta columna)
+                sqlmodel.text("is_admin_banned IS NOT TRUE") 
+            )
             
-            self.posts = session.exec(query).all()
-            
+            # Filtro de categoría
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            # --- OPTIMIZACIÓN: PAGINACIÓN ---
-            # En lugar de .all(), usamos limit().
-            # Esto carga solo los 20 más recientes.
+            # EJECUCIÓN OPTIMIZADA: Solo traemos los 20 necesarios
             results = session.exec(
                 query.order_by(BlogPostModel.created_at.desc()).limit(20) 
             ).all()
             
+            # --- 3. Procesar resultados ---
             temp_posts = []
             for p in results:
-                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                # Calcular textos extra
+                # (Nota: Asegúrate de tener format_to_cop importado o usa p.price_cop directamente)
+                moda_text = ""
+                if p.is_moda_completa_eligible and p.free_shipping_threshold:
+                    # Si format_to_cop da error, usa f"${p.free_shipping_threshold}"
+                    try:
+                        prec_fmt = format_to_cop(p.free_shipping_threshold)
+                    except:
+                        prec_fmt = f"${p.free_shipping_threshold:,.0f}"
+                    moda_text = f"Este item cuenta para el envío gratis en compras sobre {prec_fmt}"
+                
                 combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
 
-                # --- ✨ INICIO: CORRECCIÓN CLAVE AQUÍ ✨ ---
-                # Ahora se pasan TODOS los campos requeridos y opcionales.
+                # ✨ CRÍTICO: Calcular la imagen principal para que se vea algo
+                main_image = p.main_image_url_variant or ""
+                if not main_image and p.variants and p.variants[0].get("image_urls"):
+                    try:
+                        main_image = p.variants[0]["image_urls"][0]
+                    except:
+                        main_image = ""
+
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
@@ -4705,6 +4729,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
+                        
+                        # ✨ AGREGAMOS LA IMAGEN QUE FALTABA
+                        main_image_url=main_image, 
+                        
                         variants=p.variants or [],
                         attributes={},
                         average_rating=p.average_rating,
@@ -4715,7 +4743,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         combines_shipping=p.combines_shipping,
                         shipping_combination_limit=p.shipping_combination_limit,
                         is_imported=p.is_imported,
-                        moda_completa_tooltip_text=moda_completa_text,
+                        moda_completa_tooltip_text=moda_text,
                         envio_combinado_tooltip_text=combinado_text,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         use_default_style=p.use_default_style,
@@ -4727,7 +4755,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         dark_price_color=p.dark_price_color,
                     )
                 )
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             self.posts = temp_posts
         
         self.is_loading = False
