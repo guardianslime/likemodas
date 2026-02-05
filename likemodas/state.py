@@ -3904,7 +3904,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.load_default_shipping_info
 
         with rx.session() as session:
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            # ✨ CAMBIO: Agregamos los 3 filtros de seguridad
+            query = sqlmodel.select(BlogPostModel).where(
+                BlogPostModel.publish_active == True,
+                BlogPostModel.is_deleted == False,
+                sqlmodel.text("is_admin_banned IS NOT TRUE")
+            )
+            
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
@@ -4359,9 +4365,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             # 1. Consulta a la base de datos
             query = (
                 select(BlogPostModel)
-                .where(BlogPostModel.publish_active == True)
+                .where(BlogPostModel.publish_active == True) # 1. Activo
+                .where(BlogPostModel.is_deleted == False)    # 2. No borrado por vendedor
+                .where(text("is_admin_banned IS NOT TRUE"))  # 3. No baneado por admin (SQL puro por seguridad)
                 .options(joinedload(BlogPostModel.userinfo)) 
-                .order_by(BlogPostModel.created_at.desc())
             )
             
             db_posts = session.exec(query).all()
