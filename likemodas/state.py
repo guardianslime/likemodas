@@ -4317,28 +4317,24 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_main_page_data(self):
         """
-        [VERSIÓN CORREGIDA Y OPTIMIZADA] Carga la página principal.
-        1. Parsea la URL para detectar 'variant_uuid' (QR) o 'product_id_to_load'.
-        2. Carga los productos básicos para visualización rápida.
-        3. En segundo plano, carga datos de envío y abre el modal si es necesario.
+        [VERSIÓN FINAL OPTIMIZADA] Carga la página principal.
+        Elimina la doble carga de datos para máxima velocidad.
         """
         self.is_loading = True
         yield
 
         # Variables para parámetros de la URL
-        product_id_to_load = None
-        product_id_to_load: int = 0
-        selected_variant_id: str = ""
-        variant_uuid_to_load = None  # <-- NUEVA VARIABLE PARA QR
+        product_id_to_load = 0
+        variant_uuid_to_load = None
         category = None
 
-        # 1. Parsea la URL de forma segura para obtener parámetros
+        # 1. Parsea la URL de forma segura
         try:
             full_url = self.router.url
             if full_url and "?" in full_url:
                 query_params = parse_qs(urlparse(full_url).query)
                 
-                # A. Extraer ID de producto directo (Lógica antigua/compartir enlace)
+                # A. ID de producto directo
                 id_list = query_params.get("product_id_to_load")
                 if id_list:
                     try:
@@ -4346,79 +4342,56 @@ class AppState(reflex_local_auth.LocalAuthState):
                     except ValueError:
                         pass
                 
-                # B. Extraer UUID de variante (NUEVA LÓGICA PARA QR)
+                # B. UUID de variante (QR)
                 uuid_list = query_params.get("variant_uuid")
                 if uuid_list:
                     variant_uuid_to_load = uuid_list[0]
 
-                # C. Extraer categoría para filtrar
+                # C. Categoría
                 category_list = query_params.get("category")
                 if category_list:
                     category = category_list[0]
         except Exception as e:
-            logger.error(f"Error al parsear la URL en load_main_page_data: {e}")
+            print(f"Error URL: {e}")
 
         self.current_category = category if category else "todos"
 
-        # 2. Carga los datos básicos de los productos desde la BD
+        # 2. Carga los datos desde la BD
         with rx.session() as session:
-            # 1. Consulta a la base de datos
+            # Construcción de la consulta con los 3 candados
             query = (
                 select(BlogPostModel)
                 .where(BlogPostModel.publish_active == True) # 1. Activo
                 .where(BlogPostModel.is_deleted == False)    # 2. No borrado por vendedor
-                .where(text("is_admin_banned IS NOT TRUE"))  # 3. No baneado por admin (SQL puro por seguridad)
-                .options(joinedload(BlogPostModel.userinfo)) 
+                .where(text("is_admin_banned IS NOT TRUE"))  # 3. No baneado por admin
             )
             
-            db_posts = session.exec(query).all()
-            
-            # 2. Mapeo CORREGIDO (Agregamos userinfo_id)
-            self.posts = [
-                ProductCardData(
-                    id=p.id,
-                    title=p.title,
-                    price=p.price,
-                    image_url=p.main_image_url_variant if p.main_image_url_variant else "/logo.png",
-                    
-                    # --- AQUÍ ESTABA EL ERROR ---
-                    # Agregamos el campo obligatorio que faltaba:
-                    userinfo_id=p.userinfo_id, 
-                    # ----------------------------
+            # Filtro de categoría
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
 
-                    reviews_count=0, 
-                    average_rating=5.0,
-                    location_label=p.userinfo.seller_city if (p.userinfo and p.userinfo.seller_city) else "Nacional",
-                )
-                for p in db_posts
-            ]
-            # --- OPTIMIZACIÓN: PAGINACIÓN ---
-            # En lugar de .all(), usamos limit().
-            # Esto carga solo los 20 más recientes.
+            # --- EJECUCIÓN ÚNICA Y OPTIMIZADA (Con límite de 20) ---
             results = session.exec(
                 query
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)) # ✨ IMPORTANTE: Cargar UserInfo
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)) 
                 .order_by(BlogPostModel.created_at.desc())
                 .limit(20)
             ).unique().all()
 
             temp_posts = []
             for p in results:
-                # Usa la imagen principal guardada o la primera del grupo
+                # Imagen Principal
                 main_image = p.main_image_url_variant or ""
                 if not main_image and p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
 
-                # ✨ EXTRAER CIUDADES PERMITIDAS DEL VENDEDOR
+                # Ciudades
                 seller_cities = p.userinfo.moda_completa_cities if p.userinfo and p.userinfo.moda_completa_cities else []
+                seller_combined_cities = p.userinfo.combined_shipping_cities if p.userinfo and p.userinfo.combined_shipping_cities else []
                 
-                # Texto por defecto (se recalculará en el cliente si cambia la ciudad)
+                # Textos informativos
                 moda_text = f"Envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
                 combo_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
-
-                # ✨ EXTRAER CIUDADES (AMBAS LISTAS)
-                seller_moda_cities = p.userinfo.moda_completa_cities or []
-                seller_combined_cities = p.userinfo.combined_shipping_cities or []
 
                 card_data = ProductCardData(
                     id=p.id,
@@ -4438,9 +4411,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_combination_limit=p.shipping_combination_limit,
                     shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     is_imported=p.is_imported,
-                    # ✨ NUEVO CAMPO
                     allowed_combined_cities=seller_combined_cities,
-                    # ✨ ASIGNAR LISTA DE CIUDADES AL DTO
                     allowed_moda_cities=seller_cities, 
                     moda_completa_tooltip_text=moda_text,
                     envio_combinado_tooltip_text=combo_text,
@@ -4460,34 +4431,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._raw_posts = temp_posts
             self.posts = temp_posts
 
-        # 3. Encadenamos los siguientes eventos
+        # 3. Eventos finales (Envío y Modales)
         yield AppState.load_default_shipping_info
         yield AppState.recalculate_all_shipping_costs
         
-        # 4. LÓGICA DE APERTURA DE MODAL AUTOMÁTICA
-        
-        # CASO A: Si hay un ID directo (enlace compartido)
+        # Lógica de apertura automática (QR o Enlace)
         if product_id_to_load:
             yield from self.open_product_detail_modal(product_id_to_load)
-            # Limpiamos la URL para que un refresh no vuelva a abrir el modal
             yield rx.call_script("window.history.replaceState(null, '', '/')")
         
-        # CASO B: Si hay un UUID (Escaneo de QR)
         elif variant_uuid_to_load:
-            # Buscamos el producto usando tu función auxiliar existente
             result = self.find_variant_by_uuid(variant_uuid_to_load)
-            
             if result:
                 post, variant = result
-                # Abrimos el modal del producto encontrado
                 yield from self.open_product_detail_modal(post.id)
-                
-                # Opcional: Aquí podrías añadir lógica extra para pre-seleccionar 
-                # la variante específica en el modal si lo deseas en el futuro.
             else:
                 yield rx.toast.error("Producto no encontrado para este código QR.")
-
-            # Limpiamos la URL
             yield rx.call_script("window.history.replaceState(null, '', '/')")
 
         self.is_loading = False
