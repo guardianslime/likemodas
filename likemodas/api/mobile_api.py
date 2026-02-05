@@ -18,7 +18,7 @@ import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
 import sqlalchemy
 from sqlalchemy.orm import joinedload
-from sqlmodel import select, Session, func
+from sqlmodel import select, Session, func, text  # <--- AGREGAR "text"
 from pydantic import BaseModel, Field
 
 # Importaciones de Base de Datos y Modelos
@@ -596,8 +596,13 @@ async def get_products_for_mobile(
             if buyer_city:
                 normalized_buyer_city = normalize_text_api(buyer_city)
 
-    # 2. Consultar Productos
-    query = select(BlogPostModel).where(BlogPostModel.publish_active == True)
+    # 2. Consultar Productos (CORREGIDO CON CANDADOS)
+    query = select(BlogPostModel).where(
+        BlogPostModel.publish_active == True,        # 1. Activo
+        BlogPostModel.is_deleted == False,           # 2. No borrado por vendedor
+        text("is_admin_banned IS NOT TRUE")          # 3. No baneado por admin
+    )
+    
     if category and category != "todos": 
         query = query.where(BlogPostModel.category == category)
     
@@ -811,8 +816,16 @@ async def get_product_detail(
                 print(f"Error buscando UUID en mobile: {e}")
                 p = None
 
-        if not p or not p.publish_active: 
+        # --- VERIFICACIÓN DE SEGURIDAD CORREGIDA ---
+        if not p:
             raise HTTPException(404, "Producto no encontrado")
+            
+        # Revisamos los 3 candados manualmente
+        is_banned = getattr(p, "is_admin_banned", False) # getattr por si falla migración
+        
+        if not p.publish_active or p.is_deleted or is_banned:
+             raise HTTPException(404, "Este producto ya no está disponible.")
+        # -------------------------------------------
         
         # --- A PARTIR DE AQUÍ EL CÓDIGO SE MANTIENE IGUAL ---
         # (Solo asegúrate de usar 'p' que ya recuperamos arriba)
@@ -992,7 +1005,14 @@ async def get_seller_products(
             addr = next((a for a in buyer.shipping_addresses if a.is_default), buyer.shipping_addresses[0])
             buyer_city_norm = normalize_text_api(addr.city)
 
-    query = select(BlogPostModel).where(BlogPostModel.publish_active == True, BlogPostModel.userinfo_id == seller_id).order_by(BlogPostModel.created_at.desc())
+    # QUERY CORREGIDA:
+    query = select(BlogPostModel).where(
+        BlogPostModel.publish_active == True, 
+        BlogPostModel.userinfo_id == seller_id,
+        BlogPostModel.is_deleted == False,          # <--- Nuevo filtro
+        text("is_admin_banned IS NOT TRUE")         # <--- Nuevo filtro
+    ).order_by(BlogPostModel.created_at.desc())
+    
     products = session.exec(query).all()
     result = []
     
@@ -1609,7 +1629,12 @@ async def scan_qr_from_image(req: ScanQrRequest, session: Session = Depends(get_
                 if p: real_id = p.id
             except: pass
 
-        if p and p.publish_active:
+        # VERIFICACIÓN CORREGIDA:
+        is_banned = False
+        if p:
+             is_banned = getattr(p, "is_admin_banned", False)
+
+        if p and p.publish_active and not p.is_deleted and not is_banned:
             return ScanQrResponse(
                 product_id=p.id, 
                 variant_uuid=uuid_to_search, 
@@ -1617,7 +1642,7 @@ async def scan_qr_from_image(req: ScanQrRequest, session: Session = Depends(get_
                 message="Producto encontrado"
             )
         else:
-            return ScanQrResponse(product_id=0, success=False, message="Producto no encontrado en el sistema")
+            return ScanQrResponse(product_id=0, success=False, message="Producto no encontrado o no disponible")
 
     except Exception as e:
         logger.error(f"Error procesando imagen QR: {e}")
