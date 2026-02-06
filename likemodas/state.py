@@ -5736,41 +5736,38 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         [VERSIÓN ARREGLADA]
         Crea un nuevo grupo de variantes con las imágenes seleccionadas.
-        Se agregó protección 'or []' para evitar el error de Pydantic.
+        Se fuerza la conversión a lista para evitar el error de Pydantic.
         """
         if not self.image_selection_for_grouping:
             yield rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
             return
 
-        # Crea un nuevo DTO de grupo con la selección actual
+        # ✨ ARREGLO DE SEGURIDAD: Convertimos a lista pura de Python
+        # Esto elimina cualquier "basura" o tipo extraño que cause el error
+        clean_images = list(self.image_selection_for_grouping or [])
+
+        # Crea un nuevo DTO de grupo con la lista limpia
         new_group = VariantGroupDTO(
-            # ✨ CORRECCIÓN AQUÍ: Agregamos 'or []' por seguridad
-            image_urls=self.image_selection_for_grouping or [],
-            
+            image_urls=clean_images, # <--- USAMOS LA LISTA LIMPIA AQUÍ
             attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, 
             lightbox_bg_light=self.temp_lightbox_bg_light,
             lightbox_bg_dark=self.temp_lightbox_bg_dark,
         )
-        
         self.variant_groups.append(new_group)
 
         # Actualiza el preview si es el primer grupo
-        if len(self.variant_groups) == 1 and self.image_selection_for_grouping:
-            # Usamos un try/except simple por si el índice 0 no existe (seguridad extra)
-            try:
-                self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
-            except IndexError:
-                pass
+        if len(self.variant_groups) == 1 and clean_images:
+            self.set_main_image_url_for_editing(clean_images[0])
             yield self.select_group_for_editing(0)
 
         # --- Limpieza de variables ---
-        self.image_selection_for_grouping = [] # Limpia la selección
-        self.selection_order_map = {} # Limpia el mapa de orden
+        self.image_selection_for_grouping = [] 
+        self.selection_order_map = {} 
         
         self.temp_color = ""
         self.search_attr_color = ""
-        self.temp_lightbox_bg_light = "dark" # Default para el siguiente
-        self.temp_lightbox_bg_dark = "dark" # Default para el siguiente
+        self.temp_lightbox_bg_light = "dark" 
+        self.temp_lightbox_bg_dark = "dark" 
 
         yield rx.toast.success("Grupo de imágenes creado exitosamente.")
 
