@@ -1570,7 +1570,7 @@ class ScanQrResponse(BaseModel):
 async def scan_qr_from_image(req: ScanQrRequest, session: Session = Depends(get_session)):
     try:
         # 1. Decodificar Base64 a Imagen
-        try:
+        try: 
             image_data = base64.b64decode(req.image_base64)
             nparr = np.frombuffer(image_data, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)

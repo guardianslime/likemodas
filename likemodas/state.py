@@ -5734,8 +5734,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def create_variant_group(self):
         """
-        [VERSIÓN ACTUALIZADA]
+        [VERSIÓN ARREGLADA]
         Crea un nuevo grupo de variantes con las imágenes seleccionadas.
+        Se agregó protección 'or []' para evitar el error de Pydantic.
         """
         if not self.image_selection_for_grouping:
             yield rx.toast.error("Selecciona al menos una imagen para crear un grupo.")
@@ -5743,20 +5744,26 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         # Crea un nuevo DTO de grupo con la selección actual
         new_group = VariantGroupDTO(
-            image_urls=self.image_selection_for_grouping,
+            # ✨ CORRECCIÓN AQUÍ: Agregamos 'or []' por seguridad
+            image_urls=self.image_selection_for_grouping or [],
+            
             attributes={"Color": self.temp_color if self.temp_color else "Sin Color"}, 
             lightbox_bg_light=self.temp_lightbox_bg_light,
             lightbox_bg_dark=self.temp_lightbox_bg_dark,
         )
+        
         self.variant_groups.append(new_group)
 
         # Actualiza el preview si es el primer grupo
         if len(self.variant_groups) == 1 and self.image_selection_for_grouping:
-            self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
+            # Usamos un try/except simple por si el índice 0 no existe (seguridad extra)
+            try:
+                self.set_main_image_url_for_editing(self.image_selection_for_grouping[0])
+            except IndexError:
+                pass
             yield self.select_group_for_editing(0)
 
-        # --- La sección que modificaba unassigned_uploaded_images se ha eliminado ---
-
+        # --- Limpieza de variables ---
         self.image_selection_for_grouping = [] # Limpia la selección
         self.selection_order_map = {} # Limpia el mapa de orden
         
