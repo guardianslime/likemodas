@@ -55,6 +55,18 @@ def delete_account_info() -> rx.Component:
                 color="white"
             ),
             
+            rx.divider(border_color="#333333"),
+
+            # --- NUEVA SECCIÓN OBLIGATORIA PARA GOOGLE PLAY ---
+            rx.heading("¿Qué datos se eliminan y cuáles se conservan?", size="4", color="white"),
+            rx.text(
+                "• Se eliminan: Tus datos personales identificables (nombre, correo electrónico, teléfono y direcciones de envío) serán borrados de nuestros servidores en un plazo máximo de 30 días.\n"
+                "• Se conservan (Anonimizados): Para mantener la integridad de la plataforma, tu historial de compras y comentarios se conservarán de forma anónima (aparecerán como 'Usuario Eliminado').",
+                white_space="pre-line",
+                color="#cccccc",
+                text_align="left"
+            ),
+            
             spacing="6",
             padding="2em",
             max_width="600px",
