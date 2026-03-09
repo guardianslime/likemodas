@@ -8088,8 +8088,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Ejecuta este comando UNA SOLA VEZ para arreglar el error del Enum."""
         with rx.session() as session:
             try:
-                # Este comando le dice a Postgres que acepte 'completed' como estado
-                session.exec(text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'completed'"))
+                # 👇 EL CAMBIO ESTÁ AQUÍ: 'COMPLETED' EN MAYÚSCULAS 👇
+                session.exec(text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'COMPLETED'"))
                 session.commit()
                 return rx.toast.success("¡Base de datos reparada! Ahora puedes confirmar pagos.")
             except Exception as e:
