@@ -8086,20 +8086,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def fix_database_enum(self):
         """Ejecuta este comando UNA SOLA VEZ para arreglar el error del Enum."""
-        with rx.session() as session:
-            try:
-                # 1. Obtenemos la conexión directa a la base de datos
-                connection = session.connection()
+        try:
+            # 1. Entramos solo un segundo para robar las llaves del motor (engine)
+            with rx.session() as session:
+                engine = session.get_bind()
                 
-                # 2. Forzamos AUTOCOMMIT para evitar que Postgres bloquee el ALTER TYPE
-                connection.execution_options(isolation_level="AUTOCOMMIT").execute(
-                    text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'COMPLETED'")
-                )
+            # 2. AHORA SÍ: Fuera de la sesión, abrimos una conexión cruda con AUTOCOMMIT
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                # Al no haber 'BEGIN', Postgres aceptará modificar el Enum sin chistar
+                conn.execute(text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'COMPLETED'"))
                 
-                return rx.toast.success("¡Base de datos reparada! El sistema ya reconoce 'COMPLETED'.")
-            except Exception as e:
-                # Si falla, imprimimos el error exacto para saber qué pasó
-                return rx.toast.error(f"Error al reparar la base de datos: {str(e)}")
+            return rx.toast.success("¡ÉXITO! Base de datos reparada. Ya puedes confirmar.")
+        except Exception as e:
+            # Si hay un error, lo imprimimos en rojo para que lo veas claramente
+            return rx.toast.error(f"Error al reparar la base de datos: {str(e)}", duration=10000)
 
     @rx.event
     async def handle_checkout(self):
