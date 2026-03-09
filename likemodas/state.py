@@ -9173,7 +9173,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase = session.get(PurchaseModel, purchase_id)
             if not purchase: return
 
-            purchase.status = PurchaseStatus.COMPLETED
+            purchase.status = PurchaseStatus.COMPLETED.value
             purchase.confirmed_at = datetime.now(timezone.utc)
             
             session.add(purchase)
