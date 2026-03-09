@@ -8088,12 +8088,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Ejecuta este comando UNA SOLA VEZ para arreglar el error del Enum."""
         with rx.session() as session:
             try:
-                # 👇 EL CAMBIO ESTÁ AQUÍ: 'COMPLETED' EN MAYÚSCULAS 👇
-                session.exec(text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'COMPLETED'"))
-                session.commit()
-                return rx.toast.success("¡Base de datos reparada! Ahora puedes confirmar pagos.")
+                # 1. Obtenemos la conexión directa a la base de datos
+                connection = session.connection()
+                
+                # 2. Forzamos AUTOCOMMIT para evitar que Postgres bloquee el ALTER TYPE
+                connection.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("ALTER TYPE purchasestatus ADD VALUE IF NOT EXISTS 'COMPLETED'")
+                )
+                
+                return rx.toast.success("¡Base de datos reparada! El sistema ya reconoce 'COMPLETED'.")
             except Exception as e:
-                return rx.toast.error(f"Error o ya estaba arreglado: {str(e)}")
+                # Si falla, imprimimos el error exacto para saber qué pasó
+                return rx.toast.error(f"Error al reparar la base de datos: {str(e)}")
 
     @rx.event
     async def handle_checkout(self):
