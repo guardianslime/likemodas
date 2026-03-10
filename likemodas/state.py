@@ -9068,16 +9068,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         return {p.id: p.product_list for p in self.active_purchases}
     
-    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA PARA EL HISTORIAL ✨ ---
-    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
+    # 👇 Asegúrate de que tenga 4 espacios al inicio 👇
     @rx.var
-    def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
+    def purchase_history_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
-        Crea un diccionario que mapea el ID de una compra a su lista de artículos.
+        Crea un diccionario que mapea el ID de una compra del HISTORIAL a su lista de artículos.
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
-        # 👇 CAMBIO AQUÍ: de p.items a p.product_list
-        return {p.id: p.product_list for p in self.user_purchases}
+        return {p.id: p.product_list for p in self.purchase_history}
 
     @rx.event
     def load_active_purchases(self):
@@ -9454,14 +9452,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     
-    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
+    # 👇 Asegúrate de que tenga 4 espacios al inicio 👇
     @rx.var
     def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
         Crea un diccionario que mapea el ID de una compra a su lista de artículos.
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
-        return {p.id: p.items for p in self.user_purchases}
+        return {p.id: p.product_list for p in self.user_purchases}
     # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
 
     # --- ✨ MÉTODO MODIFICADO: `load_purchases` (para User) ✨ ---
