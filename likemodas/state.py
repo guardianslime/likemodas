@@ -9069,14 +9069,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         return {p.id: p.product_list for p in self.active_purchases}
     
     # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA PARA EL HISTORIAL ✨ ---
+    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
     @rx.var
-    def purchase_history_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
+    def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
-        Crea un diccionario que mapea el ID de una compra del HISTORIAL a su lista de artículos.
+        Crea un diccionario que mapea el ID de una compra a su lista de artículos.
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
-        # <--- USO DEL NUEVO NOMBRE DE CAMPO
-        return {p.id: p.purchase_items for p in self.purchase_history}
+        # 👇 CAMBIO AQUÍ: de p.items a p.product_list
+        return {p.id: p.product_list for p in self.user_purchases}
 
     @rx.event
     def load_active_purchases(self):
