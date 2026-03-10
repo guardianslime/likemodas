@@ -11347,7 +11347,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_neighborhood=purchase_db.shipping_neighborhood,
                 shipping_city=purchase_db.shipping_city,
                 shipping_phone=purchase_db.shipping_phone,
-                items=purchase_items_data,
+                product_list=purchase_items_data, # <--- ✨ CAMBIO CORREGIDO ✨
                 # --- AÑADE ESTA LÍNEA FALTANTE ---
                 estimated_delivery_date_formatted=format_utc_to_local(purchase_db.estimated_delivery_date)
             )
