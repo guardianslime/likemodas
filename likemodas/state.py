@@ -9057,7 +9057,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         is_direct_sale=p.is_direct_sale
                     )
                 )
-            self.filtered_admin_purchases = history_list # Ojo: asegúrate de asignar a la variable correcta usada en el foreach
+            # 👇 CAMBIO AQUÍ: Asignamos a la variable base, no al @rx.var
+            self.purchase_history = history_list
 
     @rx.var
     def active_purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
@@ -9186,6 +9187,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             
             yield AppState.load_active_purchases
+            yield AppState.load_purchase_history # ✨ AÑADE ESTA LÍNEA PARA QUE APAREZCA AL INSTANTE ✨
             return rx.toast.success("Pago registrado. Pedido movido al Historial.")
 
     # --- AÑADE ESTA NUEVA FUNCIÓN COMPLETA ---
