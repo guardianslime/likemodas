@@ -496,6 +496,8 @@ class PurchaseModel(rx.Model, table=True):
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING_PAYMENT, nullable=False) # CAMBIADO a PENDING_PAYMENT por defecto
     shipping_applied: Optional[float] = Field(default=None)
+    # ✨ AÑADE ESTA LÍNEA EXACTAMENTE ASÍ:
+    actual_shipping_cost: Optional[float] = Field(default=None)
     shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None

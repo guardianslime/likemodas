@@ -21,6 +21,12 @@ def stat_card(title: str, value: str, icon: str) -> rx.Component:
                 border_radius="50%"
             ),
             rx.vstack(
+                # --- BOTÓN TEMPORAL DE REPARACIÓN ---
+                rx.button("⚠️ REPARAR BASE DE DATOS (Click 1 vez) ⚠️", 
+                        oon_click=AppState.fix_shipping_database_column,
+                        color_scheme="red", 
+                        size="3"),
+                # ------------------------------------
                 rx.text(title, size="3", color_scheme="gray"),
                 rx.heading(value, size="6"),
                 align_items="start", 

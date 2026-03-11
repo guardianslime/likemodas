@@ -6712,8 +6712,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             pass
 
     def set_admin_final_shipping_cost(self, purchase_id: Union[int, str], value: str):
-        """Guarda el costo de envío final real ingresado por el admin."""
-        self.admin_final_shipping_costs[str(purchase_id)] = value
+        """Guarda el costo de envío final real ingresado por el admin forzando el estado en Reflex."""
+        pid_str = str(purchase_id)
+        # Hacemos una copia y reasignamos para que Reflex detecte el cambio 100% seguro
+        new_dict = self.admin_final_shipping_costs.copy()
+        new_dict[pid_str] = value
+        self.admin_final_shipping_costs = new_dict
+
+    @rx.event
+    def fix_shipping_database_column(self):
+        """Ejecuta este comando UNA SOLA VEZ para agregar la columna a Postgres sin usar Alembic."""
+        try:
+            with rx.session() as session:
+                engine = session.get_bind()
+            
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                # Agrega la columna físicamente a la base de datos
+                conn.execute(text("ALTER TABLE purchasemodel ADD COLUMN IF NOT EXISTS actual_shipping_cost FLOAT;"))
+                
+            return rx.toast.success("¡ÉXITO! Columna de envío real agregada a la BD.")
+        except Exception as e:
+            return rx.toast.error(f"Error al reparar la BD: {str(e)}", duration=10000)
 
     def confirm_delivery_time(self, purchase_id: int):
         with rx.session() as session:
