@@ -7541,21 +7541,42 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _calculate_finance_data(self):
         """
-        [VERSIÓN 5.1 - Corregida] Lógica central que calcula todas las métricas financieras
-        basándose en el rango de fechas del estado.
+        [VERSIÓN 5.2 - Corregida] Lógica central que calcula todas las métricas financieras
+        filtrando correctamente los productos que pertenecen al vendedor actual.
         """
         self.is_loading = True
         yield
 
+        # 1. Determinar de quién queremos ver las finanzas
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        
+        if not owner_id:
+            self.is_loading = False
+            return
+
         with rx.session() as session:
-            # Construye la consulta base
+            # 2. Construir la consulta filtrando por los productos del vendedor
             query = (
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.selectinload(PurchaseModel.items)
                     .selectinload(PurchaseItemModel.blog_post)
                 )
-                .where(PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]))
+                .where(
+                    # Incluimos TODOS los estados que representan dinero recibido/confirmado
+                    PurchaseModel.status.in_([
+                        PurchaseStatus.COMPLETED, 
+                        PurchaseStatus.DELIVERED, 
+                        PurchaseStatus.CONFIRMED,
+                        PurchaseStatus.DIRECT_SALE
+                    ])
+                )
+                # CRÍTICO: Filtrar compras que tengan al menos un ítem de ESTE vendedor
+                .where(
+                    PurchaseModel.items.any(
+                        PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == owner_id)
+                    )
+                )
             )
 
             # Aplica los filtros de fecha si existen
@@ -7575,17 +7596,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             total_revenue = 0.0
             total_cogs = 0.0
             total_net_profit = 0.0
-            total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
-            total_actual_shipping_cost = sum(p.actual_shipping_cost or p.shipping_applied or 0.0 for p in completed_purchases)
-            total_sales_count = len(completed_purchases)
+            
+            # Solo sumamos el envío si el vendedor es el encargado de despacharlo
+            total_shipping_collected = 0.0
+            total_actual_shipping_cost = 0.0
             
             product_aggregator = defaultdict(lambda: {"title": "", "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0})
             daily_profit = defaultdict(float)
 
+            # Un conjunto para no contar la misma compra dos veces al promediar
+            counted_sales = set()
+
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
+                
                 for item in purchase.items:
-                    if item.blog_post:
+                    # CRÍTICO 2: Solo procesamos los ítems de ESTE vendedor (un carrito puede tener cosas de varios)
+                    if item.blog_post and item.blog_post.userinfo_id == owner_id:
+                        counted_sales.add(purchase.id) # Contabilizamos la venta para este vendedor
+                        
                         item_revenue = item.price_at_purchase * item.quantity
                         profit_per_unit = item.blog_post.profit or 0.0
                         cost_per_unit = (item.blog_post.price or 0.0) - profit_per_unit
@@ -7603,6 +7632,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                         aggregator["revenue"] += item_revenue
                         aggregator["net_profit"] += item_net_profit
                         aggregator["cogs"] += item_cogs
+                        
+                # Para simplificar, si el vendedor tuvo productos en esta compra, se le asigna 
+                # el costo de envío. (En un marketplace complejo esto requiere cálculo prorrateado).
+                if purchase.id in counted_sales:
+                     total_shipping_collected += purchase.shipping_applied or 0.0
+                     total_actual_shipping_cost += purchase.actual_shipping_cost or purchase.shipping_applied or 0.0
+
+            total_sales_count = len(counted_sales)
             
             shipping_profit_loss = total_shipping_collected - total_actual_shipping_cost
             grand_total_net_profit = total_net_profit + shipping_profit_loss
