@@ -196,6 +196,18 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
         return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
 
+def format_profit_cop(value: float | None) -> str:
+    """Formatea valores monetarios que PUEDEN SER NEGATIVOS (como ganancias y pérdidas)."""
+    if value is None or value == 0:
+        return "$ 0"
+    is_negative = value < 0
+    abs_value = abs(value)
+    
+    formatted_number = f"{abs_value:,.0f}"
+    colombian_format = formatted_number.replace(',', '.')
+    sign = "- " if is_negative else ""
+    return f"{sign}$ {colombian_format}"
+
 # Agrega esta función auxiliar (puedes ponerla antes de los endpoints):
 def normalize_text_api(text: str) -> str:
     """Igual que en la web: normaliza texto para comparar ciudades."""
@@ -7346,7 +7358,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     units_sold=variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("units", 0),
                     total_revenue_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("revenue", 0.0)),
                     total_cogs_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("cogs", 0.0)),
-                    total_net_profit_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("net_profit", 0.0)),
+                    
+                    # ✨ CAMBIAR AQUÍ ✨
+                    total_net_profit_cop=format_profit_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("net_profit", 0.0)),
+                    
                     daily_profit_data=sorted([{"date": date, "Ganancia": profit} for date, profit in variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("daily_profit", {}).items()], key=lambda x: x['date'])
                 ) for variant_db in (blog_post.variants or [])
             ]
@@ -7358,11 +7373,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 total_units_sold=product_total_units,
                 total_revenue_cop=format_to_cop(product_total_revenue),
                 total_cogs_cop=format_to_cop(product_total_cogs),
-                product_profit_cop=format_to_cop(product_total_net_profit),
+                
+                # ✨ CAMBIAR ESTAS 4 LÍNEAS ✨
+                product_profit_cop=format_profit_cop(product_total_net_profit),
                 shipping_collected_cop=format_to_cop(product_shipping_collected),
-                shipping_profit_loss_cop=format_to_cop(product_shipping_profit_loss),
-                total_profit_cop=format_to_cop(grand_total_profit),
-                total_net_profit_cop=format_to_cop(grand_total_profit),
+                shipping_profit_loss_cop=format_profit_cop(product_shipping_profit_loss),
+                total_profit_cop=format_profit_cop(grand_total_profit),
+                total_net_profit_cop=format_profit_cop(grand_total_profit),
+                
                 variants=product_variants_data
             )
             
@@ -7690,10 +7708,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.finance_stats = FinanceStatsDTO(
                 total_revenue_cop=format_to_cop(total_revenue),
                 total_cogs_cop=format_to_cop(total_cogs),
-                total_profit_cop=format_to_cop(grand_total_net_profit),
-                total_net_profit_cop=format_to_cop(grand_total_net_profit), 
+                
+                # ✨ AQUÍ CAMBIAMOS AL NUEVO FORMATEADOR ✨
+                total_profit_cop=format_profit_cop(grand_total_net_profit),
+                total_net_profit_cop=format_profit_cop(grand_total_net_profit), 
                 total_shipping_cop=format_to_cop(total_shipping_collected),
-                shipping_profit_loss_cop=format_to_cop(shipping_profit_loss),
+                shipping_profit_loss_cop=format_profit_cop(shipping_profit_loss),
+                # ----------------------------------------
+                
                 total_sales_count=total_sales_count,
                 average_order_value_cop=format_to_cop(avg_order_value),
                 profit_margin_percentage=f"{profit_margin:.2f}%"
@@ -7706,7 +7728,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     units_sold=data["units"],
                     total_revenue_cop=format_to_cop(data["revenue"]),
                     total_cogs_cop=format_to_cop(data["cogs"]),
-                    total_net_profit_cop=format_to_cop(data["net_profit"]),
+                    
+                    # ✨ AQUÍ TAMBIÉN ✨
+                    total_net_profit_cop=format_profit_cop(data["net_profit"]),
+                    
                     profit_margin_str=f"{(data['net_profit'] / data['revenue'] * 100):.2f}%" if data.get('revenue', 0) > 0 else "0.00%"
                 ) for pid, data in product_aggregator.items()
             ], key=lambda x: x.units_sold, reverse=True)
