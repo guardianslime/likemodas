@@ -7638,12 +7638,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                         aggregator["cogs"] += item_cogs
                         
                 if purchase.id in counted_sales:
-                     total_shipping_collected += purchase.shipping_applied or 0.0
-                     # ✨ CORRECCIÓN DE FALSO POSITIVO EN PYTHON (Evita que el 0.0 se ignore) 
-                     actual_cost = getattr(purchase, "actual_shipping_cost", None)
-                     if actual_cost is None:
-                         actual_cost = purchase.shipping_applied or 0.0
-                     total_actual_shipping_cost += actual_cost
+                    # 1. Sumamos lo que el cliente pagó por envío
+                    collected = float(purchase.shipping_applied or 0.0)
+                    total_shipping_collected += collected
+
+                    # 2. Obtenemos el costo real del envío (lo que pagó el vendedor a la transportadora)
+                    # Si 'actual_shipping_cost' es None, asumimos que gastó lo mismo que cobró.
+                    # Si es 0.0, respetamos el 0.0 (ej. el vendedor lo entregó a pie gratis).
+                    actual_cost_attr = getattr(purchase, "actual_shipping_cost", None)
+                    if actual_cost_attr is not None:
+                        actual_cost = float(actual_cost_attr)
+                    else:
+                        actual_cost = collected
+                    
+                    total_actual_shipping_cost += actual_cost
+
+            total_sales_count = len(counted_sales)
+            
+            # 3. La ganancia o pérdida por envío es la diferencia
+            shipping_profit_loss = total_shipping_collected - total_actual_shipping_cost
+            
+            grand_total_net_profit = total_net_profit + shipping_profit_loss
 
             total_sales_count = len(counted_sales)
             
