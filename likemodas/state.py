@@ -352,18 +352,15 @@ class AdminPurchaseCardData(rx.Base):
     total_price: float
     total_price_cop: str
     
-    # --- ✨ CAMPOS FINANCIEROS (Asegúrate de tener todos estos) ✨ ---
     subtotal_cop: str = "$ 0"
-    iva_cop: str = "$ 0"       # <--- EL QUE FALTA
-    net_base_cop: str = "$ 0"  # (Opcional, pero recomendado para facturas)
-    # ---------------------------------------------------------------
-
+    iva_cop: str = "$ 0"       
+    net_base_cop: str = "$ 0"  
+    
     payment_method: str
     confirmed_at: Optional[datetime] = None
     shipping_applied: Optional[float] = 0.0
     shipping_applied_cop: str = "$ 0"
     
-    # ... (resto de campos: shipping_name, product_list, etc.) ...
     shipping_name: Optional[str] = None
     shipping_full_address: Optional[str] = None
     shipping_phone: Optional[str] = None
@@ -373,6 +370,10 @@ class AdminPurchaseCardData(rx.Base):
     shipping_carrier: Optional[str] = None
     tracking_number: Optional[str] = None
     shipping_type: Optional[str] = None
+    
+    # ✨ --- ¡AÑADE ESTOS DOS CAMPOS AQUÍ! --- ✨
+    actual_shipping_cost: Optional[float] = None
+    actual_shipping_cost_cop: str = "$ 0"
     
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
@@ -9131,6 +9132,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                         payment_method=p.payment_method,
                         shipping_applied=shipping_val,
                         shipping_applied_cop=_format_to_cop_backend(shipping_val),
+                        
+                        # ✨ --- AÑADE ESTAS DOS LÍNEAS AQUÍ --- ✨
+                        actual_shipping_cost=p.actual_shipping_cost,
+                        actual_shipping_cost_cop=_format_to_cop_backend(p.actual_shipping_cost if p.actual_shipping_cost is not None else shipping_val),
+                        # ----------------------------------------
+                        
                         product_list=detailed_items,
                         is_direct_sale=p.is_direct_sale
                     )
@@ -9245,7 +9252,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         tracking_number=p.tracking_number,
                         tracking_url=tracking_link,  # <--- AQUÍ SE GUARDA EL LINK
                         shipping_type=p.shipping_type,
-                        shipping_applied_cop=_format_to_cop_backend(p.shipping_applied or 0.0)
+                        shipping_applied_cop=_format_to_cop_backend(p.shipping_applied or 0.0),
+                        
+                        # ✨ --- AÑADE ESTAS DOS LÍNEAS AQUÍ TAMBIÉN --- ✨
+                        actual_shipping_cost=p.actual_shipping_cost,
+                        actual_shipping_cost_cop=_format_to_cop_backend(p.actual_shipping_cost if p.actual_shipping_cost is not None else (p.shipping_applied or 0.0))
                     )
                 )
             self.active_purchases = active_purchases_list
