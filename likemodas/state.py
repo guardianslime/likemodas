@@ -592,8 +592,8 @@ class ProductDetailFinanceDTO(rx.Base):
     product_profit_cop: str
     shipping_collected_cop: str
     shipping_profit_loss_cop: str
-    total_profit_cop: str  # Este es el campo que usa la UI y debe llamarse así
-
+    total_profit_cop: str  
+    total_net_profit_cop: str = "$0" # Variable añadida
     variants: List[VariantDetailFinanceDTO] = []
 
 ProductDetailFinanceDTO.update_forward_refs()
@@ -605,28 +605,23 @@ class FinanceStatsDTO(rx.Base):
     total_revenue_cop: str = "$0"
     total_cogs_cop: str = "$0"  
     total_profit_cop: str = "$0"
-    total_net_profit_cop: str = "$0" # ✨ AÑADE ESTA LÍNEA EXACTA ✨
+    total_net_profit_cop: str = "$0" # Variable añadida
     total_shipping_cop: str = "$0"
     shipping_profit_loss_cop: str = "$0" 
     total_sales_count: int = 0
     average_order_value_cop: str = "$0"
     profit_margin_percentage: str = "0.00%"
 
-class ProductDetailFinanceDTO(rx.Base):
-    """DTO para el detalle financiero de un producto específico."""
+class ProductFinanceDTO(rx.Base):
+    """DTO para la tabla de finanzas por producto."""
     product_id: int
     title: str
-    image_url: Optional[str] = None
-    total_units_sold: int
+    units_sold: int
     total_revenue_cop: str
     total_cogs_cop: str
-    product_profit_cop: str
-    shipping_collected_cop: str
-    shipping_profit_loss_cop: str
-    total_profit_cop: str  
-    total_net_profit_cop: str = "$ 0" # ✨ AÑADE ESTA LÍNEA EXACTA ✨
+    total_net_profit_cop: str
+    profit_margin_str: str = "0.00%"
 
-    variants: List[VariantDetailFinanceDTO] = []
 
 class GastoDataDTO(rx.Base):
     """DTO para mostrar un gasto en la UI."""
