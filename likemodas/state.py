@@ -6711,37 +6711,45 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             pass
 
-    def set_admin_final_shipping_cost(self, purchase_id: Union[int, str], value: Union[int, float, str]):
-        """Guarda el costo de envío final real ingresado por el admin."""
+    @rx.event
+    def set_admin_final_shipping_cost(self, purchase_id: str, value: str):
+        """Captura el texto que el usuario escribe en la caja de costo."""
         pid_str = str(purchase_id)
-        val_str = str(value) # Forzamos que sea texto para que el diccionario no falle
-        new_dict = self.admin_final_shipping_costs.copy()
+        val_str = str(value)
+        new_dict = dict(self.admin_final_shipping_costs)
         new_dict[pid_str] = val_str
         self.admin_final_shipping_costs = new_dict
+        logger.info(f"📝 UI CAPTURA -> Compra: {pid_str} | Costo escrito: '{val_str}'")
 
     # --- ✨ FUNCIÓN AUXILIAR CENTRAL PARA ASIGNAR COSTO REAL ✨ ---
-    def _apply_actual_shipping_cost(self, purchase):
-        """Lee el input del admin, limpia el formato y lo guarda físicamente en la compra."""
+    def _apply_actual_shipping_cost(self, session, purchase_id: int):
+        """Fuerza el guardado directo en la BD usando SQL puro para evadir el ORM."""
         import re
-        pid_str = str(purchase.id)
-        final_cost_str = self.admin_final_shipping_costs.get(pid_str)
+        pid_str = str(purchase_id)
+        final_cost_str = self.admin_final_shipping_costs.get(pid_str, "")
         
-        print(f"📦 DEBUG DESPACHO - Compra #{purchase.id} - Valor en UI: '{final_cost_str}'")
+        logger.info(f"⚙️ PROCESANDO DESPACHO -> Compra #{purchase_id} | Valor: '{final_cost_str}'")
         
-        if final_cost_str is not None and str(final_cost_str).strip() != "":
-            # ✨ MAGIA: Elimina puntos, comas, letras y signos (Ej: "$ 15.000" -> "15000") ✨
+        clean_cost = None
+        if final_cost_str and str(final_cost_str).strip() != "":
+            # Extraer solo números (limpia puntos, comas, signos de pesos)
             clean_str = re.sub(r'[^\d]', '', str(final_cost_str))
-            
             if clean_str:
-                purchase.actual_shipping_cost = float(clean_str)
-                print(f"✅ Éxito: Costo real guardado en BD como {purchase.actual_shipping_cost}")
+                clean_cost = float(clean_str)
+        
+        try:
+            if clean_cost is not None:
+                # SQL puro: Escribe el valor brutalmente en la tabla
+                session.exec(text(f"UPDATE purchasemodel SET actual_shipping_cost = {clean_cost} WHERE id = {purchase_id}"))
+                logger.info(f"✅ SQL ÉXITO -> Costo real guardado: {clean_cost}")
             else:
-                purchase.actual_shipping_cost = purchase.shipping_applied
-                print(f"⚠️ Valor vacío tras limpiar, asumiendo ganancia $0.")
-        else:
-            purchase.actual_shipping_cost = purchase.shipping_applied
-            print(f"⚠️ No se ingresó nada en la UI, asumiendo ganancia $0.")
+                # Si estaba vacío, igualamos al cobrado por defecto
+                session.exec(text(f"UPDATE purchasemodel SET actual_shipping_cost = shipping_applied WHERE id = {purchase_id}"))
+                logger.info(f"⚠️ SQL VACÍO -> Se copió el valor de shipping_applied.")
+        except Exception as e:
+            logger.error(f"❌ ERROR SQL AL GUARDAR COSTO: {e}")
             
+        # Limpieza de la memoria temporal
         if pid_str in self.admin_final_shipping_costs:
             del self.admin_final_shipping_costs[pid_str]
 
@@ -6762,15 +6770,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase.shipping_carrier = "Domiciliario Propio"
             purchase.is_direct_sale = True 
             
-            # ✨ AQUÍ ES DONDE ANTES NO SE GUARDABA NADA. AHORA SÍ:
-            self._apply_actual_shipping_cost(purchase)
-
             session.add(purchase)
-            session.commit()
+            session.commit() # Confirmar estado primero
+            
+            # INYECCIÓN SQL DEL COSTO
+            self._apply_actual_shipping_cost(session, purchase_id)
+            session.commit() 
             
             if pid_str in self.admin_delivery_times: del self.admin_delivery_times[pid_str]
-            
-            # Refresca la UI
             yield AppState.load_active_purchases
             return rx.toast.success("Entrega manual programada y costos guardados.")
 
@@ -6790,15 +6797,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase.shipping_type = "carrier"
             purchase.status = PurchaseStatus.SHIPPED
             
-            # ✨ AQUÍ ES DONDE ANTES NO SE GUARDABA NADA. AHORA SÍ:
-            self._apply_actual_shipping_cost(purchase)
-
             session.add(purchase)
             session.commit()
             
-            if pid_str in self.admin_tracking_info: del self.admin_tracking_info[pid_str]
+            # INYECCIÓN SQL DEL COSTO
+            self._apply_actual_shipping_cost(session, purchase_id)
+            session.commit()
             
-            # Refresca la UI
+            if pid_str in self.admin_tracking_info: del self.admin_tracking_info[pid_str]
             yield AppState.load_active_purchases
             return rx.toast.success(f"Guía {guide} registrada y costos guardados.")
 
@@ -7663,14 +7669,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                     collected = float(purchase.shipping_applied or 0.0)
                     total_shipping_collected += collected
 
-                    # 2. Obtenemos el costo real del envío (lo que pagó el vendedor a la transportadora)
-                    # Si 'actual_shipping_cost' es None, asumimos que gastó lo mismo que cobró.
-                    # Si es 0.0, respetamos el 0.0 (ej. el vendedor lo entregó a pie gratis).
-                    actual_cost_attr = getattr(purchase, "actual_shipping_cost", None)
-                    if actual_cost_attr is not None:
-                        actual_cost = float(actual_cost_attr)
-                    else:
-                        actual_cost = collected
+                    # 2. Leemos la base de datos de forma directa con SQL para evadir modelos vacíos
+                    actual_cost = collected # Asumimos empate por defecto
+                    try:
+                        raw_query = text(f"SELECT actual_shipping_cost FROM purchasemodel WHERE id = {purchase.id}")
+                        raw_result = session.exec(raw_query).first()
+                        
+                        # raw_result nos devuelve una tupla con el valor, ej: (12000.0,)
+                        if raw_result and raw_result[0] is not None:
+                            actual_cost = float(raw_result[0])
+                    except Exception as e:
+                        logger.error(f"Error al leer costo real por SQL: {e}")
                     
                     total_actual_shipping_cost += actual_cost
 
@@ -9296,15 +9305,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _update_shipping_and_notify(self, session, purchase, total_delta):
         """Función auxiliar que actualiza el envío y notifica."""
-        
-        # ✨ APLICAMOS LA LÓGICA CENTRAL AQUÍ TAMBIÉN:
-        self._apply_actual_shipping_cost(purchase)
-        
         purchase.status = PurchaseStatus.SHIPPED
         purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
         purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
         purchase.action_by_id = self.authenticated_user_info.id
         session.add(purchase)
+        session.commit() # Confirmar estados
+        
+        # INYECCIÓN SQL DEL COSTO
+        self._apply_actual_shipping_cost(session, purchase.id)
 
         days = total_delta.days
         hours, remainder = divmod(total_delta.seconds, 3600)
