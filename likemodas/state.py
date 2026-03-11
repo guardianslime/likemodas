@@ -6711,32 +6711,39 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             pass
 
-    def set_admin_final_shipping_cost(self, purchase_id: Union[int, str], value: str):
+    def set_admin_final_shipping_cost(self, purchase_id: Union[int, str], value: Union[int, float, str]):
         """Guarda el costo de envío final real ingresado por el admin."""
         pid_str = str(purchase_id)
+        val_str = str(value) # Forzamos que sea texto para que el diccionario no falle
         new_dict = self.admin_final_shipping_costs.copy()
-        new_dict[pid_str] = value
+        new_dict[pid_str] = val_str
         self.admin_final_shipping_costs = new_dict
 
     # --- ✨ FUNCIÓN AUXILIAR CENTRAL PARA ASIGNAR COSTO REAL ✨ ---
     def _apply_actual_shipping_cost(self, purchase):
-        """Lee el input del admin y lo guarda físicamente en la compra."""
+        """Lee el input del admin, limpia el formato y lo guarda físicamente en la compra."""
+        import re
         pid_str = str(purchase.id)
         final_cost_str = self.admin_final_shipping_costs.get(pid_str)
         
-        if final_cost_str and final_cost_str.strip():
-            try:
-                purchase.actual_shipping_cost = float(final_cost_str)
-            except ValueError:
-                purchase.actual_shipping_cost = purchase.shipping_applied
-        else:
-            # Si se deja en blanco, asume que costó lo mismo que cobró
-            purchase.actual_shipping_cost = purchase.shipping_applied
+        print(f"📦 DEBUG DESPACHO - Compra #{purchase.id} - Valor en UI: '{final_cost_str}'")
+        
+        if final_cost_str is not None and str(final_cost_str).strip() != "":
+            # ✨ MAGIA: Elimina puntos, comas, letras y signos (Ej: "$ 15.000" -> "15000") ✨
+            clean_str = re.sub(r'[^\d]', '', str(final_cost_str))
             
-        # Limpieza de memoria para el próximo uso
+            if clean_str:
+                purchase.actual_shipping_cost = float(clean_str)
+                print(f"✅ Éxito: Costo real guardado en BD como {purchase.actual_shipping_cost}")
+            else:
+                purchase.actual_shipping_cost = purchase.shipping_applied
+                print(f"⚠️ Valor vacío tras limpiar, asumiendo ganancia $0.")
+        else:
+            purchase.actual_shipping_cost = purchase.shipping_applied
+            print(f"⚠️ No se ingresó nada en la UI, asumiendo ganancia $0.")
+            
         if pid_str in self.admin_final_shipping_costs:
             del self.admin_final_shipping_costs[pid_str]
-    # --------------------------------------------------------------
 
     @rx.event
     def confirm_delivery_time(self, purchase_id: int):
@@ -7530,14 +7537,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     # MODIFY THIS EXISTING EVENT HANDLER
     @rx.event
     def on_load_finance_data(self):
-        """
-        [CORREGIDO] Se ejecuta al cargar la página de finanzas.
-        Ahora permite el acceso a Vendedores y Empleados.
-        """
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        """Se ejecuta al cargar la página de finanzas y auto-repara la BD si es necesario."""
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.redirect("/")
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+            
+        # ✨ REPARACIÓN SILENCIOSA DE BASE DE DATOS ✨
+        # Si la columna se perdió o la migración de Alembic falló, esto la crea sin que el servidor explote.
+        try:
+            with rx.session() as session:
+                engine = session.get_bind()
+                with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                    conn.execute(text("ALTER TABLE purchasemodel ADD COLUMN IF NOT EXISTS actual_shipping_cost FLOAT;"))
+        except Exception as e:
+            print(f"DB Auto-Check (Es normal si da error indicando que ya existe): {e}")
 
         today = datetime.now(timezone.utc)
         thirty_days_ago = today - timedelta(days=30)
