@@ -14,12 +14,6 @@ def stat_card(title: str, value: str, icon: str) -> rx.Component:
     """Muestra una tarjeta de estadística en el dashboard."""
     return rx.card(
         rx.hstack(
-            # --- BOTÓN TEMPORAL DE REPARACIÓN ---
-                rx.button("⚠️ REPARAR BASE DE DATOS (Click 1 vez) ⚠️", 
-                        oon_click=AppState.fix_shipping_database_column,
-                        color_scheme="red", 
-                        size="3"),
-                # ------------------------------------
             rx.box(
                 rx.icon(icon, size=32), 
                 padding="0.75em", 
