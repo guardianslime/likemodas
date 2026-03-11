@@ -496,7 +496,7 @@ class PurchaseModel(rx.Model, table=True):
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING_PAYMENT, nullable=False) # CAMBIADO a PENDING_PAYMENT por defecto
     shipping_applied: Optional[float] = Field(default=None)
-    
+
     # ✨ AÑADE ESTA LÍNEA EXACTAMENTE ASÍ:
     actual_shipping_cost: Optional[float] = Field(default=None)
     shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
@@ -508,7 +508,6 @@ class PurchaseModel(rx.Model, table=True):
     wompi_events: list = Field(default_factory=list, sa_column=Column(JSON))
     wompi_payment_link_id: Optional[str] = Field(default=None, index=True)
     # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    actual_shipping_cost: Optional[float] = Field(default=None)
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     # --- INICIO: NUEVOS CAMPOS PARA SISTECREDITO ---
