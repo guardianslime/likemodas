@@ -7639,7 +7639,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         
                 if purchase.id in counted_sales:
                      total_shipping_collected += purchase.shipping_applied or 0.0
-                     # ✨ CORRECCIÓN DE FALSO POSITIVO EN PYTHON (Evita que el 0.0 se ignore) ✨
+                     # ✨ CORRECCIÓN DE FALSO POSITIVO EN PYTHON (Evita que el 0.0 se ignore) 
                      actual_cost = getattr(purchase, "actual_shipping_cost", None)
                      if actual_cost is None:
                          actual_cost = purchase.shipping_applied or 0.0
