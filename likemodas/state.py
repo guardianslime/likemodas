@@ -6681,77 +6681,65 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
             # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
-    # Diccionarios para guardar temporalmente los datos de entrega manual por pedido
-    admin_delivery_times: Dict[int, Dict[str, int]] = {}
-    admin_final_shipping_costs: Dict[int, str] = {}
+    # ==============================================================================
+    # ✨ BLOQUE CORREGIDO: GESTIÓN DE DESPACHOS Y COSTOS DE ENVÍO
+    # ==============================================================================
+    
+    # Usamos diccionarios con claves String para evitar problemas de JSON/Reflex
+    admin_delivery_times: Dict[str, Dict[str, int]] = {}
+    admin_final_shipping_costs: Dict[str, str] = {}
+    admin_tracking_info: Dict[str, Dict[str, str]] = {}
 
-    # Diccionario para guardar datos de GUÍA por pedido (Servientrega, etc.)
-    admin_tracking_info: Dict[int, Dict[str, str]] = {}
+    def set_admin_tracking_carrier(self, purchase_id: Union[int, str], value: str):
+        pid_str = str(purchase_id)
+        if pid_str not in self.admin_tracking_info:
+            self.admin_tracking_info[pid_str] = {}
+        self.admin_tracking_info[pid_str]["carrier"] = value
 
-    def set_admin_tracking_carrier(self, purchase_id: int, value: str):
-        """Actualiza la empresa seleccionada para un pedido específico (Guía)."""
-        if purchase_id not in self.admin_tracking_info:
-            self.admin_tracking_info[purchase_id] = {}
-        self.admin_tracking_info[purchase_id]["carrier"] = value
+    def set_admin_tracking_guide(self, purchase_id: Union[int, str], value: str):
+        pid_str = str(purchase_id)
+        if pid_str not in self.admin_tracking_info:
+            self.admin_tracking_info[pid_str] = {}
+        self.admin_tracking_info[pid_str]["guide"] = value
 
-    def set_admin_tracking_guide(self, purchase_id: int, value: str):
-        """Actualiza el número de guía para un pedido específico (Guía)."""
-        if purchase_id not in self.admin_tracking_info:
-            self.admin_tracking_info[purchase_id] = {}
-        self.admin_tracking_info[purchase_id]["guide"] = value
-
-    def set_admin_delivery_time(self, purchase_id: int, field: str, value: str):
-        """Actualiza días/horas/minutos para entrega manual."""
-        if purchase_id not in self.admin_delivery_times:
-            self.admin_delivery_times[purchase_id] = {"days": 0, "hours": 0, "minutes": 0}
+    def set_admin_delivery_time(self, purchase_id: Union[int, str], field: str, value: str):
+        pid_str = str(purchase_id)
+        if pid_str not in self.admin_delivery_times:
+            self.admin_delivery_times[pid_str] = {"days": 0, "hours": 0, "minutes": 0}
         try:
-            val_int = int(value) if value else 0
-            self.admin_delivery_times[purchase_id][field] = val_int
+            self.admin_delivery_times[pid_str][field] = int(value) if value else 0
         except ValueError:
             pass
 
-    def set_admin_final_shipping_cost(self, purchase_id: int, value: str):
-        """Actualiza el costo de envío manual."""
-        self.admin_final_shipping_costs[purchase_id] = value
+    def set_admin_final_shipping_cost(self, purchase_id: Union[int, str], value: str):
+        """Guarda el costo de envío final real ingresado por el admin."""
+        self.admin_final_shipping_costs[str(purchase_id)] = value
 
     def confirm_delivery_time(self, purchase_id: int):
-        """
-        Confirma entrega MANUAL. 
-        IMPORTANTE: Marca la venta como Venta Directa (Contra Entrega) para habilitar el cobro.
-        """
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if not purchase: return
 
-            # 1. Calcular fecha (tu lógica existente...)
-            times = self.admin_delivery_times.get(purchase_id, {"days": 0, "hours": 0, "minutes": 0})
+            pid_str = str(purchase_id)
+            times = self.admin_delivery_times.get(pid_str, {"days": 0, "hours": 0, "minutes": 0})
             total_minutes = (times["days"] * 24 * 60) + (times["hours"] * 60) + times["minutes"]
             if total_minutes > 0:
                 purchase.estimated_delivery_date = datetime.now(timezone.utc) + timedelta(minutes=total_minutes)
 
-            # 2. Actualizar estado a ENVIADO
             purchase.status = PurchaseStatus.SHIPPED
             purchase.shipping_type = "manual"
             purchase.shipping_carrier = "Domiciliario Propio"
-            
-            # ✨ CAMBIO CLAVE: Si es manual, asumimos que es gestión directa del vendedor
-            # Esto habilitará el botón "Confirmar Pago" en el panel.
             purchase.is_direct_sale = True 
             
             session.add(purchase)
             session.commit()
             
-            # Limpiar temporales
-            if purchase_id in self.admin_delivery_times: del self.admin_delivery_times[purchase_id]
-            
+            if pid_str in self.admin_delivery_times: del self.admin_delivery_times[pid_str]
             return rx.toast.success("Entrega manual programada. Ahora gestiona el pago.")
 
     def ship_order_with_guide(self, purchase_id: int):
-        """
-        Confirma envío por GUÍA.
-        """
-        # (Recuperar datos de carrier_input/guide_input...)
-        info = self.admin_tracking_info.get(purchase_id, {})
+        pid_str = str(purchase_id)
+        info = self.admin_tracking_info.get(pid_str, {})
         carrier = info.get("carrier", "Servientrega")
         guide = info.get("guide", "").strip()
 
@@ -6764,14 +6752,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase.shipping_type = "carrier"
             purchase.status = PurchaseStatus.SHIPPED
             
-            # La guía NO cambia is_direct_sale automáticamente, 
-            # eso depende de si el pago fue online o contra entrega originalmente.
-            
             session.add(purchase)
             session.commit()
             
-            if purchase_id in self.admin_tracking_info: del self.admin_tracking_info[purchase_id]
-            
+            if pid_str in self.admin_tracking_info: del self.admin_tracking_info[pid_str]
             return rx.toast.success(f"Guía {guide} registrada.")
 
     @rx.var
@@ -7396,10 +7380,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO DE NUEVAS VARIABLES Y SETTERS ✨ ---
     admin_final_shipping_cost: Dict[int, str] = {}
 
-    def set_admin_final_shipping_cost(self, purchase_id: int, value: str):
-        """Guarda el costo de envío final ingresado por el admin."""
-        self.admin_final_shipping_cost[purchase_id] = value
-    # --- ✨ FIN DE NUEVAS VARIABLES Y SETTERS ✨ ---
 
     # --- INICIO: NUEVOS EVENT HANDLERS Y VARS PARA GASTOS ---
 
@@ -9274,28 +9254,28 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.new_purchase_notification = True
 
     def _update_shipping_and_notify(self, session, purchase, total_delta):
-        """
-        Función auxiliar que centraliza la lógica para actualizar el envío, 
-        guardar el costo final y notificar al cliente.
-        """
-        # 1. Guarda el costo de envío final ingresado por el admin
+        """Función auxiliar que actualiza el envío y guarda el costo final real."""
+        pid_str = str(purchase.id)
+        
+        # ✨ LA SOLUCIÓN AL CERO (0): Buscamos usando el String exacto ✨
+        final_shipping_cost_str = self.admin_final_shipping_costs.get(pid_str)
+        
         try:
-            final_shipping_cost_str = self.admin_final_shipping_cost.get(purchase.id)
-            # Si el admin ingresó un valor, lo usamos. Si no, usamos el costo inicial cargado a la compra.
-            purchase.actual_shipping_cost = float(final_shipping_cost_str) if final_shipping_cost_str else purchase.shipping_applied
+            if final_shipping_cost_str and final_shipping_cost_str.strip():
+                # Si el admin escribió un costo (ej: "15000"), lo guardamos
+                purchase.actual_shipping_cost = float(final_shipping_cost_str)
+            else:
+                # Si el admin lo dejó en blanco, asumimos que costó lo mismo que cobró
+                purchase.actual_shipping_cost = purchase.shipping_applied
         except (ValueError, TypeError):
-            # Si el valor ingresado no es un número válido, usamos el costo inicial como respaldo.
             purchase.actual_shipping_cost = purchase.shipping_applied
         
-        # 2. Actualiza el estado y las fechas del pedido
         purchase.status = PurchaseStatus.SHIPPED
         purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
         purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
-        # --- ✨ CORRECCIÓN CLAVE: Guardamos el ID del usuario que actúa ✨ ---
         purchase.action_by_id = self.authenticated_user_info.id
         session.add(purchase)
 
-        # 3. Construye el mensaje de notificación para el cliente
         days = total_delta.days
         hours, remainder = divmod(total_delta.seconds, 3600)
         minutes, _ = divmod(remainder, 60)
@@ -9308,7 +9288,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         time_str = ", ".join(time_parts) if time_parts else "pronto"
         mensaje = f"¡Tu compra #{purchase.id} está en camino! 🚚 Llegará en aprox. {time_str}."
 
-        # 4. Crea y guarda la notificación
         notification = NotificationModel(
             userinfo_id=purchase.userinfo_id,
             message=mensaje,
@@ -9316,23 +9295,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         )
         session.add(notification)
         
-        # 5. Limpia el valor temporal del formulario para esta orden
-        if purchase.id in self.admin_final_shipping_cost:
-            del self.admin_final_shipping_cost[purchase.id]
+        if pid_str in self.admin_final_shipping_costs:
+            del self.admin_final_shipping_costs[pid_str]
 
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
-        """Notifica el envío de un pedido online, con permisos corregidos."""
-        # --- ✨ CORRECCIÓN DE PERMISOS ✨ ---
         if not (self.is_admin or self.is_vendedor or self.is_empleado): 
             return rx.toast.error("Acción no permitida.")
         
-        # Valida que se haya ingresado un tiempo de entrega
-        time_data = self.admin_delivery_time.get(purchase_id, {})
+        pid_str = str(purchase_id)
+        time_data = self.admin_delivery_times.get(pid_str, {})
         try:
-            days = int(time_data.get("days", "0") or "0")
-            hours = int(time_data.get("hours", "0") or "0")
-            minutes = int(time_data.get("minutes", "0") or "0")
+            days = int(time_data.get("days", 0))
+            hours = int(time_data.get("hours", 0))
+            minutes = int(time_data.get("minutes", 0))
             total_delta = timedelta(days=days, hours=hours, minutes=minutes)
             if total_delta.total_seconds() <= 0:
                 return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
@@ -9342,7 +9318,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.CONFIRMED:
-                # Llama a la función auxiliar con la lógica compartida
                 self._update_shipping_and_notify(session, purchase, total_delta)
                 session.commit()
                 yield rx.toast.success("Notificación de envío enviada.")
@@ -9352,17 +9327,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def ship_pending_cod_order(self, purchase_id: int):
-        """Envía un pedido Contra Entrega, con permisos corregidos."""
-        # --- ✨ CORRECCIÓN DE PERMISOS ✨ ---
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.toast.error("Acción no permitida.")
         
-        # La validación del tiempo es idéntica
-        time_data = self.admin_delivery_time.get(purchase_id, {})
+        pid_str = str(purchase_id)
+        time_data = self.admin_delivery_times.get(pid_str, {})
         try:
-            days = int(time_data.get("days", "0") or "0")
-            hours = int(time_data.get("hours", "0") or "0")
-            minutes = int(time_data.get("minutes", "0") or "0")
+            days = int(time_data.get("days", 0))
+            hours = int(time_data.get("hours", 0))
+            minutes = int(time_data.get("minutes", 0))
             total_delta = timedelta(days=days, hours=hours, minutes=minutes)
             if total_delta.total_seconds() <= 0:
                 return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
@@ -9372,13 +9345,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Contra Entrega":
-                # Llama a la misma función auxiliar
                 self._update_shipping_and_notify(session, purchase, total_delta)
                 session.commit()
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
                 yield AppState.load_active_purchases
             else:
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
+    # ==============================================================================
 
 
     @rx.event
