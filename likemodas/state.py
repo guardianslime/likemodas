@@ -7287,7 +7287,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         PurchaseStatus.COMPLETED, 
                         PurchaseStatus.CONFIRMED, 
                         PurchaseStatus.DELIVERED, 
-                        PurchaseStatus.DIRECT_SALE
+                        PurchaseStatus.DIRECT_SALE,
+                        PurchaseStatus.SHIPPED  # <--- ✨ ¡AÑADE ESTA LÍNEA AQUÍ! ✨
                     ])
                 )
                 .where(
@@ -7598,7 +7599,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         PurchaseStatus.COMPLETED, 
                         PurchaseStatus.DELIVERED, 
                         PurchaseStatus.CONFIRMED,
-                        PurchaseStatus.DIRECT_SALE
+                        PurchaseStatus.DIRECT_SALE,
+                        PurchaseStatus.SHIPPED  # <--- ✨ ¡AÑADE ESTA LÍNEA AQUÍ! ✨
                     ])
                 )
                 .where(
