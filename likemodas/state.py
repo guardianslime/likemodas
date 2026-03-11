@@ -6723,33 +6723,26 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ FUNCIÓN AUXILIAR CENTRAL PARA ASIGNAR COSTO REAL ✨ ---
     def _apply_actual_shipping_cost(self, session, purchase_id: int):
-        """Fuerza el guardado directo en la BD usando SQL puro para evadir el ORM."""
+        """Lee el input del admin, limpia el formato y lo guarda usando el modelo."""
         import re
         pid_str = str(purchase_id)
         final_cost_str = self.admin_final_shipping_costs.get(pid_str, "")
         
-        logger.info(f"⚙️ PROCESANDO DESPACHO -> Compra #{purchase_id} | Valor: '{final_cost_str}'")
-        
-        clean_cost = None
+        purchase = session.get(PurchaseModel, purchase_id)
+        if not purchase: return
+
         if final_cost_str and str(final_cost_str).strip() != "":
-            # Extraer solo números (limpia puntos, comas, signos de pesos)
             clean_str = re.sub(r'[^\d]', '', str(final_cost_str))
             if clean_str:
-                clean_cost = float(clean_str)
-        
-        try:
-            if clean_cost is not None:
-                # SQL puro: Escribe el valor brutalmente en la tabla
-                session.exec(text(f"UPDATE purchasemodel SET actual_shipping_cost = {clean_cost} WHERE id = {purchase_id}"))
-                logger.info(f"✅ SQL ÉXITO -> Costo real guardado: {clean_cost}")
+                purchase.actual_shipping_cost = float(clean_str)
             else:
-                # Si estaba vacío, igualamos al cobrado por defecto
-                session.exec(text(f"UPDATE purchasemodel SET actual_shipping_cost = shipping_applied WHERE id = {purchase_id}"))
-                logger.info(f"⚠️ SQL VACÍO -> Se copió el valor de shipping_applied.")
-        except Exception as e:
-            logger.error(f"❌ ERROR SQL AL GUARDAR COSTO: {e}")
+                purchase.actual_shipping_cost = purchase.shipping_applied
+        else:
+            purchase.actual_shipping_cost = purchase.shipping_applied
             
-        # Limpieza de la memoria temporal
+        session.add(purchase)
+        logger.info(f"✅ ORM ÉXITO -> Costo real guardado: {purchase.actual_shipping_cost}")
+        
         if pid_str in self.admin_final_shipping_costs:
             del self.admin_final_shipping_costs[pid_str]
 
@@ -7669,17 +7662,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     collected = float(purchase.shipping_applied or 0.0)
                     total_shipping_collected += collected
 
-                    # 2. Leemos la base de datos de forma directa con SQL para evadir modelos vacíos
-                    actual_cost = collected # Asumimos empate por defecto
-                    try:
-                        raw_query = text(f"SELECT actual_shipping_cost FROM purchasemodel WHERE id = {purchase.id}")
-                        raw_result = session.exec(raw_query).first()
-                        
-                        # raw_result nos devuelve una tupla con el valor, ej: (12000.0,)
-                        if raw_result and raw_result[0] is not None:
-                            actual_cost = float(raw_result[0])
-                    except Exception as e:
-                        logger.error(f"Error al leer costo real por SQL: {e}")
+                    # 2. Obtenemos el costo real del envío (Ahora usando el modelo directamente)
+                    if purchase.actual_shipping_cost is not None:
+                        actual_cost = float(purchase.actual_shipping_cost)
+                    else:
+                        actual_cost = collected
                     
                     total_actual_shipping_cost += actual_cost
 
