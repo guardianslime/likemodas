@@ -6712,28 +6712,33 @@ class AppState(reflex_local_auth.LocalAuthState):
             pass
 
     def set_admin_final_shipping_cost(self, purchase_id: Union[int, str], value: str):
-        """Guarda el costo de envío final real ingresado por el admin forzando el estado en Reflex."""
+        """Guarda el costo de envío final real ingresado por el admin."""
         pid_str = str(purchase_id)
-        # Hacemos una copia y reasignamos para que Reflex detecte el cambio 100% seguro
         new_dict = self.admin_final_shipping_costs.copy()
         new_dict[pid_str] = value
         self.admin_final_shipping_costs = new_dict
 
-    @rx.event
-    def fix_shipping_database_column(self):
-        """Ejecuta este comando UNA SOLA VEZ para agregar la columna a Postgres sin usar Alembic."""
-        try:
-            with rx.session() as session:
-                engine = session.get_bind()
+    # --- ✨ FUNCIÓN AUXILIAR CENTRAL PARA ASIGNAR COSTO REAL ✨ ---
+    def _apply_actual_shipping_cost(self, purchase):
+        """Lee el input del admin y lo guarda físicamente en la compra."""
+        pid_str = str(purchase.id)
+        final_cost_str = self.admin_final_shipping_costs.get(pid_str)
+        
+        if final_cost_str and final_cost_str.strip():
+            try:
+                purchase.actual_shipping_cost = float(final_cost_str)
+            except ValueError:
+                purchase.actual_shipping_cost = purchase.shipping_applied
+        else:
+            # Si se deja en blanco, asume que costó lo mismo que cobró
+            purchase.actual_shipping_cost = purchase.shipping_applied
             
-            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-                # Agrega la columna físicamente a la base de datos
-                conn.execute(text("ALTER TABLE purchasemodel ADD COLUMN IF NOT EXISTS actual_shipping_cost FLOAT;"))
-                
-            return rx.toast.success("¡ÉXITO! Columna de envío real agregada a la BD.")
-        except Exception as e:
-            return rx.toast.error(f"Error al reparar la BD: {str(e)}", duration=10000)
+        # Limpieza de memoria para el próximo uso
+        if pid_str in self.admin_final_shipping_costs:
+            del self.admin_final_shipping_costs[pid_str]
+    # --------------------------------------------------------------
 
+    @rx.event
     def confirm_delivery_time(self, purchase_id: int):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
@@ -6750,12 +6755,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase.shipping_carrier = "Domiciliario Propio"
             purchase.is_direct_sale = True 
             
+            # ✨ AQUÍ ES DONDE ANTES NO SE GUARDABA NADA. AHORA SÍ:
+            self._apply_actual_shipping_cost(purchase)
+
             session.add(purchase)
             session.commit()
             
             if pid_str in self.admin_delivery_times: del self.admin_delivery_times[pid_str]
-            return rx.toast.success("Entrega manual programada. Ahora gestiona el pago.")
+            
+            # Refresca la UI
+            yield AppState.load_active_purchases
+            return rx.toast.success("Entrega manual programada y costos guardados.")
 
+    @rx.event
     def ship_order_with_guide(self, purchase_id: int):
         pid_str = str(purchase_id)
         info = self.admin_tracking_info.get(pid_str, {})
@@ -6771,11 +6783,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase.shipping_type = "carrier"
             purchase.status = PurchaseStatus.SHIPPED
             
+            # ✨ AQUÍ ES DONDE ANTES NO SE GUARDABA NADA. AHORA SÍ:
+            self._apply_actual_shipping_cost(purchase)
+
             session.add(purchase)
             session.commit()
             
             if pid_str in self.admin_tracking_info: del self.admin_tracking_info[pid_str]
-            return rx.toast.success(f"Guía {guide} registrada.")
+            
+            # Refresca la UI
+            yield AppState.load_active_purchases
+            return rx.toast.success(f"Guía {guide} registrada y costos guardados.")
 
     @rx.var
     def subtotal_cop(self) -> str:
@@ -7396,15 +7414,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.selected_variant_index = -1
             self.product_detail_chart_data = []
 
-    # --- ✨ INICIO DE NUEVAS VARIABLES Y SETTERS ✨ ---
-    admin_final_shipping_cost: Dict[int, str] = {}
-
-
-    # --- INICIO: NUEVOS EVENT HANDLERS Y VARS PARA GASTOS ---
-
-    def set_gasto_start_date(self, date: str):
-        """Actualiza la fecha de inicio para el filtro de gastos."""
-        self.gasto_start_date = date
+    
 
     def set_gasto_end_date(self, date: str):
         """Actualiza la fecha de fin para el filtro de gastos."""
@@ -9273,21 +9283,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.new_purchase_notification = True
 
     def _update_shipping_and_notify(self, session, purchase, total_delta):
-        """Función auxiliar que actualiza el envío y guarda el costo final real."""
-        pid_str = str(purchase.id)
+        """Función auxiliar que actualiza el envío y notifica."""
         
-        # ✨ LA SOLUCIÓN AL CERO (0): Buscamos usando el String exacto ✨
-        final_shipping_cost_str = self.admin_final_shipping_costs.get(pid_str)
-        
-        try:
-            if final_shipping_cost_str and final_shipping_cost_str.strip():
-                # Si el admin escribió un costo (ej: "15000"), lo guardamos
-                purchase.actual_shipping_cost = float(final_shipping_cost_str)
-            else:
-                # Si el admin lo dejó en blanco, asumimos que costó lo mismo que cobró
-                purchase.actual_shipping_cost = purchase.shipping_applied
-        except (ValueError, TypeError):
-            purchase.actual_shipping_cost = purchase.shipping_applied
+        # ✨ APLICAMOS LA LÓGICA CENTRAL AQUÍ TAMBIÉN:
+        self._apply_actual_shipping_cost(purchase)
         
         purchase.status = PurchaseStatus.SHIPPED
         purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
@@ -9313,9 +9312,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             url="/my-purchases"
         )
         session.add(notification)
-        
-        if pid_str in self.admin_final_shipping_costs:
-            del self.admin_final_shipping_costs[pid_str]
 
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
@@ -9339,6 +9335,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if purchase and purchase.status == PurchaseStatus.CONFIRMED:
                 self._update_shipping_and_notify(session, purchase, total_delta)
                 session.commit()
+                if pid_str in self.admin_delivery_times: del self.admin_delivery_times[pid_str]
                 yield rx.toast.success("Notificación de envío enviada.")
                 yield AppState.load_active_purchases
             else:
@@ -9366,12 +9363,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Contra Entrega":
                 self._update_shipping_and_notify(session, purchase, total_delta)
                 session.commit()
+                if pid_str in self.admin_delivery_times: del self.admin_delivery_times[pid_str]
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
                 yield AppState.load_active_purchases
             else:
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
     # ==============================================================================
-
 
     @rx.event
     def confirm_online_payment(self, purchase_id: int):
